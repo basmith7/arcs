@@ -1,4 +1,5 @@
 import { mkdtempSync, writeFileSync } from 'node:fs'
+import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
@@ -107,6 +108,39 @@ describe('createArcsServer', () => {
     expect(await res.json()).toEqual({ error: 'too-large' })
   })
 
+  it('closes the connection on a 413 instead of leaving it keep-alive (framing safety on a pooled socket)', async () => {
+    const { base } = await listen()
+    const url = new URL(`${base}/games`)
+    const agent = new http.Agent({ keepAlive: true })
+    closers.push(() => agent.destroy())
+    const big = JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, junk: 'x'.repeat(70 * 1024) })
+    const res = await new Promise<http.IncomingMessage>((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: url.hostname,
+          port: url.port,
+          path: url.pathname,
+          method: 'POST',
+          agent,
+          headers: { 'content-type': 'application/json', connection: 'keep-alive' },
+        },
+        resolve,
+      )
+      req.on('error', reject)
+      req.end(big)
+    })
+    res.resume()
+    await new Promise<void>((r) => res.once('end', r))
+    expect(res.statusCode).toBe(413)
+    expect(res.headers.connection).toBe('close')
+    // The socket itself was destroyed, not just returned to the pool.
+    await new Promise<void>((r) => {
+      if (res.socket?.destroyed) return r()
+      res.socket?.once('close', () => r())
+    })
+    expect(res.socket?.destroyed).toBe(true)
+  })
+
   it('terminates a socket that stops answering heartbeat pings, and the gate loses its subscriber', async () => {
     const { base, ws, gate } = await listen(20)
     const created = (await (
@@ -128,6 +162,42 @@ describe('createArcsServer', () => {
       await new Promise((r) => setTimeout(r, 25))
     }
     expect(gate.subscriberCount(created.gameId)).toBe(0)
+  })
+
+  it('drops the per-game socket bookkeeping once every socket closes, so the cap does not stick', async () => {
+    const { base, ws } = await listen()
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string }
+
+    const open = (): Promise<WebSocket> =>
+      new Promise((resolve, reject) => {
+        const sock = new WebSocket(`${ws}/games/${created.gameId}/live`)
+        sock.once('open', () => resolve(sock))
+        sock.once('error', reject)
+      })
+
+    // Fill the per-game cap of 32, then close every one of them.
+    const first = await Promise.all(Array.from({ length: 32 }, open))
+    await Promise.all(
+      first.map(
+        (sock) =>
+          new Promise<void>((r) => {
+            sock.once('close', r)
+            sock.close()
+          }),
+      ),
+    )
+
+    // If the game's socket-count bookkeeping were never cleared, this second batch of 32 would
+    // still see a full-looking bucket. A fresh reservation of the whole cap must succeed cleanly.
+    const second = await Promise.all(Array.from({ length: 32 }, open))
+    for (const sock of second) expect(sock.readyState).toBe(WebSocket.OPEN)
+    for (const sock of second) sock.close()
   })
 
   it('refuses a socket for an unknown game', async () => {

@@ -83,9 +83,14 @@ function toRequest(req: http.IncomingMessage, tooLarge: { flag: boolean }): Requ
 }
 
 function tooLargeResponse(res: http.ServerResponse): void {
+  // The client may still be mid-stream on this connection (unread body bytes for the
+  // content-length case, or a body we deliberately stopped reading for the streamed case).
+  // Either way the connection can no longer be trusted to be framed correctly for a next
+  // request, so tell the client to close and force the socket shut once the response is out.
   res.statusCode = 413
   res.setHeader('content-type', 'application/json')
-  res.end(JSON.stringify({ error: 'too-large' }))
+  res.setHeader('connection', 'close')
+  res.end(JSON.stringify({ error: 'too-large' }), () => res.socket?.destroy())
 }
 
 async function send(res: http.ServerResponse, response: Response): Promise<void> {
@@ -195,6 +200,7 @@ export function createArcsServer(opts: ServerOptions): http.Server {
         const cleanup = (): void => {
           unsubscribe()
           sockets.delete(ws)
+          if (sockets.size === 0) gameSockets.delete(gameId)
         }
         ws.on('close', cleanup)
         ws.on('error', cleanup)
