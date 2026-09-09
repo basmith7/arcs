@@ -16,17 +16,21 @@ afterEach(() => {
   for (const c of closers.splice(0)) c()
 })
 
-async function listen() {
+async function listen(heartbeatMs?: number) {
   const staticDir = mkdtempSync(join(tmpdir(), 'arcs-static-'))
   writeFileSync(join(staticDir, 'index.html'), '<html>arcs</html>')
   writeFileSync(join(staticDir, 'app.js'), 'console.log(1)')
   const store = new SqliteStore(':memory:')
   const gate = new EngineGate(store, { pace: 0 })
-  const server = createArcsServer({ api: { store, gate }, staticDir })
+  const server = createArcsServer({
+    api: { store, gate },
+    staticDir,
+    ...(heartbeatMs === undefined ? {} : { heartbeatMs }),
+  })
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
   const port = (server.address() as AddressInfo).port
   closers.push(() => server.close())
-  return { base: `http://127.0.0.1:${port}`, ws: `ws://127.0.0.1:${port}`, store }
+  return { base: `http://127.0.0.1:${port}`, ws: `ws://127.0.0.1:${port}`, store, gate }
 }
 
 describe('createArcsServer', () => {
@@ -77,6 +81,53 @@ describe('createArcsServer', () => {
     }
     expect(pushes[0]).toEqual({ from: 0, entries: [RED_FIRST_LEAD] })
     expect(pushes.map((p) => p.from)).toEqual(pushes.map((_, i) => i))
+  })
+
+  it('never crashes on an unparsable upgrade path and keeps answering healthz', async () => {
+    const { base, ws } = await listen()
+    const sock = new WebSocket(`${ws}/games/%zz/live`)
+    const outcome = await new Promise<string>((r) => {
+      sock.once('open', () => r('open'))
+      sock.once('error', () => r('error'))
+      sock.once('unexpected-response', () => r('error'))
+    })
+    expect(outcome).toBe('error')
+    expect((await fetch(`${base}/healthz`)).status).toBe(200)
+  })
+
+  it('rejects an oversized POST body with 413', async () => {
+    const { base } = await listen()
+    const big = JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, junk: 'x'.repeat(70 * 1024) })
+    const res = await fetch(`${base}/games`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: big,
+    })
+    expect(res.status).toBe(413)
+    expect(await res.json()).toEqual({ error: 'too-large' })
+  })
+
+  it('terminates a socket that stops answering heartbeat pings, and the gate loses its subscriber', async () => {
+    const { base, ws, gate } = await listen(20)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string }
+
+    const sock = new WebSocket(`${ws}/games/${created.gameId}/live`)
+    await new Promise<void>((r) => sock.once('open', r))
+    // Stop reading from the socket so ping frames are never parsed and no pong is ever sent back.
+    ;(sock as unknown as { _socket: { pause: () => void } })._socket.pause()
+
+    const deadline = Date.now() + 5000
+    while (gate.subscriberCount(created.gameId) > 0) {
+      if (Date.now() > deadline) throw new Error('socket was never terminated')
+      await new Promise((r) => setTimeout(r, 25))
+    }
+    expect(gate.subscriberCount(created.gameId)).toBe(0)
   })
 
   it('refuses a socket for an unknown game', async () => {

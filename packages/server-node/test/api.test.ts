@@ -58,6 +58,42 @@ describe('route', () => {
     expect(a.store.meta(created.gameId)?.webhookUrl).toBe('https://discord.com/api/webhooks/1/abc')
   })
 
+  it('rejects options that fail to start a game, and bot factions outside the roster', async () => {
+    const a = api()
+    const badOptions = await route(
+      post('/games', { options: { players: 2, seed: 1 }, factions: ['red'] }, { 'x-forwarded-for': '10.0.0.1' }),
+      a,
+    )
+    expect(badOptions?.status).toBe(400)
+    expect((await badOptions!.json()).error).toBe('bad-options')
+    expect(a.store.gameIds()).toEqual([])
+
+    const badBots = await route(
+      post(
+        '/games',
+        { options: THREE_PLAYER, factions: THREE_PLAYER.factions, bots: ['purple'] },
+        { 'x-forwarded-for': '10.0.0.2' },
+      ),
+      a,
+    )
+    expect(badBots?.status).toBe(400)
+    expect((await badBots!.json()).error).toBe('bad-options')
+  })
+
+  it('rate-limits game creation per IP', async () => {
+    const a = api()
+    const create = (ip: string) =>
+      route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }, { 'x-forwarded-for': ip }), a)
+    for (let i = 0; i < 10; i++) {
+      expect((await create('10.1.1.1'))!.status).toBe(201)
+    }
+    const eleventh = await create('10.1.1.1')
+    expect(eleventh?.status).toBe(429)
+    expect((await eleventh!.json()).error).toBe('rate-limited')
+    // A different IP is unaffected.
+    expect((await create('10.1.1.2'))!.status).toBe(201)
+  })
+
   it('rejects a non-Discord webhookUrl and accepts a missing one', async () => {
     const a = api()
     const rejected = await route(

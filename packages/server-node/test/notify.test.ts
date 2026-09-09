@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { replayGame, startGame } from '@arcs/engine'
 import type { RuleResult } from '@arcs/engine'
-import { Notifier, seatLink } from '../src/notify.js'
+import { Notifier, postToDiscord, seatLink } from '../src/notify.js'
 import { SqliteStore } from '../src/sqlite-store.js'
 import { RED_OPENING, THREE_PLAYER } from './fixtures.js'
 
@@ -26,6 +26,24 @@ async function setup(includeWebhook = true) {
   const afterRed = replayGame(THREE_PLAYER, RED_OPENING) // red's whole turn done; yellow is asked
   return { store, game, sent, notifier, start, afterRed, tick: (ms: number) => (clock += ms) }
 }
+
+describe('postToDiscord', () => {
+  const originalFetch = global.fetch
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it('suppresses @everyone/@here and role/user mentions in the webhook body', async () => {
+    let capturedBody: string | undefined
+    global.fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      capturedBody = init?.body as string
+      return new Response(null, { status: 200 })
+    }) as unknown as typeof fetch
+    await postToDiscord('https://discord.test/hook', 'hello @everyone')
+    const parsed = JSON.parse(capturedBody!) as { allowed_mentions?: { parse: string[] } }
+    expect(parsed.allowed_mentions?.parse).toEqual([])
+  })
+})
 
 describe('Notifier', () => {
   it('pings the next human by name with their seat link', async () => {

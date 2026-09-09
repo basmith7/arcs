@@ -14,6 +14,9 @@ const STATIC_DIR = process.env['STATIC_DIR'] ?? resolve(here, '../../../apps/web
 const PUBLIC_ORIGIN = process.env['PUBLIC_ORIGIN'] ?? `http://localhost:${PORT}`
 const BOT_PACE_MS = Number(process.env['BOT_PACE_MS'] ?? 1000)
 
+process.on('uncaughtException', (e) => console.error('[fatal]', e))
+process.on('unhandledRejection', (e) => console.error('[unhandled]', e))
+
 mkdirSync(dirname(DATABASE_PATH), { recursive: true })
 const store = new SqliteStore(DATABASE_PATH)
 const notifier = new Notifier(store, { publicOrigin: PUBLIC_ORIGIN })

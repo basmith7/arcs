@@ -4,6 +4,7 @@
  * their wire shapes (docs/17 section 4b); this adds bots on create, `seats` on read, a name claim,
  * `403 wrong-turn`, and `/healthz`.
  */
+import { startGame } from '@arcs/engine'
 import type { FactionId, NewGameOptions } from '@arcs/engine'
 
 import type { EngineGate } from './gate.js'
@@ -44,6 +45,31 @@ const bad = (status: number, error: string): Response => json({ error }, status)
 const isStringArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((x) => typeof x === 'string')
 
+// --- create rate limit ------------------------------------------------------
+// A crude in-memory token bucket: 10 game creations per IP per 10-minute window. Buckets are
+// pruned lazily (checked and reset on the next hit from that IP) rather than swept on a timer.
+const CREATE_LIMIT = 10
+const CREATE_WINDOW_MS = 10 * 60 * 1000
+const createBuckets = new Map<string, { count: number; windowStart: number }>()
+
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  if (forwarded !== null && forwarded.trim().length > 0) return forwarded.split(',')[0]!.trim()
+  return request.headers.get('x-arcs-remote-addr') ?? 'unknown'
+}
+
+function rateLimited(request: Request): boolean {
+  const ip = clientIp(request)
+  const now = Date.now()
+  const bucket = createBuckets.get(ip)
+  if (bucket === undefined || now - bucket.windowStart >= CREATE_WINDOW_MS) {
+    createBuckets.set(ip, { count: 1, windowStart: now })
+    return false
+  }
+  bucket.count += 1
+  return bucket.count > CREATE_LIMIT
+}
+
 export function publicSeats(store: SqliteStore, gameId: string): PublicSeat[] {
   return store.seats(gameId).map((s) => ({
     faction: s.faction,
@@ -52,15 +78,31 @@ export function publicSeats(store: SqliteStore, gameId: string): PublicSeat[] {
   }))
 }
 
+const MAX_BODY_BYTES = 65536
+
+export class TooLargeError extends Error {}
+
 async function body<T>(request: Request): Promise<T | undefined> {
+  const contentLength = Number(request.headers.get('content-length'))
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) throw new TooLargeError()
   try {
     return (await request.json()) as T
-  } catch {
+  } catch (e) {
+    if (e instanceof TooLargeError) throw e
     return undefined
   }
 }
 
 export async function route(request: Request, api: Api): Promise<Response | undefined> {
+  try {
+    return await routeInner(request, api)
+  } catch (e) {
+    if (e instanceof TooLargeError) return bad(413, 'too-large')
+    throw e
+  }
+}
+
+async function routeInner(request: Request, api: Api): Promise<Response | undefined> {
   const url = new URL(request.url)
   const path = url.pathname.replace(/\/+$/, '') || '/'
   const { store, gate } = api
@@ -72,13 +114,16 @@ export async function route(request: Request, api: Api): Promise<Response | unde
 
   // --- POST /games ---------------------------------------------------------
   if (path === '/games' && request.method === 'POST') {
+    if (rateLimited(request)) return bad(429, 'rate-limited')
     const b = await body<{ options?: unknown; factions?: unknown; bots?: unknown; webhookUrl?: unknown }>(request)
     if (b === undefined) return bad(400, 'body must be JSON')
     if (!isStringArray(b.factions) || b.factions.length === 0) {
       return bad(400, 'factions must be a non-empty array of strings')
     }
     if (b.options === undefined) return bad(400, 'options is required')
-    const bots = isStringArray(b.bots) ? b.bots.filter((f) => (b.factions as string[]).includes(f)) : []
+    if (b.bots !== undefined && !isStringArray(b.bots)) return bad(400, 'bad-options')
+    const bots = isStringArray(b.bots) ? b.bots : []
+    if (bots.some((f) => !(b.factions as string[]).includes(f))) return bad(400, 'bad-options')
     let webhookUrl: string | undefined
     if (b.webhookUrl !== undefined) {
       if (typeof b.webhookUrl !== 'string' || !DISCORD_WEBHOOK.test(b.webhookUrl.trim())) {
@@ -90,6 +135,11 @@ export async function route(request: Request, api: Api): Promise<Response | unde
     const rawOptions = b.options as NewGameOptions
     const options: NewGameOptions =
       bots.length > 0 ? { ...rawOptions, bots: bots as readonly FactionId[] } : rawOptions
+    try {
+      startGame(options)
+    } catch (e) {
+      return json({ error: 'bad-options', detail: String((e as Error).message) }, 400)
+    }
     const created = await store.create(options, b.factions, {
       bots,
       ...(webhookUrl === undefined ? {} : { webhookUrl }),

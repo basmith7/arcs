@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import { replayGame } from '@arcs/engine'
 import type { RuleResult } from '@arcs/engine'
+import { actorOf } from '@arcs/server'
+import type { AppendResult } from '@arcs/server'
 import { EngineGate, askedFactions } from '../src/gate.js'
 import { SqliteStore } from '../src/sqlite-store.js'
 import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING, THREE_PLAYER, playOpening, tempDbPath } from './fixtures.js'
@@ -117,5 +119,61 @@ describe('EngineGate bots', () => {
     expect(r.ok).toBe(false)
     await gate.settled(game.gameId)
     sameProgress(gate.resultOf(game.gameId), replayGame(ONE_HUMAN, store.journal(game.gameId)))
+  })
+
+  it('bounds the bot retry loop when the store keeps refusing bot appends', async () => {
+    // Human (red) appends succeed for real; anything from a bot faction always reports a conflict.
+    class BotFailStore extends SqliteStore {
+      appendCalls = 0
+      override async append(
+        gameId: string,
+        seatToken: string,
+        expectedLength: number,
+        action: string,
+      ): Promise<AppendResult> {
+        if (actorOf(action) === 'red') return super.append(gameId, seatToken, expectedLength, action)
+        this.appendCalls += 1
+        return { ok: false, reason: 'conflict', length: expectedLength }
+      }
+    }
+    const store = new BotFailStore(':memory:')
+    const gate = new EngineGate(store, { pace: 0 })
+    const game = await store.create(ONE_HUMAN, ONE_HUMAN.factions, { bots: ['yellow', 'blue'] })
+    const red = game.seats.find((s) => s.faction === 'red')!.seatToken
+    await playOpening(gate, game.gameId, red)
+    await gate.settled(game.gameId)
+    expect(store.appendCalls).toBeLessThanOrEqual(4)
+    // The gate is responsive afterwards: a fresh append round-trips normally.
+    expect(gate.askedFaction(game.gameId)).toBeDefined()
+  })
+})
+
+describe('EngineGate resumeAll fault tolerance', () => {
+  it('logs and skips a game whose stored options cannot replay, and still steps a good bot game', async () => {
+    const path = tempDbPath()
+    const store = new SqliteStore(path)
+    // Seeded directly, bypassing the API: garbage options with a non-empty bots array so resumeAll
+    // actually attempts to replay it (only bot games are considered for resume at all).
+    await store.create({ bots: ['yellow'] }, ['red', 'yellow'], { bots: ['yellow'] })
+    const good = await store.create(ONE_HUMAN, ONE_HUMAN.factions, { bots: ['yellow', 'blue'] })
+    const red = good.seats.find((s) => s.faction === 'red')!.seatToken
+    await playOpening(store, good.gameId, red)
+    store.close()
+
+    const errors: unknown[][] = []
+    const spy = console.error
+    console.error = (...args: unknown[]) => errors.push(args)
+    try {
+      const reopened = new SqliteStore(path)
+      const gate = new EngineGate(reopened, { pace: 0 })
+      await expect(gate.resumeAll()).resolves.toBeUndefined()
+      await gate.settled(good.gameId)
+      expect(reopened.journal(good.gameId).length).toBeGreaterThan(RED_OPENING.length)
+      expect(gate.askedFaction(good.gameId)).toBe('red')
+      reopened.close()
+    } finally {
+      console.error = spy
+    }
+    expect(errors.some((a) => String(a[0]).includes('[gate] resume failed'))).toBe(true)
   })
 })

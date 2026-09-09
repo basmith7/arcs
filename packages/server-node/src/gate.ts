@@ -180,6 +180,7 @@ export class EngineGate {
     let result = start
     // `stepBot` resets this itself at a turn boundary; carry it between steps like `stepBots` does.
     let asked: AskedThisTurn = NO_ASKS
+    let failedAttempts = 0
     for (;;) {
       const faction = botToAct(result, options.bots)
       if (faction === undefined || result.state.isOver) return result
@@ -191,11 +192,18 @@ export class EngineGate {
       const at = result.state.journal.length
       const stored = await this.store.append(gameId, seat.seatToken, at, encoded)
       if (!stored.ok) {
+        failedAttempts += 1
+        if (failedAttempts > 3) {
+          console.error('[gate] bot append gave up', gameId, stored.reason)
+          return result
+        }
         // Someone wrote under us (should not happen on the queue); resync from the store.
         this.cache.delete(gameId)
         result = this.resultOf(gameId) ?? result
+        await new Promise<void>((r) => setTimeout(r, 0))
         continue
       }
+      failedAttempts = 0
       result = step.result
       this.remember(gameId, result)
       this.broadcast(gameId, { from: at, entries: [encoded] })
@@ -205,18 +213,27 @@ export class EngineGate {
 
   async resumeAll(): Promise<void> {
     for (const gameId of this.store.gameIds()) {
-      const result = this.resultOf(gameId)
-      if (result === undefined || result.state.isOver) continue
-      const options = this.store.options(gameId) as NewGameOptions
-      if (botToAct(result, options.bots) === undefined) continue
-      void this.enqueue(gameId, async () => {
-        const done = await this.runBots(gameId, result)
-        this.onSettled?.({ gameId, before: null, after: done })
-      })
+      try {
+        const options = this.store.options(gameId) as NewGameOptions | undefined
+        if (options === undefined || options.bots === undefined || options.bots.length === 0) continue
+        const result = this.resultOf(gameId)
+        if (result === undefined || result.state.isOver) continue
+        if (botToAct(result, options.bots) === undefined) continue
+        void this.enqueue(gameId, async () => {
+          const done = await this.runBots(gameId, result)
+          this.onSettled?.({ gameId, before: null, after: done })
+        })
+      } catch (e) {
+        console.error('[gate] resume failed', gameId, e)
+      }
     }
   }
 
   // --- push -----------------------------------------------------------------
+
+  subscriberCount(gameId: string): number {
+    return this.listeners.get(gameId)?.size ?? 0
+  }
 
   subscribe(gameId: string, listener: (push: Push) => void): () => void {
     let set = this.listeners.get(gameId)

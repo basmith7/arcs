@@ -27,7 +27,7 @@ export async function postToDiscord(url: string, content: string): Promise<void>
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
   })
   if (!res.ok) throw new Error(`discord webhook -> ${res.status}`)
 }

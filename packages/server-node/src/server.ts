@@ -17,6 +17,8 @@ import type { Api } from './api.js'
 export interface ServerOptions {
   readonly api: Api
   readonly staticDir?: string
+  /** Milliseconds between websocket heartbeat pings. Default 30000. */
+  readonly heartbeatMs?: number
 }
 
 const MIME: Record<string, string> = {
@@ -36,7 +38,29 @@ const MIME: Record<string, string> = {
   '.map': 'application/json',
 }
 
-function toRequest(req: http.IncomingMessage): Request {
+const MAX_BODY_BYTES = 65536
+
+/** Wraps the request body so a stream with no `content-length` still gets cut off at the cap. */
+function cappedBody(req: http.IncomingMessage, tooLarge: { flag: boolean }): ReadableStream<Uint8Array> {
+  const base = Readable.toWeb(req) as ReadableStream<Uint8Array>
+  let total = 0
+  return base.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        total += chunk.byteLength
+        if (total > MAX_BODY_BYTES) {
+          tooLarge.flag = true
+          controller.error(new Error('too-large'))
+          return
+        }
+        controller.enqueue(chunk)
+      },
+    }),
+  )
+}
+
+/** Returns `undefined` when the declared content-length alone already exceeds the cap. */
+function toRequest(req: http.IncomingMessage, tooLarge: { flag: boolean }): Request | undefined {
   const host = req.headers.host ?? 'localhost'
   const url = `http://${host}${req.url ?? '/'}`
   const headers = new Headers()
@@ -46,11 +70,22 @@ function toRequest(req: http.IncomingMessage): Request {
   }
   const method = req.method ?? 'GET'
   const hasBody = method !== 'GET' && method !== 'HEAD'
+  const contentLength = Number(req.headers['content-length'])
+  if (hasBody && Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) return undefined
+  if (!headers.has('x-forwarded-for')) {
+    headers.set('x-arcs-remote-addr', req.socket.remoteAddress ?? '')
+  }
   return new Request(url, {
     method,
     headers,
-    ...(hasBody ? { body: Readable.toWeb(req) as unknown as BodyInit, duplex: 'half' } : {}),
+    ...(hasBody ? { body: cappedBody(req, tooLarge) as unknown as BodyInit, duplex: 'half' } : {}),
   } as RequestInit)
+}
+
+function tooLargeResponse(res: http.ServerResponse): void {
+  res.statusCode = 413
+  res.setHeader('content-type', 'application/json')
+  res.end(JSON.stringify({ error: 'too-large' }))
 }
 
 async function send(res: http.ServerResponse, response: Response): Promise<void> {
@@ -95,8 +130,12 @@ export function createArcsServer(opts: ServerOptions): http.Server {
 
   const server = http.createServer((req, res) => {
     void (async () => {
+      const tooLarge = { flag: false }
       try {
-        const response = await route(toRequest(req), api)
+        const request = toRequest(req, tooLarge)
+        if (request === undefined) return tooLargeResponse(res)
+        const response = await route(request, api)
+        if (tooLarge.flag) return tooLargeResponse(res)
         if (response !== undefined) return await send(res, response)
         if (staticDir === undefined) {
           res.statusCode = 404
@@ -104,6 +143,7 @@ export function createArcsServer(opts: ServerOptions): http.Server {
         }
         serveStatic(staticDir, req.url ?? '/', res)
       } catch (e) {
+        if (tooLarge.flag) return tooLargeResponse(res)
         console.error('[http]', (e as Error).stack ?? e)
         if (!res.headersSent) res.statusCode = 500
         res.end('internal error')
@@ -111,22 +151,67 @@ export function createArcsServer(opts: ServerOptions): http.Server {
     })()
   })
 
-  const wss = new WebSocketServer({ noServer: true })
-  server.on('upgrade', (req, socket, head) => {
-    const m = /^\/games\/([^/?]+)\/live\/?(\?.*)?$/.exec(req.url ?? '')
-    const gameId = m === null ? undefined : decodeURIComponent(m[1]!)
-    if (gameId === undefined || api.store.options(gameId) === undefined) {
-      socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n')
-      socket.destroy()
-      return
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 })
+  const gameSockets = new Map<string, Set<import('ws').WebSocket>>()
+  const alive = new WeakSet<import('ws').WebSocket>()
+  const heartbeatMs = opts.heartbeatMs ?? 30000
+  const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (!alive.has(ws)) {
+        ws.terminate()
+        continue
+      }
+      alive.delete(ws)
+      ws.ping()
     }
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      const unsubscribe = api.gate.subscribe(gameId, (push) => {
-        if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(push))
+  }, heartbeatMs)
+  heartbeat.unref()
+
+  server.on('upgrade', (req, socket, head) => {
+    try {
+      const m = /^\/games\/([^/?]+)\/live\/?(\?.*)?$/.exec(req.url ?? '')
+      const gameId = m === null ? undefined : decodeURIComponent(m[1]!)
+      if (gameId === undefined || api.store.options(gameId) === undefined) {
+        socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n')
+        socket.destroy()
+        return
+      }
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        let sockets = gameSockets.get(gameId)
+        if (sockets === undefined) {
+          sockets = new Set()
+          gameSockets.set(gameId, sockets)
+        }
+        if (sockets.size >= 32) {
+          ws.close(1013)
+          return
+        }
+        sockets.add(ws)
+        alive.add(ws)
+        ws.on('pong', () => alive.add(ws))
+        const unsubscribe = api.gate.subscribe(gameId, (push) => {
+          if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(push))
+        })
+        const cleanup = (): void => {
+          unsubscribe()
+          sockets.delete(ws)
+        }
+        ws.on('close', cleanup)
+        ws.on('error', cleanup)
       })
-      ws.on('close', unsubscribe)
-      ws.on('error', unsubscribe)
-    })
+    } catch (e) {
+      console.error('[ws upgrade]', (e as Error).stack ?? e)
+      try {
+        socket.write('HTTP/1.1 404 Not Found\r\n\r\n')
+      } catch {
+        // socket may already be gone
+      }
+      socket.destroy()
+    }
+  })
+
+  server.on('close', () => {
+    clearInterval(heartbeat)
   })
 
   return server
