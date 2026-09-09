@@ -70,7 +70,7 @@ function PlayerSection({ faction }: { faction: string }): JSX.Element {
     setBusy(true)
     setError(null)
     try {
-      await store.claimName(name.trim() || faction, discordId.trim())
+      await store.claimName(store.mySeatName() ?? faction, discordId.trim())
       setDiscordId('')
     } catch (e) {
       setError((e as Error).message)
@@ -84,7 +84,7 @@ function PlayerSection({ faction }: { faction: string }): JSX.Element {
     setBusy(true)
     setError(null)
     try {
-      await store.claimName(name.trim() || faction, '')
+      await store.claimName(store.mySeatName() ?? faction, '')
     } catch (e) {
       setError((e as Error).message)
     } finally {
