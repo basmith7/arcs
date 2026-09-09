@@ -122,8 +122,10 @@ export class Notifier {
   private async checkPending(gameId: string): Promise<void> {
     const pending = this.pending.get(gameId)
     if (pending === undefined) return
-    if (this.store.journalLength(gameId) !== pending.length) return
     this.pending.delete(gameId)
+    if (this.store.journalLength(gameId) !== pending.length) return
+    const meta = this.store.meta(gameId)
+    if (meta !== undefined && this.now() - meta.lastNotifiedAt < this.windowMs) return
     const seat = this.store.seats(gameId).find((s) => s.seatToken === pending.seatToken)
     if (seat === undefined) return
     const line = this.turnLine(gameId, seat, pending.chapter)

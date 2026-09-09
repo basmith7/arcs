@@ -302,7 +302,7 @@ describe('Notifier', () => {
   })
 
   it('cancels the grace timer when the active player acts before it fires', async () => {
-    const { game, sent, notifier, start, afterRed, presence, fireLatest, growJournal } = await setup()
+    const { game, sent, notifier, start, afterRed, presence, fireLatest, growJournal, scheduled } = await setup()
     const yellowSeat = game.seats[1]!
     const socket = fakeSocket()
     presence.connect(game.gameId, yellowSeat.seatToken, socket)
@@ -311,6 +311,7 @@ describe('Notifier', () => {
     const later = { ...afterRed, state: { ...afterRed.state, journal: [...RED_OPENING, 'x'] } }
     await growJournal(RED_OPENING.length + 1)
     await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: later })
+    expect(scheduled[0]!.cancel.cancelled).toBe(true)
     fireLatest()
     expect(sent).toHaveLength(0)
   })
@@ -334,16 +335,34 @@ describe('Notifier', () => {
   })
 
   it('reschedules for leaveGraceMs when the active player leaves, and posts when that fires', async () => {
-    const { game, sent, notifier, start, afterRed, presence, fireLatest, growJournal } = await setup()
+    const { game, sent, notifier, start, afterRed, presence, fireLatest, growJournal, scheduled } = await setup()
     const yellowSeat = game.seats[1]!
     const socket = fakeSocket()
     const unregister = presence.connect(game.gameId, yellowSeat.seatToken, socket)
     await growJournal(RED_OPENING.length)
     await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    expect(scheduled[0]!.ms).toBe(600_000)
     unregister()
+    expect(scheduled[0]!.cancel.cancelled).toBe(true)
+    expect(scheduled.at(-1)!.ms).toBe(60_000)
     fireLatest()
     expect(sent).toHaveLength(1)
     expect(sent[0]!.content).toContain('**Sam**')
+  })
+
+  it('suppresses a deferred turn ping when a chapter message already posted inside the rate window', async () => {
+    const { game, sent, notifier, start, afterRed, presence, fireLatest, growJournal, tick } = await setup()
+    const yellowSeat = game.seats[1]!
+    const socket = fakeSocket()
+    presence.connect(game.gameId, yellowSeat.seatToken, socket)
+    await growJournal(RED_OPENING.length)
+    const chapterEnd = { ...afterRed, state: { ...afterRed.state, chapter: start.state.chapter + 1 } }
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: chapterEnd })
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.content).toContain('Chapter')
+    tick(10_000) // well inside the 60s window, before the grace timer fires
+    fireLatest()
+    expect(sent).toHaveLength(1)
   })
 
   it('posts immediately for an active winner on game over, ignoring presence', async () => {
