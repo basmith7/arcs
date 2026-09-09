@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { DiscordBot } from './discord.js'
 import { EngineGate } from './gate.js'
 import { Notifier } from './notify.js'
+import { Presence } from './presence.js'
 import { createArcsServer } from './server.js'
 import { SqliteStore } from './sqlite-store.js'
 
@@ -17,6 +18,9 @@ const BOT_PACE_MS = Number(process.env['BOT_PACE_MS'] ?? 1000)
 const DISCORD_BOT_TOKEN = process.env['DISCORD_BOT_TOKEN'] || undefined
 const DISCORD_GUILD_ID = process.env['DISCORD_GUILD_ID'] || undefined
 const DISCORD_CHANNEL_ID = process.env['DISCORD_CHANNEL_ID'] || undefined
+const PRESENCE_ACTIVE_MS = Number(process.env['PRESENCE_ACTIVE_MS'] || 120_000)
+const PING_GRACE_MS = Number(process.env['PING_GRACE_MS'] || 600_000)
+const LEAVE_GRACE_MS = Number(process.env['LEAVE_GRACE_MS'] || 60_000)
 
 process.on('uncaughtException', (e) => console.error('[fatal]', e))
 process.on('unhandledRejection', (e) => console.error('[unhandled]', e))
@@ -32,8 +36,12 @@ const bot =
 const discordStatus =
   bot === undefined ? 'off' : DISCORD_CHANNEL_ID !== undefined ? 'lookup+channel' : 'lookup'
 
+const presence = new Presence({ activeMs: PRESENCE_ACTIVE_MS })
 const notifier = new Notifier(store, {
   publicOrigin: PUBLIC_ORIGIN,
+  presence,
+  graceMs: PING_GRACE_MS,
+  leaveGraceMs: LEAVE_GRACE_MS,
   ...(bot !== undefined && DISCORD_CHANNEL_ID !== undefined
     ? { fallbackChannel: { channelId: DISCORD_CHANNEL_ID, bot } }
     : {}),
@@ -42,6 +50,7 @@ const gate = new EngineGate(store, { pace: BOT_PACE_MS, onSettled: (s) => void n
 const server = createArcsServer({
   api: { store, gate, ...(bot === undefined ? {} : { bot }) },
   staticDir: STATIC_DIR,
+  presence,
 })
 
 void gate.resumeAll()
