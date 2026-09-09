@@ -27,6 +27,8 @@ export interface PublicSeat {
   readonly discordLinked?: boolean
   /** The linked user's Discord username, for display — never the id. */
   readonly discordName?: string
+  /** Present for human seats: whether they get a Discord turn ping. */
+  readonly pings?: boolean
 }
 
 // Accepts a bare snowflake or a `<@id>`/`<@!id>` mention and normalises to the bare digits.
@@ -94,6 +96,7 @@ export function publicSeats(store: SqliteStore, gameId: string): PublicSeat[] {
     isBot: s.isBot,
     ...(s.discordId === undefined ? {} : { discordLinked: true }),
     ...(s.discordName === undefined ? {} : { discordName: s.discordName }),
+    ...(s.isBot ? {} : { pings: s.pings }),
   }))
 }
 
@@ -217,44 +220,55 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   // --- POST /games/:id/seat -----------------------------------------------
   if (seat !== null && request.method === 'POST') {
     const gameId = decodeURIComponent(seat[1]!)
-    const b = await body<{ seatToken?: unknown; name?: unknown; discordId?: unknown }>(request)
+    const b = await body<{ seatToken?: unknown; name?: unknown; discordId?: unknown; pings?: unknown }>(request)
     if (b === undefined) return bad(400, 'body must be JSON')
     if (typeof b.seatToken !== 'string') return bad(400, 'seatToken is required')
-    const name = typeof b.name === 'string' ? b.name.trim() : ''
-    if (name.length === 0 || name.length > NAME_MAX) return bad(400, `name must be 1-${NAME_MAX} characters`)
+    if (b.pings !== undefined && typeof b.pings !== 'boolean') return bad(400, 'bad-pings')
+    if (b.name === undefined && b.pings === undefined) return bad(400, 'bad-body')
     if (store.options(gameId) === undefined) return bad(404, 'no such game')
 
-    if (
-      b.discordId !== undefined &&
-      b.discordId !== null &&
-      typeof b.discordId !== 'string'
-    ) {
-      return bad(400, 'bad-discord-id')
+    if (b.name !== undefined) {
+      const name = typeof b.name === 'string' ? b.name.trim() : ''
+      if (name.length === 0 || name.length > NAME_MAX) return bad(400, `name must be 1-${NAME_MAX} characters`)
+
+      if (
+        b.discordId !== undefined &&
+        b.discordId !== null &&
+        typeof b.discordId !== 'string'
+      ) {
+        return bad(400, 'bad-discord-id')
+      }
+
+      // `discord` follows `SqliteStore.setName`'s three-way contract: undefined leaves the link
+      // alone, null clears it, an object sets it.
+      let discord: { id: string; name?: string } | null | undefined
+      const rawId = typeof b.discordId === 'string' ? b.discordId.trim() : b.discordId
+      if (rawId === null || rawId === '') {
+        discord = null
+      } else if (typeof rawId === 'string') {
+        const id = normaliseDiscordId(rawId)
+        if (id === undefined) return bad(400, 'bad-discord-id')
+        const member = bot === undefined ? undefined : await bot.member(id)
+        discord = { id, ...(member === undefined ? {} : { name: member.username }) }
+      } else if (bot !== undefined) {
+        // No explicit id given: try to resolve the claimed name to a guild member. A miss (zero or
+        // several matches) leaves whatever was already linked untouched — a rename must not silently
+        // unlink an existing player.
+        const member = await bot.resolveMember(name)
+        discord = member === undefined ? undefined : { id: member.id, name: member.username }
+      } else {
+        discord = undefined
+      }
+
+      const seats = store.setName(gameId, b.seatToken, name, discord)
+      if (seats === undefined) return bad(403, 'seat token does not belong to this game')
     }
 
-    // `discord` follows `SqliteStore.setName`'s three-way contract: undefined leaves the link
-    // alone, null clears it, an object sets it.
-    let discord: { id: string; name?: string } | null | undefined
-    const rawId = typeof b.discordId === 'string' ? b.discordId.trim() : b.discordId
-    if (rawId === null || rawId === '') {
-      discord = null
-    } else if (typeof rawId === 'string') {
-      const id = normaliseDiscordId(rawId)
-      if (id === undefined) return bad(400, 'bad-discord-id')
-      const member = bot === undefined ? undefined : await bot.member(id)
-      discord = { id, ...(member === undefined ? {} : { name: member.username }) }
-    } else if (bot !== undefined) {
-      // No explicit id given: try to resolve the claimed name to a guild member. A miss (zero or
-      // several matches) leaves whatever was already linked untouched — a rename must not silently
-      // unlink an existing player.
-      const member = await bot.resolveMember(name)
-      discord = member === undefined ? undefined : { id: member.id, name: member.username }
-    } else {
-      discord = undefined
+    if (typeof b.pings === 'boolean') {
+      const seats = store.setPings(gameId, b.seatToken, b.pings)
+      if (seats === undefined) return bad(403, 'seat token does not belong to this game')
     }
 
-    const seats = store.setName(gameId, b.seatToken, name, discord)
-    if (seats === undefined) return bad(403, 'seat token does not belong to this game')
     api.onSeatsChanged?.(gameId)
     return json({ seats: publicSeats(store, gameId) })
   }

@@ -50,7 +50,7 @@ describe('route', () => {
     const tail = await (await route(get(`/games/${created.gameId}`), a))!.json()
     expect(tail.options).toEqual(ONE_HUMAN)
     expect(tail.seats).toEqual([
-      { faction: 'red', isBot: false },
+      { faction: 'red', isBot: false, pings: true },
       { faction: 'yellow', isBot: true },
       { faction: 'blue', isBot: true },
     ])
@@ -134,10 +134,32 @@ describe('route', () => {
     expect((await route(post(`/games/${created.gameId}/seat`, { seatToken: 'nope', name: 'B' }), a))?.status).toBe(403)
     const ok = await route(post(`/games/${created.gameId}/seat`, { seatToken: red.seatToken, name: '  Brian ' }), a)
     expect(ok?.status).toBe(200)
-    expect((await ok!.json()).seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false })
+    expect((await ok!.json()).seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false, pings: true })
     const tail = await (await route(get(`/games/${created.gameId}`, { 'x-seat-token': red.seatToken }), a))!.json()
     expect(tail.yourFaction).toBe('red')
     expect(tail.seats[0].name).toBe('Brian')
+  })
+
+  it('toggles the pings flag, round-tripping through seats, and validates it', async () => {
+    const a = api()
+    const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }), a))!.json()) as Created
+    const red = created.seats[0]!
+    expect((await route(post(`/games/${created.gameId}/seat`, { seatToken: red.seatToken }), a))?.status).toBe(400)
+    expect((await route(post(`/games/${created.gameId}/seat`, { seatToken: red.seatToken, pings: 'nope' }), a))?.status).toBe(400)
+    expect((await route(post(`/games/${created.gameId}/seat`, { seatToken: 'bogus', pings: false }), a))?.status).toBe(403)
+
+    const off = await route(post(`/games/${created.gameId}/seat`, { seatToken: red.seatToken, pings: false }), a)
+    expect(off?.status).toBe(200)
+    expect((await off!.json()).seats[0].pings).toBe(false)
+
+    const on = await route(post(`/games/${created.gameId}/seat`, { seatToken: red.seatToken, pings: true }), a)
+    expect(on?.status).toBe(200)
+    expect((await on!.json()).seats[0].pings).toBe(true)
+
+    // name-only body still works.
+    const named = await route(post(`/games/${created.gameId}/seat`, { seatToken: red.seatToken, name: 'Brian' }), a)
+    expect(named?.status).toBe(200)
+    expect((await named!.json()).seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false, pings: true })
   })
 
   it('normalises a discord mention to the bare id, stores it, and never returns the id', async () => {
@@ -154,7 +176,7 @@ describe('route', () => {
     )
     expect(ok?.status).toBe(200)
     const seatsBody = await ok!.json()
-    expect(seatsBody.seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false, discordLinked: true })
+    expect(seatsBody.seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false, discordLinked: true, pings: true })
     expect(JSON.stringify(seatsBody)).not.toContain('123456789012345678')
     const stored = a.store.seats(created.gameId)[0]
     expect(stored?.discordId).toBe('123456789012345678')
@@ -172,7 +194,7 @@ describe('route', () => {
     )
     expect(cleared?.status).toBe(200)
     const clearedBody = await cleared!.json()
-    expect(clearedBody.seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false })
+    expect(clearedBody.seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false, pings: true })
     expect(a.store.seats(created.gameId)[0]?.discordId).toBeUndefined()
   })
 

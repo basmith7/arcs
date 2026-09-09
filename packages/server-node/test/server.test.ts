@@ -8,6 +8,7 @@ import WebSocket from 'ws'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { EngineGate } from '../src/gate.js'
+import { Presence } from '../src/presence.js'
 import { createArcsServer } from '../src/server.js'
 import { SqliteStore } from '../src/sqlite-store.js'
 import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING } from './fixtures.js'
@@ -17,7 +18,7 @@ afterEach(() => {
   for (const c of closers.splice(0)) c()
 })
 
-async function listen(heartbeatMs?: number) {
+async function listen(heartbeatMs?: number, presence?: Presence) {
   const staticDir = mkdtempSync(join(tmpdir(), 'arcs-static-'))
   writeFileSync(join(staticDir, 'index.html'), '<html>arcs</html>')
   writeFileSync(join(staticDir, 'app.js'), 'console.log(1)')
@@ -27,6 +28,7 @@ async function listen(heartbeatMs?: number) {
     api: { store, gate },
     staticDir,
     ...(heartbeatMs === undefined ? {} : { heartbeatMs }),
+    ...(presence === undefined ? {} : { presence }),
   })
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
   const port = (server.address() as AddressInfo).port
@@ -230,9 +232,76 @@ describe('createArcsServer', () => {
       body: JSON.stringify({ seatToken: created.seats[0]!.seatToken, name: 'Brian' }),
     })
     expect(await got).toEqual({ from: 0, entries: [], seats: [
-      { faction: 'red', name: 'Brian', isBot: false },
+      { faction: 'red', name: 'Brian', isBot: false, pings: true },
       { faction: 'yellow', isBot: true },
       { faction: 'blue', isBot: true },
     ] })
+  })
+
+  it('connecting with ?seat=<token> makes presence active for that seat', async () => {
+    const presence = new Presence()
+    const { base, ws } = await listen(undefined, presence)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string; seats: { seatToken: string }[] }
+    const seatToken = created.seats[0]!.seatToken
+    const sock = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`)
+    await new Promise<void>((r) => sock.once('open', r))
+    closers.push(() => sock.close())
+    expect(presence.isActive(created.gameId, seatToken)).toBe(true)
+  })
+
+  it('an unknown ?seat= still connects fine, staying anonymous', async () => {
+    const presence = new Presence()
+    const { base, ws } = await listen(undefined, presence)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string; seats: { seatToken: string }[] }
+    const sock = new WebSocket(`${ws}/games/${created.gameId}/live?seat=bogus`)
+    await new Promise<void>((r, j) => {
+      sock.once('open', r)
+      sock.once('error', j)
+    })
+    closers.push(() => sock.close())
+    expect(presence.isActive(created.gameId, 'bogus')).toBe(false)
+  })
+
+  it('sending {"t":"active"} touches presence, and closing fires onLeave', async () => {
+    let clock = 0
+    const presence = new Presence({ now: () => clock, activeMs: 1000 })
+    const { base, ws } = await listen(undefined, presence)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string; seats: { seatToken: string }[] }
+    const seatToken = created.seats[0]!.seatToken
+    const left: string[] = []
+    presence.onLeave((gameId, token) => left.push(`${gameId}/${token}`))
+    const sock = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`)
+    await new Promise<void>((r) => sock.once('open', r))
+    clock += 1001
+    expect(presence.isActive(created.gameId, seatToken)).toBe(false)
+    sock.send(JSON.stringify({ t: 'active' }))
+    await new Promise((r) => setTimeout(r, 25))
+    expect(presence.isActive(created.gameId, seatToken)).toBe(true)
+
+    await new Promise<void>((r) => {
+      sock.once('close', r)
+      sock.close()
+    })
+    await new Promise((r) => setTimeout(r, 25))
+    expect(presence.isActive(created.gameId, seatToken)).toBe(false)
+    expect(left).toEqual([`${created.gameId}/${seatToken}`])
   })
 })

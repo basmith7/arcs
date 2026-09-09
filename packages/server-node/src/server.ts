@@ -13,12 +13,14 @@ import { WebSocketServer } from 'ws'
 
 import { publicSeats, route } from './api.js'
 import type { Api } from './api.js'
+import { Presence } from './presence.js'
 
 export interface ServerOptions {
   readonly api: Api
   readonly staticDir?: string
   /** Milliseconds between websocket heartbeat pings. Default 30000. */
   readonly heartbeatMs?: number
+  readonly presence?: Presence
 }
 
 const MIME: Record<string, string> = {
@@ -132,6 +134,7 @@ function serveStatic(staticDir: string, urlPath: string, res: http.ServerRespons
 export function createArcsServer(opts: ServerOptions): http.Server {
   const { staticDir } = opts
   const api: Api = { ...opts.api, onSeatsChanged: (id: string) => broadcastSeats(opts.api, id) }
+  const presence = opts.presence ?? new Presence()
 
   const server = http.createServer((req, res) => {
     void (async () => {
@@ -181,6 +184,11 @@ export function createArcsServer(opts: ServerOptions): http.Server {
         socket.destroy()
         return
       }
+      const seatParam = new URL(req.url ?? '/', 'http://x').searchParams.get('seat') ?? undefined
+      const seat =
+        seatParam !== undefined && api.store.seats(gameId).some((s) => s.seatToken === seatParam)
+          ? seatParam
+          : undefined
       wss.handleUpgrade(req, socket, head, (ws) => {
         let sockets = gameSockets.get(gameId)
         if (sockets === undefined) {
@@ -197,8 +205,22 @@ export function createArcsServer(opts: ServerOptions): http.Server {
         const unsubscribe = api.gate.subscribe(gameId, (push) => {
           if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(push))
         })
+        const unpresence = seat === undefined ? undefined : presence.connect(gameId, seat, ws)
+        if (seat !== undefined) {
+          ws.on('message', (data) => {
+            try {
+              const msg = JSON.parse(String(data)) as unknown
+              if (typeof msg === 'object' && msg !== null && (msg as { t?: unknown }).t === 'active') {
+                presence.touch(gameId, seat)
+              }
+            } catch {
+              // ignore malformed messages
+            }
+          })
+        }
         const cleanup = (): void => {
           unsubscribe()
+          unpresence?.()
           sockets.delete(ws)
           if (sockets.size === 0) gameSockets.delete(gameId)
         }
