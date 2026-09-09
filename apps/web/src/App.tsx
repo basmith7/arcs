@@ -24,7 +24,6 @@ import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
 import { NamePrompt } from './components/NamePrompt.js'
 import { SeatBadge } from './components/SeatBadge.js'
-import { SettingsPanel } from './components/SettingsPanel.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
 import { initAudio } from './audio.js'
@@ -195,10 +194,6 @@ export function App(): JSX.Element {
         </div>
       </header>
 
-      {settingsOpen && seatView.kind === 'seat' ? (
-        <SettingsPanel faction={seatView.faction} link={store.sessionLink()} onClose={() => setSettingsOpen(false)} />
-      ) : null}
-
       <main className="layout">
         <section className="board-col">
           <CourtPanel state={state} />
@@ -261,8 +256,15 @@ export function App(): JSX.Element {
       <ChapterInterlude />
       <GameOverScreen state={state} cont={cont} />
 
-      {/* Audio settings: not a decision, so outside `Watching` — a spectator has ears. */}
-      {settingsOpen ? <SettingsModal onClose={() => setSettingsOpen(false)} /> : null}
+      {/* Settings: not a decision, so outside `Watching` — a spectator has ears. */}
+      {settingsOpen ? (
+        <SettingsModal
+          onClose={() => setSettingsOpen(false)}
+          {...(seatView.kind === 'seat'
+            ? { seat: { faction: seatView.faction, link: store.sessionLink() } }
+            : {})}
+        />
+      ) : null}
 
       <Watching canAct={acting}>
         {/*

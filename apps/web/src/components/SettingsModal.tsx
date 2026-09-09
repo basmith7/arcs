@@ -1,5 +1,9 @@
 /**
- * Settings: the audio controls, and the only dialog here that is not about a decision.
+ * Settings: the audio controls, and the only dialog here that is not about a decision. When
+ * opened from inside a game, `seat` is passed and the seated-player sections (Player,
+ * Notifications, Game) render above the audio ones; on the title screen, hotseat and for
+ * spectators `seat` is omitted and only the audio sections show, exactly as before there was a
+ * game to be seated in.
  *
  * It wears the console chrome anyway — `.da-backdrop > .da-modal > .da-head`, draggable by the
  * header — because that shape is what a dialog looks like in this app, and a settings panel that
@@ -14,7 +18,9 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useModalDrag } from '../modal-drag.js'
+import type { GameLink } from '../multiplayer/link.js'
 import { setSettings, useSettings } from '../settings.js'
+import { GameSection, NotificationsSection, PlayerSection } from './settings-sections.js'
 
 function VolumeRow({
   label,
@@ -48,7 +54,13 @@ function VolumeRow({
   )
 }
 
-export function SettingsModal({ onClose }: { onClose: () => void }): JSX.Element {
+export function SettingsModal({
+  onClose,
+  seat,
+}: {
+  onClose: () => void
+  seat?: { faction: string; link: GameLink | null }
+}): JSX.Element {
   const drag = useModalDrag()
   const settings = useSettings()
   /** Where the press that might close this started — see the note on the backdrop above. */
@@ -77,6 +89,14 @@ export function SettingsModal({ onClose }: { onClose: () => void }): JSX.Element
             ✕
           </button>
         </div>
+
+        {seat === undefined ? null : (
+          <>
+            <PlayerSection faction={seat.faction} />
+            <NotificationsSection />
+            <GameSection faction={seat.faction} link={seat.link} />
+          </>
+        )}
 
         <section className="set-section">
           <h3 className="set-heading">Music</h3>
