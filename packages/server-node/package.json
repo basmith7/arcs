@@ -1,0 +1,24 @@
+{
+  "name": "@arcs/server-node",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "comment": "The self-hosted server. Unlike @arcs/server it DOES import the engine: it replays the journal to check turns, play bot seats and know whose turn it is. See docs/superpowers/specs/2026-09-09-arcs-online-design.md section 4.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx watch --no-warnings=ExperimentalWarning src/main.ts",
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node22 --external:ws --outfile=dist/main.js",
+    "start": "node --no-warnings=ExperimentalWarning dist/main.js"
+  },
+  "dependencies": {
+    "@arcs/engine": "*",
+    "@arcs/server": "*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.19.0"
+  }
+}
