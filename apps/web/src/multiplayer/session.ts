@@ -389,4 +389,11 @@ export class Session {
     if (this.inflight !== null) await this.inflight.catch(() => {})
     this.host.seats(await this.client.claimName(this.link.gameId, this.link.seatToken, name, discordId))
   }
+
+  /** Toggle this client's own seat's Discord turn-ping preference. A spectator does nothing. */
+  async setPings(pings: boolean): Promise<void> {
+    if (this.link.seatToken === undefined) return
+    if (this.inflight !== null) await this.inflight.catch(() => {})
+    this.host.seats(await this.client.setPings(this.link.gameId, this.link.seatToken, pings))
+  }
 }

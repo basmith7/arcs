@@ -39,6 +39,13 @@ import type { BotEvent } from './bot-events.js'
 import { buildChapterReport, buildGameHistory, chapterEnded } from './chapter-report.js'
 import { clearAutosave, readAutosave, saveAutosave } from './persist.js'
 import type { ChapterReport, GameHistory } from './chapter-report.js'
+import {
+  canPopNotification,
+  flashTitleUntilSeen,
+  isHiddenOrUnfocused,
+  popTurnNotification,
+} from './notifications.js'
+import type { NotificationCtor } from './notifications.js'
 
 type Listener = () => void
 
@@ -55,6 +62,8 @@ export type Interlude =
 
 /** Milliseconds between bot actions — slow enough that each on-board event reads. */
 const BOT_PACE = 1500
+
+const BROWSER_NOTIFICATIONS_KEY = 'arcs.notify.browser'
 
 class GameStore {
   private result: RuleResult | null = null
@@ -349,10 +358,29 @@ class GameStore {
         this.seatsVersion += 1
         this.emit()
       },
+      turn: (t) => this.notifyTurn(link.gameId, t),
     })
     this.session = session
     remember(link)
     await session.join()
+  }
+
+  /**
+   * The client half of a turn push: a real notification and a flashed tab title when the
+   * preference is on, permission is granted, and the page would not otherwise show it. Guards
+   * every global by hand rather than importing them, since the web tests run with no DOM at all.
+   */
+  private notifyTurn(gameId: string, turn: { faction: string; chapter: number; length: number }): void {
+    const view = this.seatView()
+    if (view.kind !== 'seat' || view.faction !== turn.faction) return
+    if (typeof document === 'undefined') return
+    if (!isHiddenOrUnfocused(document)) return
+    const notificationCtor: NotificationCtor | undefined =
+      typeof Notification === 'undefined' ? undefined : (Notification as unknown as NotificationCtor)
+    if (canPopNotification(this.browserNotifications(), notificationCtor)) {
+      popTurnNotification(notificationCtor!, window, gameId, turn.chapter)
+    }
+    flashTitleUntilSeen(document)
   }
 
   leaveSession(): void {
@@ -389,6 +417,37 @@ class GameStore {
     const view = this.seatView()
     if (view.kind !== 'seat') return undefined
     return this.seats.find((s) => s.faction === view.faction)?.discordName
+  }
+
+  /** Whether this client's own seat gets a Discord turn ping. `undefined` off a seat. */
+  mySeatPings(): boolean | undefined {
+    const view = this.seatView()
+    if (view.kind !== 'seat') return undefined
+    return this.seats.find((s) => s.faction === view.faction)?.pings
+  }
+
+  async setPings(pings: boolean): Promise<void> {
+    await this.session?.setPings(pings)
+  }
+
+  /** The browser-notification preference, persisted across sessions. Off by default. */
+  browserNotifications(): boolean {
+    if (typeof localStorage === 'undefined') return false
+    try {
+      return localStorage.getItem(BROWSER_NOTIFICATIONS_KEY) === '1'
+    } catch {
+      return false
+    }
+  }
+
+  setBrowserNotifications(on: boolean): void {
+    if (typeof localStorage === 'undefined') return
+    try {
+      if (on) localStorage.setItem(BROWSER_NOTIFICATIONS_KEY, '1')
+      else localStorage.removeItem(BROWSER_NOTIFICATIONS_KEY)
+    } catch {
+      /* no storage, no persisted preference — the toggle still works for this tab */
+    }
   }
 
   /** The joined game's link, or `null` when playing locally. */
