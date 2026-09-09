@@ -1013,23 +1013,46 @@ button {
   overflow: visible;
 }
 /*
- * The dim, then the shadow that lifts the board off the cover art.
+ * The dim.
  *
  * The three colour terms come from the `boardDim` setting via Board.tsx, and default to identity
  * so an undimmed board pays nothing for them. They are a curve rather than a fade on purpose: the
  * map prints its planets, resource symbols, sector numbers and gate slot markers as bright line
  * art over painted fills, so crushing the fills keeps every one of them without redrawing any.
- * Order matters — the shadow is last so it follows the image's own edge, sized in map units and
- * holding at any board scale.
  */
-.map-out {
+.map-out,
+.map-plate {
   filter: saturate(var(--dim-saturate, 1)) contrast(var(--dim-contrast, 1))
     brightness(var(--dim-brightness, 1));
 }
-.map-plate {
-  filter: saturate(var(--dim-saturate, 1)) contrast(var(--dim-contrast, 1))
-    brightness(var(--dim-brightness, 1)) drop-shadow(0 26px 46px rgba(0, 0, 0, 0.85))
-    drop-shadow(0 0 90px rgba(0, 0, 0, 0.6));
+/*
+ * The shadow that lifts the board off the cover art — **a box behind the map, not a
+ * `drop-shadow()` on it.**
+ *
+ * It used to be two `drop-shadow()`s on the end of `.map-plate`'s filter, and in Firefox that
+ * cost about 60ms of rendering every time anything overlapping the board changed layers. The
+ * hand's hover lift does that twice — once rising, once falling — so every card you pointed at
+ * froze the whole page for two long frames, in and out. Chrome never showed it. Bisected in
+ * Firefox against the running app: dropping only these two terms took the worst frame in a
+ * hover from 67ms to 7ms, and no amount of `will-change`/`contain` on either the board or the
+ * card avoided the re-render while they were there.
+ *
+ * The reason they were a filter at all was that the SVG box is letterboxed by the `meet` fit
+ * (1926px wide around a 1398px map, in one measured layout) so a shadow on the *element* would
+ * float hundreds of pixels off the art's edge. But the art is a plain 2528x1776 rectangle
+ * filling the viewBox exactly — the same shape a `box-shadow` draws — so sizing this box to the
+ * painted map from Board.tsx's own fit measurement puts the shadow back precisely where the
+ * filter had it, as a procedural paint that costs nothing to keep.
+ */
+.map-shadow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow:
+    0 26px 46px rgba(0, 0, 0, 0.85),
+    0 0 90px rgba(0, 0, 0, 0.6);
 }
 /*
  * Heavy gold brackets at the corners, opening into two parallel rails along each edge — the

@@ -520,6 +520,13 @@ export function Board({ state, cont }: Props): JSX.Element {
    */
   const svgRef = useRef<SVGSVGElement>(null)
   const [unitsPerPx, setUnitsPerPx] = useState(MAP_SIZE.width / 800)
+  /**
+   * The painted map's own box in CSS pixels, which is smaller than the SVG element's on
+   * whichever axis the `meet` fit letterboxes — often by hundreds of pixels. `.map-shadow` is
+   * sized from this so its `box-shadow` lands on the art's edge rather than the element's; see
+   * the rule in styles.css for why the shadow is not a `drop-shadow()` on the image.
+   */
+  const [mapBox, setMapBox] = useState<{ w: number; h: number } | null>(null)
   useEffect(() => {
     const el = svgRef.current
     if (el === null) return
@@ -529,7 +536,9 @@ export function Board({ state, cont }: Props): JSX.Element {
       // The viewBox is fitted with `meet`, so the *smaller* of the two scales wins and the
       // other axis is letterboxed. Measuring width alone under-reports the units-per-pixel
       // whenever the box is height-limited, and the chrome then renders too small.
-      setUnitsPerPx(Math.max(MAP_SIZE.width / width, MAP_SIZE.height / height))
+      const units = Math.max(MAP_SIZE.width / width, MAP_SIZE.height / height)
+      setUnitsPerPx(units)
+      setMapBox({ w: MAP_SIZE.width / units, h: MAP_SIZE.height / units })
     }
     measure()
     const ro = new ResizeObserver(measure)
@@ -630,6 +639,15 @@ export function Board({ state, cont }: Props): JSX.Element {
 
   return (
     <div className="board">
+      {/*
+        The board's lift-off shadow, as a plain box behind the map rather than a filter on it.
+        Before the `<svg>` in DOM order so it paints under the art without any z-index; sized to
+        the painted map because the SVG element's own box is letterboxed. Null until the first
+        measure, which is one frame — better than a frame at the wrong size.
+      */}
+      {mapBox !== null ? (
+        <div className="map-shadow" style={{ width: mapBox.w, height: mapBox.h }} />
+      ) : null}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${MAP_SIZE.width} ${MAP_SIZE.height}`}
@@ -662,11 +680,9 @@ export function Board({ state, cont }: Props): JSX.Element {
           </marker>
         </defs>
         {/*
-          The real map. Fully opaque and carrying its own shadow: it sits on the cover art now,
-          and at 95% it blended into it — the board has to read as an object on the table rather
-          than as one more layer of illustration. The shadow follows the image's own edge, which
-          a shadow on the element could not: the viewBox is fitted with `meet`, so the SVG box is
-          always taller or wider than the painted map.
+          The real map. Fully opaque: it sits on the cover art now, and at 95% it blended into it
+          — the board has to read as an object on the table rather than as one more layer of
+          illustration. Its shadow is the `.map-shadow` box above, not a filter on this image.
         */}
         <image
           className="map-plate"
