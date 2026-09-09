@@ -20,6 +20,14 @@
  * behind a cast. That is contained here rather than repeated at every surface, which is most of the
  * point of this component. React 19 types it properly and the cast can go.
  *
+ * ## Watch mode sits above this, not inside it
+ *
+ * With the `watchTurns` setting on — the default — `App` does not render most of these surfaces at
+ * all while somebody else is being asked, and the turn feed narrates instead (`seat.ts`'s
+ * `watchedActor`). This wrapper still runs, and still matters, for the two things that *are* drawn
+ * then: the board and your own hand. It also carries the whole job when the setting is off, which
+ * is the older behaviour and the better one for learning the game by watching someone play it.
+ *
  * ## What this does *not* do
  *
  * It is not a security boundary and must never be treated as one. `store.mayAct` refuses the action

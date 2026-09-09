@@ -29,6 +29,17 @@ export interface Settings {
    * reason a curve was worth having over a fade. Board.tsx turns it into CSS custom properties.
    */
   boardDim: number
+  /**
+   * Whether someone else's turn replaces the decision surfaces with the turn feed.
+   *
+   * On by default: playing against bots is the common case, and a menu that is about to answer
+   * itself is not a thing to read. Off restores the older behaviour, where every surface is drawn
+   * grayed and inert (`Watching`) — which is the better answer for learning the game by watching
+   * one, and is why it is a preference rather than a rewrite.
+   */
+  watchTurns: boolean
+  /** Whether the log drawer is a column of the layout rather than a panel over the board. */
+  logPinned: boolean
 }
 
 export const DEFAULTS: Readonly<Settings> = {
@@ -38,6 +49,9 @@ export const DEFAULTS: Readonly<Settings> = {
   sfxVolume: 0.6,
   // Off: the board looks the way it was painted until someone asks for otherwise.
   boardDim: 0,
+  watchTurns: true,
+  // The board is the thing to look at; the log has to be asked for.
+  logPinned: false,
 }
 
 const KEY = 'arcs:settings'
@@ -47,6 +61,10 @@ let loaded = false
 
 type Listener = () => void
 const listeners = new Set<Listener>()
+
+function bool(v: unknown, fallback: boolean): boolean {
+  return typeof v === 'boolean' ? v : fallback
+}
 
 /** A stored number is only a number if it is finite; NaN and Infinity are corruption. */
 function unit(v: unknown, fallback: number): number {
@@ -62,6 +80,8 @@ function parse(json: string): Settings {
     musicVolume: unit(raw['musicVolume'], DEFAULTS.musicVolume),
     sfxVolume: unit(raw['sfxVolume'], DEFAULTS.sfxVolume),
     boardDim: unit(raw['boardDim'], DEFAULTS.boardDim),
+    watchTurns: bool(raw['watchTurns'], DEFAULTS.watchTurns),
+    logPinned: bool(raw['logPinned'], DEFAULTS.logPinned),
   }
 }
 
@@ -105,15 +125,16 @@ export function setSettings(patch: Partial<Settings>): void {
     musicVolume: patch.musicVolume === undefined ? prev.musicVolume : unit(patch.musicVolume, prev.musicVolume),
     sfxVolume: patch.sfxVolume === undefined ? prev.sfxVolume : unit(patch.sfxVolume, prev.sfxVolume),
     boardDim: patch.boardDim === undefined ? prev.boardDim : unit(patch.boardDim, prev.boardDim),
+    watchTurns: patch.watchTurns ?? prev.watchTurns,
+    logPinned: patch.logPinned ?? prev.logPinned,
   }
-  if (
-    next.musicEnabled === prev.musicEnabled &&
-    next.musicVolume === prev.musicVolume &&
-    next.sfxVolume === prev.sfxVolume &&
-    next.boardDim === prev.boardDim
-  ) {
-    return
-  }
+  /*
+   * The no-op guard, over the keys rather than one `&&` per field. It used to name every field,
+   * which made adding one a three-place edit where the third place fails *silently*: a settings
+   * field left out here still stores and still reads back, it just never notifies, so the app
+   * keeps rendering the old value until something else re-renders it.
+   */
+  if ((Object.keys(DEFAULTS) as (keyof Settings)[]).every((k) => next[k] === prev[k])) return
   current = next
   write()
   for (const cb of listeners) cb()

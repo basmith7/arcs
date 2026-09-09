@@ -106,6 +106,21 @@ export function SettingsModal({
             onChange={(v) => setSettings({ boardDim: v })}
             note="Fades the painted map towards a schematic. Planets, symbols, numbers and the lines that matter stay."
           />
+          <label className="set-row">
+            <span className="set-label">Watch other turns</span>
+            <input
+              className="set-check"
+              type="checkbox"
+              checked={settings.watchTurns}
+              onChange={(e) => setSettings({ watchTurns: e.target.checked })}
+            />
+            <span className="set-value">{settings.watchTurns ? 'On' : 'Off'}</span>
+          </label>
+          <p className="set-note">
+            While a bot or another player decides, their menus are replaced by a feed of what they
+            actually did. Off shows their surfaces instead, grayed out — slower, and the better way
+            to learn the game by watching one.
+          </p>
         </section>
 
         <section className="set-section">

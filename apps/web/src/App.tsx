@@ -28,7 +28,8 @@ import { RulesModal } from './components/RulesModal.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
 import { initAudio } from './audio.js'
-import { canAct, viewFor } from './multiplayer/seat.js'
+import { canAct, viewFor, watchedActor } from './multiplayer/seat.js'
+import { setSettings, useSettings } from './settings.js'
 import { setupLabel } from './setups.js'
 import { colorOf } from './theme.js'
 import { store, useGame, useSeats } from './store.js'
@@ -52,6 +53,11 @@ export function App(): JSX.Element {
    * the music starts on the title screen, so the volume control has to be reachable there too.
    */
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /*
+   * Pinning the log is a statement about how you like to play rather than a thing you did to this
+   * game, so it lives in settings. Open-but-unpinned stays local state, like the drawer always was.
+   */
+  const { watchTurns, logPinned } = useSettings()
   /*
    * The rules reader. On both screens for the same reason settings is: someone deciding whether
    * to start a game is exactly the person who wants to read the rulebook first.
@@ -152,6 +158,13 @@ export function App(): JSX.Element {
    * court decisions, grayed and inert, and only the two private surfaces are withheld outright.
    */
   const acting = canAct(engineCont, seatView)
+  /*
+   * Whether the decision surfaces are drawn at all. A bot's turn, or a rival's, is a thing to be
+   * told about rather than a menu to read — so the surfaces stand down and the turn feed narrates
+   * (`seat.ts`). The hand is the exception and stays: it is yours, it is not a decision, and
+   * holding your own cards while somebody else plays is what the table does.
+   */
+  const watched = watchTurns ? watchedActor(engineCont, seatView, store.botSeats()) : null
 
   return (
     <div className="app">
@@ -207,7 +220,7 @@ export function App(): JSX.Element {
         </div>
       </header>
 
-      <main className="layout">
+      <main className={logPinned ? 'layout log-pinned' : 'layout'}>
         <section className="board-col">
           <CourtPanel state={state} />
           <PlayedCards state={state} />
@@ -220,6 +233,17 @@ export function App(): JSX.Element {
             <Watching canAct={acting}>
               <Board state={state} cont={cont} />
             </Watching>
+            {/*
+              * The turn feed, over the map's lower-left and outside `Watching` — it is narration,
+              * not a control, and making it inert would take the one thing on screen that explains
+              * the pause out of the accessibility tree. Suppressed when the log is pinned, which is
+              * the same rows in a bigger frame a few hundred pixels to the right.
+              */}
+            {watched !== null && !logPinned ? (
+              <div className="turn-feed" role="status" aria-live="polite">
+                <LogPanel log={state.log} only="last-turn" />
+              </div>
+            ) : null}
           </div>
           <AmbitionTrack state={state} cont={cont} />
           {/*
@@ -239,23 +263,49 @@ export function App(): JSX.Element {
               <div className="hand-row">
                 <Hand state={state} cont={cont} />
               </div>
-              {/* Shares the hand's grid area, as a sibling: `.hand-row` clips its own children. */}
-              <PreludeScreen state={state} cont={cont} />
-              {/* The action phase, on the same terms as the Prelude: over the hand, map still visible. */}
-              <ActionTray state={state} cont={cont} />
-              {/* Every decision without a bespoke surface, in the same band — see AskStrip. */}
-              <AskStrip cont={cont} onNewGame={() => store.reset()} />
+              {/*
+                * The three that share the hand's grid area, and none of them mount in watch mode:
+                * the Prelude, the tray and the strip are all menus addressed to somebody else, and
+                * the fan they would cover is the one thing in this band that is still yours.
+                */}
+              {watched !== null ? null : (
+                <>
+                  {/* Shares the hand's grid area, as a sibling: `.hand-row` clips its own children. */}
+                  <PreludeScreen state={state} cont={cont} />
+                  {/* The action phase, on the same terms as the Prelude: over the hand, map still visible. */}
+                  <ActionTray state={state} cont={cont} />
+                  {/* Every decision without a bespoke surface, in the same band — see AskStrip. */}
+                  <AskStrip cont={cont} onNewGame={() => store.reset()} />
+                </>
+              )}
             </Watching>
           )}
           <PlayerBoards state={state} current={current} />
         </section>
-        {logOpen ? (
+        {logOpen || logPinned ? (
           <div className="log-drawer" role="complementary" aria-label="Game log">
             <div className="log-drawer-head">
               <span>Log</span>
-              <button className="ghost" onClick={() => setLogOpen(false)}>
-                ✕
-              </button>
+              <div className="log-drawer-tools">
+                <button
+                  className={logPinned ? 'ghost log-pin on' : 'ghost log-pin'}
+                  title={logPinned ? 'Unpin — float the log over the board' : 'Pin — give the log its own column'}
+                  aria-pressed={logPinned}
+                  onClick={() => setSettings({ logPinned: !logPinned })}
+                >
+                  ⇱
+                </button>
+                {/* Closing unpins. A drawer you shut that comes straight back is a broken button. */}
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    setLogOpen(false)
+                    setSettings({ logPinned: false })
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             <LogPanel log={state.log} />
           </div>
@@ -282,32 +332,44 @@ export function App(): JSX.Element {
         />
       ) : null}
 
+      {/*
+        * The windows and screens, every one of them somebody's decision. One condition covers the
+        * lot because they are all in this file — the property that made a single `Watching` wrapper
+        * enough when the rule was "gray them out" makes a single `null` enough now that it is "do
+        * not draw them at all". The cost is real and deliberate: a rival's battle window goes too,
+        * and the feed narrates the roll instead ("red attacks white in 1-Arrow: rolled 2S/0A/0R →
+        * 1 hits"). Someone who would rather watch the dice turns watch mode off.
+        */}
       <Watching canAct={acting}>
-        {/*
-          * The battle window, with the dice. It used to be rendered from inside `Board` — harmless,
-          * since it is a fixed-position modal, but it put the one surface a watcher most wants
-          * outside the wrapper that governs them. Every decision surface is now in this file, which
-          * is what makes one wrapper enough.
-          */}
-        <Battle state={state} cont={cont} />
+        {watched !== null ? null : (
+          <>
+            {/*
+              * The battle window, with the dice. It used to be rendered from inside `Board` — harmless,
+              * since it is a fixed-position modal, but it put the one surface a watcher most wants
+              * outside the wrapper that governs them. Every decision surface is now in this file, which
+              * is what makes one wrapper enough.
+              */}
+            <Battle state={state} cont={cont} />
 
-        {/* The draft is its own screen, over the board it is about to populate. */}
-        <DraftScreen state={state} cont={cont} />
+            {/* The draft is its own screen, over the board it is about to populate. */}
+            <DraftScreen state={state} cont={cont} />
 
-        {/* The Archivist's post-setup draw, on the same terms as the draft it follows. */}
-        <LearnedScreen cont={cont} />
+            {/* The Archivist's post-setup draw, on the same terms as the draft it follows. */}
+            <LearnedScreen cont={cont} />
 
-        {/* Choosing what to keep when the slots are full. */}
-        <SlotBoard state={state} cont={cont} />
+            {/* Choosing what to keep when the slots are full. */}
+            <SlotBoard state={state} cont={cont} />
 
-        {/* Spending raid keys after a battle. */}
-        <RaidModal cont={cont} />
+            {/* Spending raid keys after a battle. */}
+            <RaidModal cont={cont} />
 
-        {/* Influence, Secure and Ransack — the court decisions, as the cards themselves. */}
-        <CardShelf state={state} cont={cont} />
+            {/* Influence, Secure and Ransack — the court decisions, as the cards themselves. */}
+            <CardShelf state={state} cont={cont} />
 
-        {/* The focused matrices: resource picks, card gifts and steals, the Broker's trade. */}
-        <AskModal cont={cont} />
+            {/* The focused matrices: resource picks, card gifts and steals, the Broker's trade. */}
+            <AskModal cont={cont} />
+          </>
+        )}
       </Watching>
     </div>
   )

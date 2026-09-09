@@ -632,6 +632,9 @@ button {
   grid-area: map;
   min-width: 0;
   min-height: 0;
+  /* The containing block for the turn feed, which floats in this cell's corner and nowhere else —
+     without this it would resolve against `.board-col` and sit under the player boards. */
+  position: relative;
 }
 /* The hand tucks *behind* the player boards: the row is shorter than a card, and `.hand`
    hangs below it so only the top of each card shows. The boards (z 50) paint over the rest,
@@ -2515,6 +2518,29 @@ button {
 }
 
 /* --- log: the toggle drawer the side column became --- */
+/*
+ * Pinned: the drawer stops floating and becomes a column of the layout, so the map is beside it
+ * rather than under it. One reflow when you pin, and then nothing moves — which is the difference
+ * between a panel you consult and a panel you read while you play.
+ */
+.layout.log-pinned {
+  grid-template-columns: minmax(0, 1fr) clamp(260px, 24vw, 340px);
+}
+.log-pinned .log-drawer {
+  position: static;
+  box-shadow: none;
+  animation: none;
+}
+.log-drawer-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+/* Pressed state for the pin, which is a toggle and has to look like one. */
+.log-drawer-tools .ghost.on {
+  color: var(--gold);
+  background: rgba(201, 169, 97, 0.14);
+}
 .log-drawer {
   position: absolute;
   inset: 0 0 0 auto;
@@ -2561,6 +2587,99 @@ button {
 }
 .log-emph {
   color: var(--text);
+}
+
+/* --- the log's rows -------------------------------------------------------
+ *
+ * `log-format.ts` turns the engine's prose into heads, entries and dividers, and the shape of
+ * these three rules is the whole legibility argument: the actor is a colored bar down the left
+ * margin rather than the first word of every sentence, so a turn reads as one block with one
+ * owner instead of five lines that each re-introduce themselves.
+ */
+.log-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 3px;
+  padding-left: 7px;
+  /* The color is set inline, per faction; only the width lives here. */
+  border-left: 3px solid transparent;
+}
+/* The first head in the panel has nothing above it to be separated from. */
+.log-head:first-child {
+  margin-top: 0;
+}
+.log-who {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.log-lead {
+  color: var(--text);
+  font-size: 11px;
+}
+.log-line {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding-left: 7px;
+  /* Continues the head's bar down the turn, at a weight that reads as a margin rather than a rule. */
+  border-left: 3px solid transparent;
+  /* The bar is the faction's color at a third strength: present as a column, never as a stripe. */
+  opacity: 0.92;
+}
+.log-icon {
+  flex: none;
+  width: 1em;
+  text-align: center;
+  opacity: 0.75;
+  /* An unclassified line has no glyph, and its text must still line up with its neighbours'. */
+  font-size: 11px;
+}
+.log-divider {
+  margin: 12px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.log-divider:first-child {
+  margin-top: 0;
+}
+
+/* --- the turn feed --------------------------------------------------------
+ *
+ * The same rows as the drawer, floated over the map's lower-left while somebody else plays. It is
+ * positioned inside `.board-cell` rather than laid out in the grid on purpose: watch mode comes and
+ * goes on every turn change, and a feed that took space would move the map several times a round.
+ */
+.turn-feed {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 46; /* over the map, under the trays (45+) it replaces and the boards' tooltips */
+  max-width: min(340px, 42%);
+  background: rgba(10, 12, 18, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  backdrop-filter: blur(3px);
+  animation: feed-in 160ms ease-out;
+}
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.log-feed {
+  /* Long turns scroll rather than growing up the board; the newest line is the one pinned in view. */
+  max-height: 30vh;
+  padding: 8px 10px;
 }
 
 /* --- narrower screens ---------------------------------------------------- */

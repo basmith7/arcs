@@ -39,6 +39,27 @@ afterEach(() => {
 })
 
 describe('the settings store', () => {
+  it('remembers the watch-mode and pinned-log flags', () => {
+    setSettings({ watchTurns: false, logPinned: true })
+    expect(getSettings().watchTurns).toBe(false)
+    expect(getSettings().logPinned).toBe(true)
+    reloadSettings()
+    expect(getSettings().watchTurns).toBe(false)
+    expect(getSettings().logPinned).toBe(true)
+  })
+
+  it('falls back per field when a stored flag is not a boolean', () => {
+    localStorage.setItem(KEY, JSON.stringify({ watchTurns: 'yes', logPinned: true }))
+    reloadSettings()
+    expect(getSettings().watchTurns).toBe(DEFAULTS.watchTurns)
+    expect(getSettings().logPinned).toBe(true)
+  })
+
+  it('watches other players by default, and does not pin the log', () => {
+    expect(DEFAULTS.watchTurns).toBe(true)
+    expect(DEFAULTS.logPinned).toBe(false)
+  })
+
   it('starts at the defaults when nothing is stored', () => {
     expect(getSettings()).toEqual(DEFAULTS)
   })

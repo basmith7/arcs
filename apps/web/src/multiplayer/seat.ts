@@ -17,12 +17,15 @@
  * window and its dice, the court decisions, the action being taken. A watcher got the board, the log
  * and an empty prompt.
  *
- * So the two are now separate:
+ * So they are now separate — three questions, not one:
  *
  *   - **`canAct`** decides whether the controls work. `App` hands it to `Watching`, which makes the
  *     subtree inert — so a button that would be refused cannot be pressed, and looks it.
  *   - **`viewFor`** decides only what may be *drawn*, and now empties actions for the two surfaces
  *     that are genuinely private (`surfaces.ts` has the list and the argument).
+ *   - **`watchedActor`** decides whether the decision surfaces are drawn *at all*, and is the one
+ *     of the three that hotseat can answer "yes" to — because a bot's seat is not one of the
+ *     browser's players. Watch mode is a preference; the other two are not.
  *
  * Neither is a security boundary. `store.mayAct` refuses the action locally and the server's
  * `actorOf` check refuses it against a tampered client; both are independent of anything here.
@@ -124,4 +127,46 @@ export function handOwner(
   }
   if (view.kind === 'seat') return view.faction
   return null
+}
+
+/**
+ * The faction this client is *watching* act, or `null` when it is this client's own move.
+ *
+ * The third question the seat boundary has to answer, and the one `canAct` cannot. `canAct` is
+ * unconditionally true in hotseat — playing every seat is what hotseat is — so its negation says
+ * "you are watching" exactly never, including all the way through a bot's turn. But a bot's seat
+ * is not one of the browser's players, which `handOwner` already argues above for the hand and
+ * which is just as true of the tray, the strip and the battle window: drawing a bot's decision
+ * surfaces asks the human to read a menu that is about to answer itself.
+ *
+ * So the rule is *whose move is this, and is it mine*, per view:
+ *
+ *   - **hotseat** — theirs only when a bot is asked. Several humans at one keyboard all count as
+ *     you, so watch mode never comes on for a hotseat game between people.
+ *   - **seat** — theirs when the ask names anyone else. Read off the *ask*, not `state.current`,
+ *     so a decision handed to you mid-rival-turn (the defender assigning hits) takes you straight
+ *     out of watch mode and draws its surface.
+ *   - **spectator** — always theirs. That is what spectating is.
+ *
+ * Presentation only, and deliberately independent of `viewFor`: this decides whether a surface is
+ * *drawn*, `viewFor` decides what may be *seen* when one is, and `store.mayAct` plus the server's
+ * `actorOf` are what actually refuse an action. Turning this off (the watch-mode setting) must
+ * never be able to leak anything, which is why it can only ever hide.
+ */
+export function watchedActor(
+  cont: Continue,
+  view: SeatView,
+  bots: readonly FactionId[],
+): FactionId | null {
+  /*
+   * `multiAsk` has no single actor to name, so there is nobody to watch and the surfaces draw as
+   * they always have. Nothing emits it yet; answering it explicitly keeps the one case that would
+   * most obviously confuse a "whose turn is it" rule from falling through to a wrong answer.
+   */
+  if (cont.kind !== 'ask') return null
+  const actor = cont.faction
+
+  if (view.kind === 'spectator') return actor
+  if (view.kind === 'seat') return actor === view.faction ? null : actor
+  return bots.includes(actor) ? actor : null
 }
