@@ -24,6 +24,7 @@ import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
 import { NamePrompt } from './components/NamePrompt.js'
 import { SeatBadge } from './components/SeatBadge.js'
+import { RulesModal } from './components/RulesModal.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
 import { initAudio } from './audio.js'
@@ -51,6 +52,11 @@ export function App(): JSX.Element {
    * the music starts on the title screen, so the volume control has to be reachable there too.
    */
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /*
+   * The rules reader. On both screens for the same reason settings is: someone deciding whether
+   * to start a game is exactly the person who wants to read the rulebook first.
+   */
+  const [rulesOpen, setRulesOpen] = useState(false)
   /*
    * The music. Mounted here rather than in `main.tsx` so it lives exactly as long as the app
    * does, and started before the early return: the title screen is where most first clicks
@@ -110,11 +116,15 @@ export function App(): JSX.Element {
         <NewGame />
         <div className="newgame-load">
           {loadControl}or load a saved game
+          <button className="ghost" onClick={() => setRulesOpen(true)}>
+            Rules
+          </button>
           <button className="ghost" onClick={() => setSettingsOpen(true)}>
             Settings
           </button>
         </div>
         <Attribution />
+        {rulesOpen ? <RulesModal onClose={() => setRulesOpen(false)} /> : null}
         {settingsOpen ? <SettingsModal onClose={() => setSettingsOpen(false)} /> : null}
       </div>
     )
@@ -183,6 +193,9 @@ export function App(): JSX.Element {
           </button>
           <button className="ghost" onClick={() => setLogOpen((v) => !v)}>
             Log
+          </button>
+          <button className="ghost" onClick={() => setRulesOpen(true)}>
+            Rules
           </button>
           <button className="ghost" onClick={() => setSettingsOpen(true)}>
             Settings
@@ -255,6 +268,9 @@ export function App(): JSX.Element {
         */}
       <ChapterInterlude />
       <GameOverScreen state={state} cont={cont} />
+
+      {/* Rules: not a decision either, and a spectator has eyes. */}
+      {rulesOpen ? <RulesModal onClose={() => setRulesOpen(false)} /> : null}
 
       {/* Settings: not a decision, so outside `Watching` — a spectator has ears. */}
       {settingsOpen ? (

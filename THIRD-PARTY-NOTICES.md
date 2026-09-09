@@ -21,6 +21,7 @@ repository's MIT licence:
 | --- | --- |
 | Artwork and component imagery | Kyle Ferrin / Buried Giant Studios |
 | Card names, card text, lore and fate text | Buried Giant Studios |
+| The rulebook's text and layout | Buried Giant Studios (published by Leder Games at the time of the 11 April 2024 printing) |
 | The name "Arcs" and associated marks | Buried Giant Studios |
 
 Game **rules, systems and procedures** are not copyrightable as such; their specific expression is.
@@ -32,6 +33,22 @@ The artwork is **included in this repository and served by the deployed build**.
 made with the position above understood — it is **not** a claim of licence. This is a
 non-commercial fan implementation operating on the same footing as community projects such as the
 Arcs Tabletop Simulator mod: a posture, not a permission.
+
+### Rulebook and player aids in this repository
+
+`assets/rules` holds three PDFs, and the WebP page images `scripts/build_rules_pages.py` renders
+from them for the in-game rules reader:
+
+| File | What it is |
+| --- | --- |
+| `base-rulebook.pdf` | The official Arcs base rulebook, 11 April 2024 printing. Buried Giant Studios, published by Leder Games at that date. |
+| `aid-booklet.pdf` | A four-page walkthrough of a chapter. Appears to be a community-made aid; **we have not been able to identify its author**, and would like to credit them. |
+| `condensed-aid.pdf` | A one-page action summary. Likewise apparently community-made and **unattributed**; it reproduces the action text from the rulebook. |
+
+These are included and served on exactly the footing described above for the artwork — a
+non-commercial fan implementation, not a claim of licence. The rendered pages are derivative of
+the PDFs and carry the same status. **If you made either aid sheet, please open an issue so you
+can be credited properly** (or have it removed, if you would rather).
 
 **If you are the rights holder and would like the artwork, the card text, or this project as a
 whole changed, credited differently, or taken down, please open an issue or contact the repository
