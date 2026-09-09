@@ -22,6 +22,10 @@ export interface PublicSeat {
 
 export const NAME_MAX = 24
 
+// The server POSTs to this URL from inside the LAN, so accepting arbitrary URLs here would be an
+// SSRF hole. Only real Discord webhook endpoints are allowed.
+const DISCORD_WEBHOOK = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//
+
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
@@ -74,7 +78,13 @@ export async function route(request: Request, api: Api): Promise<Response | unde
     }
     if (b.options === undefined) return bad(400, 'options is required')
     const bots = isStringArray(b.bots) ? b.bots.filter((f) => (b.factions as string[]).includes(f)) : []
-    const webhookUrl = typeof b.webhookUrl === 'string' && b.webhookUrl.trim().length > 0 ? b.webhookUrl.trim() : undefined
+    let webhookUrl: string | undefined
+    if (b.webhookUrl !== undefined) {
+      if (typeof b.webhookUrl !== 'string' || !DISCORD_WEBHOOK.test(b.webhookUrl.trim())) {
+        return bad(400, 'webhookUrl must be a Discord webhook URL')
+      }
+      webhookUrl = b.webhookUrl.trim()
+    }
     // Bots travel in options so every client's replay knows which seats are bots.
     const rawOptions = b.options as NewGameOptions
     const options: NewGameOptions =
