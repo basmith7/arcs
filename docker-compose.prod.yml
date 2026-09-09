@@ -1,0 +1,18 @@
+# Unraid deployment - pulls the pre-built image from GHCR (built by
+# .github/workflows/deploy.yml on a version tag). golfbet's host-wide
+# Watchtower (--label-enable) redeploys it when a new image lands.
+services:
+  app:
+    image: ghcr.io/basmith7/arcs:latest
+    container_name: arcs
+    ports:
+      - "3070:3070"
+    environment:
+      DATABASE_PATH: "/data/arcs.db"
+      PUBLIC_ORIGIN: "https://arcs.basmith.net"
+      BOT_PACE_MS: "1000"
+    volumes:
+      - /mnt/cache/appdata/arcs:/data
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"

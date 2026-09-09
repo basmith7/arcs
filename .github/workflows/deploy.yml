@@ -85,7 +85,10 @@ jobs:
           npx wrangler deploy --config packages/server/wrangler.toml
 
   # --- GitHub Pages: the same client, hotseat only ----------------------------------------------
+  # Disabled on forks: this fork serves via the Docker image (.github/workflows/docker-publish.yml),
+  # not GitHub Pages.
   build:
+    if: github.repository == 'willhaywood/open-arcs'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

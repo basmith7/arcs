@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.superpowers
+docs
+saves
+scripts
+*.md
+!README.md
