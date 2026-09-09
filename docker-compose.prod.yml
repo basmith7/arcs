@@ -1,5 +1,5 @@
 # Unraid deployment - pulls the pre-built image from GHCR (built by
-# .github/workflows/deploy.yml on a version tag). golfbet's host-wide
+# .github/workflows/docker-publish.yml on a version tag). golfbet's host-wide
 # Watchtower (--label-enable) redeploys it when a new image lands.
 services:
   app:
