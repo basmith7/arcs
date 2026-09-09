@@ -1,48 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { isValidDiscordId, isValidName } from '../seat-form.js'
 import { store } from '../store.js'
 import type { GameLink } from '../multiplayer/link.js'
 
-interface Props {
-  faction: string
-  link: GameLink | null
-  onClose: () => void
-}
-
 /**
- * The player's settings, opened from the topbar. A general modal with sections rather than a
- * one-off name form — Brian wants more settings here later, and this is the shelf for them.
- * `NamePrompt` stays as the first-visit ask; this is where a seated player comes back to change
- * anything, including their name.
+ * The seated-player sections of the settings dialog: name/Discord linking, notification
+ * preferences, and the game's own identity (id, faction, seat link). Shown only when a seat is
+ * present — see `SettingsModal`'s `seat` prop.
  */
-export function SettingsPanel({ faction, link, onClose }: Props): JSX.Element {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  return (
-    <div className="name-backdrop settings-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div className="settings-panel">
-        <div className="settings-head">
-          <h2 id="settings-title">Settings</h2>
-          <button className="ghost" onClick={onClose} aria-label="Close settings">
-            ✕
-          </button>
-        </div>
-        <PlayerSection faction={faction} />
-        <NotificationsSection />
-        <GameSection faction={faction} link={link} />
-      </div>
-    </div>
-  )
-}
-
-function PlayerSection({ faction }: { faction: string }): JSX.Element {
+export function PlayerSection({ faction }: { faction: string }): JSX.Element {
   const discordLinked = store.mySeatDiscordLinked()
   const discordName = store.mySeatDiscordName()
   const [name, setName] = useState(store.mySeatName() ?? '')
@@ -93,44 +60,56 @@ function PlayerSection({ faction }: { faction: string }): JSX.Element {
   }
 
   return (
-    <section>
-      <h3>Player</h3>
-      <label htmlFor="settings-name">Name</label>
-      <input id="settings-name" maxLength={24} value={name} onChange={(e) => setName(e.target.value)} />
-      <button className="ghost" onClick={() => void saveName()} disabled={!validName || busy}>
+    <section className="set-section">
+      <h3 className="set-heading">Player</h3>
+      <label className="set-row" htmlFor="settings-name">
+        <span className="set-label">Name</span>
+        <input
+          id="settings-name"
+          className="set-input"
+          maxLength={24}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </label>
+      <button className="da-ghost" onClick={() => void saveName()} disabled={!validName || busy}>
         Save
       </button>
       {discordLinked === true ? (
-        <p>
-          Discord: <strong>@{discordName ?? 'linked'}</strong>{' '}
-          <button className="ghost" onClick={() => void unlink()} disabled={busy}>
+        <p className="set-row">
+          <span className="set-label">Discord</span>
+          <span className="set-value">@{discordName ?? 'linked'}</span>
+          <button className="da-ghost" onClick={() => void unlink()} disabled={busy}>
             Unlink
           </button>
         </p>
       ) : (
         <>
-          <label htmlFor="settings-discord-id">Discord user ID</label>
-          <input
-            id="settings-discord-id"
-            value={discordId}
-            placeholder="123456789012345678 or @mention"
-            onChange={(e) => setDiscordId(e.target.value)}
-          />
-          <button className="ghost" onClick={() => void link_()} disabled={!validDiscordId || busy}>
+          <label className="set-row" htmlFor="settings-discord-id">
+            <span className="set-label">Discord user ID</span>
+            <input
+              id="settings-discord-id"
+              className="set-input"
+              value={discordId}
+              placeholder="123456789012345678 or @mention"
+              onChange={(e) => setDiscordId(e.target.value)}
+            />
+          </label>
+          <button className="da-ghost" onClick={() => void link_()} disabled={!validDiscordId || busy}>
             Link
           </button>
-          <p className="name-help">
+          <p className="set-note">
             Paste your Discord user ID (or @mention) to link it, or leave name-matching to the bot.
           </p>
         </>
       )}
-      {!validDiscordId ? <p className="name-error">That doesn't look like a Discord user ID</p> : null}
-      {error === null ? null : <p className="name-error">{error}</p>}
+      {!validDiscordId ? <p className="set-note set-error">That doesn't look like a Discord user ID</p> : null}
+      {error === null ? null : <p className="set-note set-error">{error}</p>}
     </section>
   )
 }
 
-function NotificationsSection(): JSX.Element {
+export function NotificationsSection(): JSX.Element {
   const [browserNotifications, setBrowserNotificationsState] = useState(store.browserNotifications())
   const [blocked, setBlocked] = useState(false)
   const pings = store.mySeatPings()
@@ -156,29 +135,31 @@ function NotificationsSection(): JSX.Element {
   }
 
   return (
-    <section>
-      <h3>Notifications</h3>
-      <label>
+    <section className="set-section">
+      <h3 className="set-heading">Notifications</h3>
+      <label className="set-row">
+        <span className="set-label">Browser notifications</span>
         <input
+          className="set-check"
           type="checkbox"
           checked={browserNotifications}
           onChange={(e) => void toggleBrowserNotifications(e.target.checked)}
         />
-        Browser notifications
+        {blocked ? <span className="set-note set-error">Blocked in this browser</span> : null}
       </label>
-      {blocked ? <span className="name-error"> Blocked in this browser</span> : null}
       {pings !== undefined ? (
-        <label>
+        <label className="set-row">
+          <span className="set-label">Discord pings</span>
           <input
+            className="set-check"
             type="checkbox"
             checked={pings}
             onChange={(e) => void store.setPings(e.target.checked)}
           />
-          Discord pings
         </label>
       ) : null}
-      {discordLinked !== true ? <p className="name-help">Link Discord to get pinged</p> : null}
-      <p className="name-help">
+      {discordLinked !== true ? <p className="set-note">Link Discord to get pinged</p> : null}
+      <p className="set-note">
         If you're on the board we notify here first and only ping Discord after 10 minutes without
         a move.
       </p>
@@ -186,7 +167,7 @@ function NotificationsSection(): JSX.Element {
   )
 }
 
-function GameSection({ faction, link }: { faction: string; link: GameLink | null }): JSX.Element {
+export function GameSection({ faction, link }: { faction: string; link: GameLink | null }): JSX.Element {
   const seatUrl =
     link === null || typeof location === 'undefined'
       ? ''
@@ -195,14 +176,28 @@ function GameSection({ faction, link }: { faction: string; link: GameLink | null
         }`
 
   return (
-    <section>
-      <h3>Game</h3>
-      <p>Game id: {link?.gameId ?? '—'}</p>
-      <p>Your faction: {faction}</p>
+    <section className="set-section">
+      <h3 className="set-heading">Game</h3>
+      <p className="set-row">
+        <span className="set-label">Game id</span>
+        <span className="set-value">{link?.gameId ?? '—'}</span>
+      </p>
+      <p className="set-row">
+        <span className="set-label">Your faction</span>
+        <span className="set-value">{faction}</span>
+      </p>
       {seatUrl.length > 0 ? (
-        <label htmlFor="settings-seat-link">Seat link</label>
+        <label className="set-row" htmlFor="settings-seat-link">
+          <span className="set-label">Seat link</span>
+          <input
+            id="settings-seat-link"
+            className="set-input"
+            readOnly
+            value={seatUrl}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+        </label>
       ) : null}
-      {seatUrl.length > 0 ? <input id="settings-seat-link" readOnly value={seatUrl} onFocus={(e) => e.currentTarget.select()} /> : null}
     </section>
   )
 }
