@@ -14,7 +14,7 @@
 
 ## Global Constraints
 
-- Node `>=22` (root `package.json` engines). `node:sqlite` prints an `ExperimentalWarning` on Node 22; run the server with `--no-warnings=ExperimentalWarning`.
+- Node `>=22` (root `package.json` engines). `node:sqlite` prints an `ExperimentalWarning` on Node 22; run the server with `--no-warnings=ExperimentalWarning`. Load it via `createRequire(import.meta.url)('node:sqlite')`, never a static import (Vite 5 cannot resolve it). No native modules (no better-sqlite3): the image must stay pure JS.
 - Keep `packages/engine`, `packages/server` and `apps/web` changes minimal and additive so `git merge upstream/main` stays cheap. Never edit upstream test files.
 - All existing tests (1029) and `npm run typecheck` must stay green after every task.
 - `tsconfig.base.json` has `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`. Spread optional keys (`...(x === undefined ? {} : { x })`), never assign `undefined`. Import types with `import type`. Use `.js` extensions on relative imports.
@@ -130,8 +130,12 @@ console.log('arcs server-node: not wired yet')
 
 `packages/server-node/test/smoke.test.ts`:
 ```ts
+import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
-import { DatabaseSync } from 'node:sqlite'
+
+// Vite 5 does not know `node:sqlite` as a builtin, so it is reached through `createRequire`
+// (same trick as packages/server/test/cloudflare.test.ts). Types come from @types/node.
+const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 
 describe('server-node workspace', () => {
   it('can open an in-memory node:sqlite database', () => {
@@ -368,7 +372,7 @@ Expected: FAIL, cannot find `../src/sqlite-store.js`.
  * Turn order is deliberately NOT checked here — `packages/server/test/contract.ts` pins that for
  * every store, and it is the gate's job (`gate.ts`). This class stays a dumb journal.
  */
-import { DatabaseSync } from 'node:sqlite'
+import { createRequire } from 'node:module'
 
 import { actorOf, randomId } from '@arcs/server'
 import type {
@@ -433,8 +437,15 @@ interface SeatDb {
   is_bot: number
 }
 
+// Vite 5 (which vitest runs on) does not know `node:sqlite` as a builtin and would try to resolve a
+// bare `sqlite` package, so the module is reached through `createRequire` — the same trick as
+// packages/server/test/cloudflare.test.ts. Types still come from @types/node. Works unchanged
+// under tsx and inside the esbuild bundle.
+const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
+type Db = InstanceType<typeof DatabaseSync>
+
 export class SqliteStore implements GameStore {
-  private readonly db: DatabaseSync
+  private readonly db: Db
   private readonly watchers = new Map<GameId, Set<OnAppend>>()
 
   constructor(path: string) {
