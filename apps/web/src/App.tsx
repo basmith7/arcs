@@ -24,7 +24,9 @@ import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
 import { NamePrompt } from './components/NamePrompt.js'
 import { SeatBadge } from './components/SeatBadge.js'
+import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
+import { initAudio } from './audio.js'
 import { canAct, viewFor } from './multiplayer/seat.js'
 import { setupLabel } from './setups.js'
 import { colorOf } from './theme.js'
@@ -44,6 +46,17 @@ export function App(): JSX.Element {
   const [logOpen, setLogOpen] = useState(false)
   /** Escape/cancel dismisses the name prompt for the rest of this session; it does not reappear. */
   const [nameDismissed, setNameDismissed] = useState(false)
+  /*
+   * The settings dialog. Local state like the log drawer, and mounted on both screens below —
+   * the music starts on the title screen, so the volume control has to be reachable there too.
+   */
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  /*
+   * The music. Mounted here rather than in `main.tsx` so it lives exactly as long as the app
+   * does, and started before the early return: the title screen is where most first clicks
+   * happen, and that click is what the browser wants before it will play anything.
+   */
+  useEffect(() => initAudio(), [])
   useEffect(() => {
     if (!logOpen) return
     const onKey = (e: KeyboardEvent): void => {
@@ -95,8 +108,14 @@ export function App(): JSX.Element {
     return (
       <div className="newgame-wrap">
         <NewGame />
-        <div className="newgame-load">{loadControl}or load a saved game</div>
+        <div className="newgame-load">
+          {loadControl}or load a saved game
+          <button className="ghost" onClick={() => setSettingsOpen(true)}>
+            Settings
+          </button>
+        </div>
         <Attribution />
+        {settingsOpen ? <SettingsModal onClose={() => setSettingsOpen(false)} /> : null}
       </div>
     )
   }
@@ -164,6 +183,9 @@ export function App(): JSX.Element {
           </button>
           <button className="ghost" onClick={() => setLogOpen((v) => !v)}>
             Log
+          </button>
+          <button className="ghost" onClick={() => setSettingsOpen(true)}>
+            Settings
           </button>
           {loadControl}
           <button className="ghost" onClick={() => store.reset()}>
@@ -233,6 +255,9 @@ export function App(): JSX.Element {
         */}
       <ChapterInterlude />
       <GameOverScreen state={state} cont={cont} />
+
+      {/* Audio settings: not a decision, so outside `Watching` — a spectator has ears. */}
+      {settingsOpen ? <SettingsModal onClose={() => setSettingsOpen(false)} /> : null}
 
       <Watching canAct={acting}>
         {/*

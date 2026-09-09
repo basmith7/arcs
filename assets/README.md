@@ -111,3 +111,20 @@ python3 scripts/extract_manifest.py <path-to>/haunt-roll-fail/arcs/meta.scala as
 ```
 
 The extractor reads Scala declarations and performs no network access.
+
+## Audio
+
+`audio/` is not part of the manifest — it holds one file, `halo.mp3`, the background music the web
+app loops. It is served through the `apps/web/public/audio` symlink, the same arrangement
+`public/game-assets` uses for `images/`.
+
+The source was 4:22 at ~237 kbps (7.7 MB). It is committed re-encoded, because the browser
+downloads it in full and nothing about quiet loop music under a board game needs a transparent
+bitrate:
+
+```sh
+ffmpeg -i source.mp3 -map 0:a:0 -map_metadata -1 -codec:a libmp3lame -b:a 96k -joint_stereo 1 \
+  -ar 44100 assets/audio/halo.mp3
+```
+
+That is 3.0 MB. Rights in the track are **not** settled — see `THIRD-PARTY-NOTICES.md` section 3.

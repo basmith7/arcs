@@ -5942,3 +5942,79 @@ button {
 .name-error {
   color: #e0604e;
 }
+
+/* --- settings dialog ------------------------------------------------------
+ *
+ * Narrower than the decision consoles: two short sections of controls, and a dialog sized for
+ * the battle window would leave the sliders stranded in a field of empty chrome. Everything else
+ * — the chrome, the header, the footer — is `.da-*`, so it is the same console.
+ */
+.settings-modal {
+  width: min(420px, 100%);
+}
+.set-section + .set-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.set-heading {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+/*
+ * Label, control, readout — a three-column grid rather than a flex row so the readouts line up
+ * down the dialog whatever the labels say, and the note under the SFX slider spans the width.
+ */
+.set-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  cursor: pointer;
+}
+.set-row.off {
+  /* Muted: the volume still shows its value, it just has nothing to do until music is back on. */
+  opacity: 0.45;
+  cursor: default;
+}
+.set-label {
+  font-size: 13px;
+  color: var(--text);
+}
+.set-value {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.set-note {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.set-slider {
+  width: 100%;
+  /* The browser default is the blue UI accent of whatever OS you are on; gold is this app's. */
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.set-slider:disabled {
+  cursor: default;
+}
+.set-check {
+  /* The checkbox sits in the wide middle column; left-aligned, it reads with its own label. */
+  justify-self: start;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
