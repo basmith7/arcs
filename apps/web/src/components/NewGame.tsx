@@ -91,6 +91,7 @@ export function NewGame(): JSX.Element {
   /** Seats played by a bot. Order follows seating, not click order — see `enterGame`. */
   const [bots, setBots] = useState<string[]>([])
   const [botLevel, setBotLevel] = useState<BotLevel>('normal')
+  const [webhookUrl, setWebhookUrl] = useState('')
 
   const byName = new Map(boardsFor(players).map((b) => [b.name, b]))
 
@@ -128,23 +129,20 @@ export function NewGame(): JSX.Element {
     }
   }
 
-  /**
-   * Create the game on the server and show its links.
-   *
-   * Bot seats are deliberately not sent: a bot in a joined game would never publish its moves and
-   * every client would diverge silently (see `store.botsAvailable`). The option is dropped here
-   * rather than disabled above, so choosing bots and then choosing multiplayer does something
-   * predictable instead of quietly playing a different game than the one on screen.
-   */
+  /** Create the game on the server and show its links. Bot seats are played by the server. */
   async function createShared(): Promise<void> {
     const options = chosenOptions()
     if (options === null || MULTIPLAYER_URL === null) return
-    const { bots: _dropped, ...withoutBots } = options
     setCreating(true)
     setCreateError(null)
     try {
       const client = new MultiplayerClient(MULTIPLAYER_URL)
-      setCreated(await client.create(withoutBots, withoutBots.factions))
+      setCreated(
+        await client.create(options, options.factions, {
+          ...(options.bots === undefined ? {} : { bots: options.bots }),
+          ...(webhookUrl.trim() === '' ? {} : { webhookUrl: webhookUrl.trim() }),
+        }),
+      )
     } catch (e) {
       setCreateError((e as Error).message)
     } finally {
@@ -433,6 +431,16 @@ export function NewGame(): JSX.Element {
         {/* Absent entirely when the build has no server configured — see `multiplayer/config.ts`. */}
         {multiplayerEnabled() ? (
           <div className="ng-online">
+            <div className="ng-field">
+              <span className="ng-label">Discord turn pings (optional)</span>
+              <input
+                className="mp-link"
+                placeholder="https://discord.com/api/webhooks/…"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                spellCheck={false}
+              />
+            </div>
             <button
               className="ghost ng-online-go"
               onClick={() => void createShared()}

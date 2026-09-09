@@ -16,6 +16,12 @@ export interface CreatedGame {
   readonly seats: readonly Seat[]
 }
 
+export interface PublicSeat {
+  readonly faction: string
+  readonly name?: string
+  readonly isBot: boolean
+}
+
 export interface GameTail {
   readonly options: unknown
   readonly entries: readonly string[]
@@ -27,6 +33,13 @@ export interface GameTail {
    * to "who am I", and everything that depends on knowing your own seat hangs off it.
    */
   readonly yourFaction?: string
+  /** Present on the self-hosted server; absent on upstream's Worker. */
+  readonly seats?: readonly PublicSeat[]
+}
+
+export interface CreateExtra {
+  readonly bots?: readonly string[]
+  readonly webhookUrl?: string
 }
 
 /**
@@ -77,11 +90,16 @@ export class MultiplayerClient {
     return (await res.json()) as T
   }
 
-  async create(options: unknown, factions: readonly string[]): Promise<CreatedGame> {
+  async create(options: unknown, factions: readonly string[], extra: CreateExtra = {}): Promise<CreatedGame> {
     return this.json<CreatedGame>('/games', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ options, factions }),
+      body: JSON.stringify({
+        options,
+        factions,
+        ...(extra.bots !== undefined && extra.bots.length > 0 ? { bots: extra.bots } : {}),
+        ...(extra.webhookUrl !== undefined && extra.webhookUrl !== '' ? { webhookUrl: extra.webhookUrl } : {}),
+      }),
     })
   }
 
@@ -96,6 +114,16 @@ export class MultiplayerClient {
     return this.json<GameTail>(`/games/${encodeURIComponent(gameId)}?since=${since}`, {
       ...(seatToken === undefined ? {} : { headers: { 'x-seat-token': seatToken } }),
     })
+  }
+
+  /** Claim a seat by name, so the game and other players can show who you are. */
+  async claimName(gameId: string, seatToken: string, name: string): Promise<readonly PublicSeat[]> {
+    const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/seat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ seatToken, name }),
+    })
+    return body.seats
   }
 
   /**

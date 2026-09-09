@@ -275,12 +275,23 @@ export class Session {
    */
   async publish(action: Action, expectedLength: number): Promise<void> {
     if (this.link.seatToken === undefined) return
-    const outcome = await this.client.append(
-      this.link.gameId,
-      this.link.seatToken,
-      expectedLength,
-      encodeAction(action),
-    )
-    if (!outcome.ok) await this.resync()
+    try {
+      const outcome = await this.client.append(
+        this.link.gameId,
+        this.link.seatToken,
+        expectedLength,
+        encodeAction(action),
+      )
+      if (!outcome.ok) await this.resync()
+    } catch (e) {
+      // A refusal (wrong turn, wrong faction, bad seat) means the optimistic local state is wrong;
+      // the server's journal is the truth, so replay it. Network errors: the next poll retries.
+      if (e instanceof ApiError) {
+        console.warn('publish refused, resyncing', e)
+        await this.resync()
+      } else {
+        throw e
+      }
+    }
   }
 }

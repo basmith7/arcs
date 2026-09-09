@@ -110,9 +110,11 @@ export function ShareGame({ game, board, onEnter }: Props): JSX.Element {
         <button className="ng-redeal" onClick={() => void copy(everything, 'all')}>
           {copied === 'all' ? 'All links copied' : 'Copy all links'}
         </button>
-        <button className="primary ng-start mp-enter" onClick={() => onEnter(game.seats[0]!.seatToken)}>
-          Take {game.seats[0]!.faction} and start
-        </button>
+        {game.seats.length > 0 ? (
+          <button className="primary ng-start mp-enter" onClick={() => onEnter(game.seats[0]!.seatToken)}>
+            Take {game.seats[0]!.faction} and start
+          </button>
+        ) : null}
       </div>
 
     </div>
