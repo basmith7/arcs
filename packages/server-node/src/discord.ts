@@ -31,7 +31,11 @@ export interface DiscordBotOptions {
   readonly token: string
   readonly guildId: string
   readonly fetch?: typeof fetch
+  /** Per-request timeout in milliseconds. A hung Discord API must never hang a seat claim. */
+  readonly timeoutMs?: number
 }
+
+const DEFAULT_TIMEOUT_MS = 5000
 
 function matches(member: GuildMember, name: string): boolean {
   const target = name.trim().toLowerCase()
@@ -47,16 +51,18 @@ export class DiscordBot {
   private readonly token: string
   private readonly guildId: string
   private readonly fetch: typeof fetch
+  private readonly timeoutMs: number
 
   constructor(opts: DiscordBotOptions) {
     this.token = opts.token
     this.guildId = opts.guildId
     this.fetch = opts.fetch ?? fetch
+    this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
   }
 
   async resolveMember(name: string): Promise<DiscordMember | undefined> {
     const url = `${API}/guilds/${this.guildId}/members/search?query=${encodeURIComponent(name)}&limit=10`
-    const members = await this.getJson<GuildMember[]>(url)
+    const members = await this.getJson<GuildMember[]>(url, 'member search')
     if (members === undefined) return undefined
     const hits = members.filter((m) => matches(m, name))
     return hits.length === 1 ? toMember(hits[0]!) : undefined
@@ -64,32 +70,41 @@ export class DiscordBot {
 
   async member(id: string): Promise<DiscordMember | undefined> {
     const url = `${API}/guilds/${this.guildId}/members/${id}`
-    const member = await this.getJson<GuildMember>(url)
+    const member = await this.getJson<GuildMember>(url, 'member lookup')
     return member === undefined ? undefined : toMember(member)
   }
 
   async postMessage(channelId: string, message: { content: string; mentions: readonly string[] }): Promise<void> {
-    const res = await this.fetch(`${API}/channels/${channelId}/messages`, {
-      method: 'POST',
-      headers: { authorization: `Bot ${this.token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        content: message.content,
-        allowed_mentions: { parse: [], users: message.mentions },
-      }),
-    })
+    let res: Response
+    try {
+      res = await this.fetch(`${API}/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: { authorization: `Bot ${this.token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          content: message.content,
+          allowed_mentions: { parse: [], users: message.mentions },
+        }),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      })
+    } catch (e) {
+      throw new Error(`discord channel post failed: ${(e as Error).message}`)
+    }
     if (!res.ok) throw new Error(`discord channel post -> ${res.status}`)
   }
 
-  private async getJson<T>(url: string): Promise<T | undefined> {
+  private async getJson<T>(url: string, label: string): Promise<T | undefined> {
     let res: Response
     try {
-      res = await this.fetch(url, { headers: { authorization: `Bot ${this.token}` } })
+      res = await this.fetch(url, {
+        headers: { authorization: `Bot ${this.token}` },
+        signal: AbortSignal.timeout(this.timeoutMs),
+      })
     } catch (e) {
-      console.warn('[discord] member search failed', (e as Error).message)
+      console.warn(`[discord] ${label} failed`, (e as Error).message)
       return undefined
     }
     if (!res.ok) {
-      console.warn('[discord] member search failed', res.status)
+      console.warn(`[discord] ${label} failed`, res.status)
       return undefined
     }
     return (await res.json()) as T

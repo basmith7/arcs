@@ -57,6 +57,19 @@ describe('DiscordBot.resolveMember', () => {
     expect(warn.mock.calls.some((c) => String(c.join(' ')).includes(TOKEN))).toBe(false)
     warn.mockRestore()
   })
+
+  it('resolves promptly to undefined when the request times out, without hanging', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchFn = vi.fn(async () => {
+      const err = new Error('The operation was aborted')
+      err.name = 'AbortError'
+      throw err
+    }) as unknown as typeof fetch
+    const bot = new DiscordBot({ token: TOKEN, guildId: GUILD, fetch: fetchFn, timeoutMs: 5 })
+    await expect(bot.resolveMember('Brian')).resolves.toBeUndefined()
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
 })
 
 describe('DiscordBot.member', () => {
@@ -93,6 +106,16 @@ describe('DiscordBot.postMessage', () => {
   it('throws on a non-2xx response', async () => {
     const fetchFn = fakeFetch(() => new Response(null, { status: 500 }))
     const bot = new DiscordBot({ token: TOKEN, guildId: GUILD, fetch: fetchFn })
+    await expect(bot.postMessage('chan-1', { content: 'x', mentions: [] })).rejects.toThrow()
+  })
+
+  it('throws promptly on a timeout instead of hanging', async () => {
+    const fetchFn = vi.fn(async () => {
+      const err = new Error('The operation was aborted')
+      err.name = 'AbortError'
+      throw err
+    }) as unknown as typeof fetch
+    const bot = new DiscordBot({ token: TOKEN, guildId: GUILD, fetch: fetchFn, timeoutMs: 5 })
     await expect(bot.postMessage('chan-1', { content: 'x', mentions: [] })).rejects.toThrow()
   })
 })
