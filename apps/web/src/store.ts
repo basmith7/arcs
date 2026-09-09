@@ -373,14 +373,14 @@ class GameStore {
   private notifyTurn(gameId: string, turn: { faction: string; chapter: number; length: number }): void {
     const view = this.seatView()
     if (view.kind !== 'seat' || view.faction !== turn.faction) return
-    if (typeof document === 'undefined') return
+    if (typeof document === 'undefined' || typeof window === 'undefined') return
     if (!isHiddenOrUnfocused(document)) return
     const notificationCtor: NotificationCtor | undefined =
       typeof Notification === 'undefined' ? undefined : (Notification as unknown as NotificationCtor)
     if (canPopNotification(this.browserNotifications(), notificationCtor)) {
       popTurnNotification(notificationCtor!, window, gameId, turn.chapter)
     }
-    flashTitleUntilSeen(document)
+    if (this.browserNotifications()) flashTitleUntilSeen(document)
   }
 
   leaveSession(): void {
