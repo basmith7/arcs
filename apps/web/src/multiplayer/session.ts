@@ -46,6 +46,9 @@ export const POLL_MS = 2500
  */
 export const RETRY_MS = 5000
 
+/** How often an activity listener may send `{"t":"active"}` again. */
+export const ACTIVITY_THROTTLE_MS = 30_000
+
 export interface SessionHost {
   /** The game as this client currently has it, or `null` before it has loaded. */
   current(): RuleResult | null
@@ -55,6 +58,8 @@ export interface SessionHost {
   applyRemote(action: Action): void
   /** The current seat list — faction, optional name, bot flag — whenever it changes. */
   seats(seats: readonly PublicSeat[]): void
+  /** A turn notice pushed for some seat. Carries no journal entries of its own. */
+  turn?(t: { faction: string; chapter: number; length: number }): void
 }
 
 export class Session {
@@ -85,6 +90,9 @@ export class Session {
    * bill against the very budget this file exists to protect.
    */
   private gone = false
+  /** Cleanup for the document/window activity listeners, or `null` when not attached. */
+  private removeActivityListeners: (() => void) | null = null
+  private lastActiveSentAt = 0
 
   constructor(
     baseUrl: string,
@@ -107,6 +115,7 @@ export class Session {
   async join(): Promise<void> {
     await this.resync()
     this.openSocket()
+    this.attachActivityListeners()
   }
 
   leave(): void {
@@ -119,6 +128,51 @@ export class Session {
       ws?.close()
     } catch {
       /* already gone */
+    }
+    this.removeActivityListeners?.()
+    this.removeActivityListeners = null
+  }
+
+  /**
+   * Tell the server this seat is being actively used, at most once per `ACTIVITY_THROTTLE_MS`.
+   *
+   * `force` bypasses the throttle for the one call that matters most — right after the socket
+   * opens, since that is what the presence check on the other end actually keys off.
+   */
+  private sendActive(force = false): void {
+    const ws = this.socket
+    if (ws === null || ws.readyState !== ws.OPEN) return
+    const now = Date.now()
+    if (!force && now - this.lastActiveSentAt < ACTIVITY_THROTTLE_MS) return
+    this.lastActiveSentAt = now
+    try {
+      ws.send(JSON.stringify({ t: 'active' }))
+    } catch {
+      /* socket race on the way down; the next reconnect will send one on open */
+    }
+  }
+
+  /**
+   * Listen for the browser signals that mean "a person is here", so a player who is on the board
+   * but idle at the keyboard still reads as present. Guarded because these tests (and any non-DOM
+   * host) have no `document`/`window` at all.
+   */
+  private attachActivityListeners(): void {
+    if (this.removeActivityListeners !== null) return
+    if (typeof document === 'undefined' || typeof window === 'undefined') return
+    const onActivity = (): void => this.sendActive()
+    const onVisibility = (): void => {
+      if (!document.hidden) onActivity()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('focus', onActivity)
+    window.addEventListener('pointerdown', onActivity)
+    window.addEventListener('keydown', onActivity)
+    this.removeActivityListeners = () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('focus', onActivity)
+      window.removeEventListener('pointerdown', onActivity)
+      window.removeEventListener('keydown', onActivity)
     }
   }
 
@@ -140,7 +194,7 @@ export class Session {
     }
     let ws: WebSocket
     try {
-      ws = new WebSocket(this.client.liveUrl(this.link.gameId, location.href))
+      ws = new WebSocket(this.client.liveUrl(this.link.gameId, location.href, this.link.seatToken))
     } catch {
       this.startPolling()
       return
@@ -149,6 +203,7 @@ export class Session {
 
     ws.onopen = () => {
       if (this.socket !== ws) return
+      this.sendActive(true)
       /*
        * One catch-up read, then stop paying for the timer. This covers the gap between the join
        * read and the socket being live, and — on a reconnect — everything missed while it was down.
@@ -184,12 +239,19 @@ export class Session {
    * are our own move coming back, since publishing is optimistic and applied locally first.
    */
   private applyPush(raw: string): void {
-    let push: { from?: unknown; entries?: unknown }
+    let push: { from?: unknown; entries?: unknown; turn?: unknown }
     try {
-      push = JSON.parse(raw) as { from?: unknown; entries?: unknown }
+      push = JSON.parse(raw) as { from?: unknown; entries?: unknown; turn?: unknown }
     } catch {
       return
     }
+
+    const turn = push.turn
+    if (typeof turn === 'object' && turn !== null && typeof (turn as { faction?: unknown }).faction === 'string') {
+      this.host.turn?.(turn as { faction: string; chapter: number; length: number })
+      return
+    }
+
     const from = push.from
     const entries = push.entries
     if (typeof from !== 'number' || !Array.isArray(entries)) return

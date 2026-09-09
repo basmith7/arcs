@@ -32,6 +32,7 @@ class FakeSocket {
   onmessage: ((e: { data: string }) => void) | null = null
   onclose: (() => void) | null = null
   closed = false
+  sent: string[] = []
 
   constructor(readonly url: string) {
     if (FakeSocket.failConstruction) throw new Error('blocked')
@@ -42,9 +43,18 @@ class FakeSocket {
     this.closed = true
   }
 
+  send(data: string): void {
+    this.sent.push(data)
+  }
+
   /** Pretend the server pushed. */
   push(from: number, entries: readonly string[]): void {
     this.onmessage?.({ data: JSON.stringify({ from, entries }) })
+  }
+
+  /** Pretend the server pushed a turn notice. */
+  pushTurn(turn: { faction: string; chapter: number; length: number }): void {
+    this.onmessage?.({ data: JSON.stringify({ turn }) })
   }
 }
 
@@ -66,11 +76,17 @@ function serve(store: MemoryStore): { reads: number } {
   return count
 }
 
-function host(): SessionHost & { result: RuleResult | null; adopted: number; remote: Action[] } {
+function host(): SessionHost & {
+  result: RuleResult | null
+  adopted: number
+  remote: Action[]
+  turns: { faction: string; chapter: number; length: number }[]
+} {
   return {
     result: null,
     adopted: 0,
     remote: [],
+    turns: [],
     current() {
       return this.result
     },
@@ -83,6 +99,9 @@ function host(): SessionHost & { result: RuleResult | null; adopted: number; rem
       this.result = this.result === null ? null : applyExternal(this.result, action, registry)
     },
     seats: () => {},
+    turn(t) {
+      this.turns.push(t)
+    },
   }
 }
 
@@ -107,6 +126,48 @@ describe('the live socket', () => {
 
     // https -> wss, not ws: an https page opening ws:// is blocked as mixed content.
     expect(FakeSocket.last?.url).toBe(`${API}/games/${created.gameId}/live`.replace('https:', 'wss:'))
+    session.leave()
+  })
+
+  it('carries the seat token as a query parameter when the link has one', async () => {
+    install()
+    const store = new MemoryStore()
+    serve(store)
+    const created = await store.create(OPTIONS, ['red', 'yellow', 'blue'])
+    const session = new Session(API, { gameId: created.gameId, seatToken: created.seats[0]!.seatToken }, host())
+    await session.join()
+
+    expect(FakeSocket.last?.url).toBe(
+      `${API}/games/${created.gameId}/live?seat=${created.seats[0]!.seatToken}`.replace('https:', 'wss:'),
+    )
+    session.leave()
+  })
+
+  it('sends an active message as soon as the socket opens', async () => {
+    install()
+    const store = new MemoryStore()
+    serve(store)
+    const created = await store.create(OPTIONS, ['red', 'yellow', 'blue'])
+    const session = new Session(API, { gameId: created.gameId, seatToken: created.seats[0]!.seatToken }, host())
+    await session.join()
+    FakeSocket.last!.onopen?.()
+
+    expect(FakeSocket.last?.sent).toContain(JSON.stringify({ t: 'active' }))
+    session.leave()
+  })
+
+  it('delivers a turn push to the host without touching the journal', async () => {
+    install()
+    const store = new MemoryStore()
+    serve(store)
+    const created = await store.create(OPTIONS, ['red', 'yellow', 'blue'])
+    const h = host()
+    const session = new Session(API, { gameId: created.gameId, seatToken: created.seats[0]!.seatToken }, h)
+    await session.join()
+
+    FakeSocket.last!.pushTurn({ faction: 'yellow', chapter: 2, length: 4 })
+    expect(h.turns).toEqual([{ faction: 'yellow', chapter: 2, length: 4 }])
+    expect(h.remote).toHaveLength(0)
     session.leave()
   })
 
