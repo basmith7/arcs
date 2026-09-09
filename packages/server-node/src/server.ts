@@ -6,7 +6,7 @@
  */
 import { createReadStream, statSync } from 'node:fs'
 import http from 'node:http'
-import { extname, join, normalize, resolve } from 'node:path'
+import { extname, join, normalize, resolve, sep } from 'node:path'
 import { Readable } from 'node:stream'
 
 import { WebSocketServer } from 'ws'
@@ -64,7 +64,8 @@ function serveStatic(staticDir: string, urlPath: string, res: http.ServerRespons
   const root = resolve(staticDir)
   const decoded = decodeURIComponent(urlPath.split('?')[0] ?? '/')
   const wanted = normalize(join(root, decoded))
-  const safe = wanted.startsWith(root) ? wanted : root
+  const inRoot = wanted === root || wanted.startsWith(root + sep)
+  const safe = inRoot ? wanted : root
   let file = safe
   try {
     if (!statSync(file).isFile()) throw new Error('dir')

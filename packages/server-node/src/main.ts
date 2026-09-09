@@ -20,9 +20,9 @@ const notifier = new Notifier(store, { publicOrigin: PUBLIC_ORIGIN })
 const gate = new EngineGate(store, { pace: BOT_PACE_MS, onSettled: (s) => void notifier.onSettled(s) })
 const server = createArcsServer({ api: { store, gate }, staticDir: STATIC_DIR })
 
+void gate.resumeAll()
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`arcs server on :${PORT}  db=${DATABASE_PATH}  static=${STATIC_DIR}  origin=${PUBLIC_ORIGIN}`)
-  void gate.resumeAll()
 })
 
 const stop = (): void => {
