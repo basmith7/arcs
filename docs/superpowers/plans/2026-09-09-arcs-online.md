@@ -227,6 +227,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { applyExternal, defaultRegistry, encodeAction, startGame } from '@arcs/engine'
 import type { NewGameOptions } from '@arcs/engine'
 
 /** Three players, base game, fixed seed. Red leads first (verified by probe). */
@@ -239,8 +240,34 @@ export const THREE_PLAYER: NewGameOptions = {
 /** Same table with two bot seats: red is the only human. */
 export const ONE_HUMAN: NewGameOptions = { ...THREE_PLAYER, bots: ['yellow', 'blue'] }
 
-/** Red's first legal action for THREE_PLAYER seed 7 (from `startGame(...).continue.actions[0]`). */
-export const RED_FIRST_LEAD = 'turn/lead(card="Aggression-4",faction="red",suit="Aggression")'
+/**
+ * Red's whole opening turn for THREE_PLAYER seed 7: the first legal action at every ask, until the
+ * engine asks yellow. Computed from the engine so it can never drift from the rules.
+ */
+export const RED_OPENING: readonly string[] = (() => {
+  const registry = defaultRegistry()
+  let result = startGame(THREE_PLAYER, registry)
+  const out: string[] = []
+  for (;;) {
+    const c = result.continue
+    if (c.kind !== 'ask' || c.faction !== 'red') return out
+    const action = c.actions[0]!
+    out.push(encodeAction(action))
+    result = applyExternal(result, action, registry)
+  }
+})()
+
+/** The first action of that opening: `turn/lead(card="Aggression-4",faction="red",suit="Aggression")`. */
+export const RED_FIRST_LEAD = RED_OPENING[0]!
+
+/** Replay `RED_OPENING` through anything with an `append(gameId, seatToken, expectedLength, action)`. */
+export async function playOpening(
+  target: { append(gameId: string, seatToken: string, expectedLength: number, action: string): Promise<unknown> },
+  gameId: string,
+  redToken: string,
+): Promise<void> {
+  for (const [i, action] of RED_OPENING.entries()) await target.append(gameId, redToken, i, action)
+}
 
 export function tempDbPath(): string {
   return join(mkdtempSync(join(tmpdir(), 'arcs-')), 'arcs.db')
@@ -632,14 +659,17 @@ export interface GateOptions { pace?: number; onSettled?: (s: Settled) => void }
 export class EngineGate {
   constructor(store: SqliteStore, opts?: GateOptions)
   resultOf(gameId): RuleResult | undefined
-  askedFaction(gameId): string | undefined        // who must act, undefined if over/unknown
-  append(gameId, seatToken, expectedLength, action): Promise<GateAppend>
+  askedFaction(gameId): string | undefined        // first faction being asked, undefined if over/unknown
+  append(gameId, seatToken, expectedLength, action): Promise<GateAppend>   // returns as soon as the human action is stored; bots run afterwards
   subscribe(gameId, listener: (push: Push) => void): () => void
-  settled(gameId): Promise<void>                    // resolves when this game's bot queue is idle
+  settled(gameId): Promise<void>                    // resolves when this game's queue (incl. any bot run) is idle
   resumeAll(): Promise<void>
 }
+export function askedFactions(result: RuleResult): readonly string[]   // [] when nothing is asked
 ```
-`onSettled` fires once per human-triggered append after any bot run finishes (or immediately if no bot acts), with `before` = result before the human action and `after` = result once bots are done. Task 4's notifier hangs off it.
+`append` resolves once the human's action is in the journal. If a bot seat is asked next, the bot run is queued on the same per-game chain and `append` does not wait for it, so an HTTP response is never held for a 40-second bot round (a normal bot round is ~40 engine steps). `onSettled` fires once per human-triggered append after that bot run finishes (immediately if no bot acts), with `before` = result before the human action and `after` = result once bots are done. Task 4's notifier hangs off it.
+
+**Engine facts the tests rely on (verified by probe, seed 7):** red's opening turn is 11 asks in a row (lead, ambition, two prelude discards, move, battle...), `RED_OPENING` in fixtures; only then is yellow asked. After that, the two bots take about 40 steps before red is asked again. `decodeAction('garbage(faction="red")')` does NOT throw; `applyExternal` on it throws "no rule module handled action".
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -647,10 +677,10 @@ export class EngineGate {
 ```ts
 import { describe, expect, it } from 'vitest'
 
-import { encodeAction, replayGame } from '@arcs/engine'
-import { EngineGate } from '../src/gate.js'
+import { replayGame } from '@arcs/engine'
+import { EngineGate, askedFactions } from '../src/gate.js'
 import { SqliteStore } from '../src/sqlite-store.js'
-import { ONE_HUMAN, RED_FIRST_LEAD, THREE_PLAYER, tempDbPath } from './fixtures.js'
+import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING, THREE_PLAYER, playOpening, tempDbPath } from './fixtures.js'
 
 async function table(options = THREE_PLAYER, path = ':memory:', pace = 0) {
   const store = new SqliteStore(path)
@@ -690,22 +720,34 @@ describe('EngineGate turn check', () => {
 })
 
 describe('EngineGate bots', () => {
-  it('plays the bot seats after a human action until a human is asked again', async () => {
+  it('plays the bot seats after the human turn until a human is asked again', async () => {
     const { gate, game, seat, store, settled } = await table(ONE_HUMAN)
     const pushes: number[] = []
     gate.subscribe(game.gameId, (p) => pushes.push(p.from))
-    expect(await gate.append(game.gameId, seat('red'), 0, RED_FIRST_LEAD)).toEqual({ ok: true, length: 1 })
+    await playOpening(gate, game.gameId, seat('red'))
+    // append() returns before the bots have played; the journal is exactly red's opening now.
+    expect(store.journal(game.gameId)).toEqual(RED_OPENING)
     await gate.settled(game.gameId)
     const journal = store.journal(game.gameId)
-    expect(journal.length).toBeGreaterThan(1)
+    expect(journal.length).toBeGreaterThan(RED_OPENING.length)
     expect(gate.askedFaction(game.gameId)).toBe('red')
     // Every entry was pushed exactly once, in order.
     expect(pushes).toEqual(journal.map((_, i) => i))
     // Bot entries carry the bot's faction, so a replay on any client agrees.
-    expect(journal.slice(1).every((e) => /faction="(yellow|blue)"/.test(e))).toBe(true)
+    expect(journal.slice(RED_OPENING.length).every((e) => /faction="(yellow|blue)"/.test(e))).toBe(true)
     // What the gate holds equals a fresh replay of what the store holds.
     expect(gate.resultOf(game.gameId)?.state).toEqual(replayGame(ONE_HUMAN, journal).state)
-    expect(settled).toEqual([{ before: 0, after: journal.length }])
+    // onSettled fired once per human append; only the last one had bots to run.
+    expect(settled).toHaveLength(RED_OPENING.length)
+    expect(settled.at(-1)).toEqual({ before: RED_OPENING.length - 1, after: journal.length })
+  })
+
+  it('accepts every asked faction of a multiAsk', () => {
+    // Nothing in the fixtures reaches a multiAsk; pin the helper's contract directly.
+    const base = replayGame(THREE_PLAYER, RED_OPENING)
+    const multi = { ...base, continue: { kind: 'multiAsk' as const, asks: [{ faction: 'blue', actions: [] }, { faction: 'yellow', actions: [] }] } }
+    expect(askedFactions(multi as never)).toEqual(['blue', 'yellow'])
+    expect(askedFactions(base)).toEqual(['yellow'])
   })
 
   it('resumes a game whose next ask is a bot when the server starts', async () => {
@@ -713,24 +755,25 @@ describe('EngineGate bots', () => {
     const store = new SqliteStore(path)
     const game = await store.create(ONE_HUMAN, ONE_HUMAN.factions, { bots: ['yellow', 'blue'] })
     const red = game.seats[0]!.seatToken
-    // Bare store: the human moves, no gate runs the bots. This is the "crashed mid-bot-turn" state.
-    await store.append(game.gameId, red, 0, RED_FIRST_LEAD)
+    // Bare store: the human plays a whole turn, no gate runs the bots. This is the
+    // "crashed before the bots moved" state.
+    await playOpening(store, game.gameId, red)
     store.close()
 
     const reopened = new SqliteStore(path)
     const gate = new EngineGate(reopened, { pace: 0 })
     await gate.resumeAll()
     await gate.settled(game.gameId)
-    expect(reopened.journal(game.gameId).length).toBeGreaterThan(1)
+    expect(reopened.journal(game.gameId).length).toBeGreaterThan(RED_OPENING.length)
     expect(gate.askedFaction(game.gameId)).toBe('red')
     reopened.close()
   })
 
   it('serialises a human append that arrives while bots are running', async () => {
     const { gate, game, seat, store } = await table(ONE_HUMAN, ':memory:', 5)
-    await gate.append(game.gameId, seat('red'), 0, RED_FIRST_LEAD)
+    await playOpening(gate, game.gameId, seat('red'))
     // Bots are mid-run (pace 5 ms). A stale human append must lose cleanly, not corrupt.
-    const r = await gate.append(game.gameId, seat('red'), 0, RED_FIRST_LEAD)
+    const r = await gate.append(game.gameId, seat('red'), RED_OPENING.length, RED_FIRST_LEAD)
     expect(r.ok).toBe(false)
     await gate.settled(game.gameId)
     expect(gate.resultOf(game.gameId)?.state).toEqual(replayGame(ONE_HUMAN, store.journal(game.gameId)).state)
@@ -800,11 +843,17 @@ const CACHE_LIMIT = 100
 const sleep = (ms: number): Promise<void> =>
   ms <= 0 ? Promise.resolve() : new Promise((r) => setTimeout(r, ms))
 
-export function askedOf(result: RuleResult): string | undefined {
+/** Every faction the engine is waiting on right now; [] when the game is over or mid-`then`. */
+export function askedFactions(result: RuleResult): readonly string[] {
   const c = result.continue
-  if (c.kind === 'ask') return c.faction
-  if (c.kind === 'multiAsk') return c.asks[0]?.faction
-  return undefined
+  if (c.kind === 'ask') return [c.faction]
+  if (c.kind === 'multiAsk') return c.asks.map((a) => a.faction)
+  return []
+}
+
+/** The first asked faction — what the notifier and `askedFaction` report. */
+export function askedOf(result: RuleResult): string | undefined {
+  return askedFactions(result)[0]
 }
 
 export class EngineGate {
@@ -853,13 +902,9 @@ export class EngineGate {
     expectedLength: number,
     action: string,
   ): Promise<GateAppend> {
-    // Wait for any bot run so the turn check sees the real head of the journal.
-    await this.settled(gameId)
-    let outcome: GateAppend = { ok: false, reason: 'no-such-game' }
-    await this.enqueue(gameId, async () => {
-      outcome = await this.appendNow(gameId, seatToken, expectedLength, action)
-    })
-    return outcome
+    // On the game's queue, so the turn check always sees the real head of the journal — a bot run
+    // in progress finishes first, and a stale expectedLength then fails as a plain conflict.
+    return this.enqueue(gameId, () => this.appendNow(gameId, seatToken, expectedLength, action))
   }
 
   private async appendNow(
@@ -872,11 +917,11 @@ export class EngineGate {
     if (before === undefined) return { ok: false, reason: 'no-such-game' }
     if (before.state.isOver) return { ok: false, reason: 'game-over' }
 
-    // Only the faction being asked may act. The store's own actorOf check still runs after.
-    const asked = askedOf(before)
+    // Only a faction being asked may act. The store's own actorOf check still runs after.
+    const asked = askedFactions(before)
     const seat = this.store.seats(gameId).find((s) => s.seatToken === seatToken)
     if (seat === undefined) return { ok: false, reason: 'bad-seat' }
-    if (asked !== undefined && seat.faction !== asked) return { ok: false, reason: 'wrong-turn' }
+    if (asked.length > 0 && !asked.includes(seat.faction)) return { ok: false, reason: 'wrong-turn' }
 
     // Prove the action replays before storing it, so a bad string never poisons the journal.
     let after: RuleResult
@@ -894,8 +939,13 @@ export class EngineGate {
     this.remember(gameId, after)
     this.emit(gameId, { from: expectedLength, entries: [action] })
 
-    const done = await this.runBots(gameId, after)
-    this.onSettled?.({ gameId, before, after: done })
+    // Bots play on the same queue but as their own job, so this append resolves now and the HTTP
+    // response is not held for a whole bot round. Nothing else can slip in between: the queue
+    // orders this job, then the bot job, then anything that arrives later.
+    void this.enqueue(gameId, async () => {
+      const done = await this.runBots(gameId, after)
+      this.onSettled?.({ gameId, before, after: done })
+    })
     return stored
   }
 
@@ -907,15 +957,13 @@ export class EngineGate {
     if (bots.length === 0) return start
     const bot = botForLevel(options.botLevel)
     let result = start
+    // `stepBot` resets this itself at a turn boundary; carry it between steps like `stepBots` does.
     let asked: AskedThisTurn = NO_ASKS
-    let lastFaction: string | undefined
     for (;;) {
       const faction = botToAct(result, options.bots)
       if (faction === undefined || result.state.isOver) return result
       const seat = bots.find((s) => s.faction === faction)
       if (seat === undefined) return result
-      if (faction !== lastFaction) asked = NO_ASKS
-      lastFaction = faction
       const step = stepBot(result, bot, faction, this.registry, asked)
       asked = step.asked
       const encoded = encodeAction(step.decision.action)
@@ -973,17 +1021,33 @@ export class EngineGate {
 
   // --- queue and cache ------------------------------------------------------
 
-  settled(gameId: string): Promise<void> {
-    return this.queues.get(gameId) ?? Promise.resolve()
+  /** Resolves once every queued job for the game (appends and bot runs) has finished. */
+  async settled(gameId: string): Promise<void> {
+    // Loop: a job may enqueue another (an append queues its bot run).
+    let tail = this.queues.get(gameId)
+    while (tail !== undefined) {
+      await tail
+      const now = this.queues.get(gameId)
+      if (now === tail) return
+      tail = now
+    }
   }
 
-  private enqueue(gameId: string, job: () => Promise<void>): Promise<void> {
+  private enqueue<T>(gameId: string, job: () => Promise<T>): Promise<T> {
     const prev = this.queues.get(gameId) ?? Promise.resolve()
-    const next = prev.then(job, job)
-    this.queues.set(gameId, next)
-    return next.finally(() => {
-      if (this.queues.get(gameId) === next) this.queues.delete(gameId)
+    const run = prev.then(job, job)
+    // The chain link never rejects, so one failing job cannot poison the queue for later jobs.
+    const link = run.then(
+      () => undefined,
+      (e: unknown) => {
+        console.error(`[gate] job failed for ${gameId}:`, e)
+      },
+    )
+    this.queues.set(gameId, link)
+    void link.then(() => {
+      if (this.queues.get(gameId) === link) this.queues.delete(gameId)
     })
+    return run
   }
 
   private remember(gameId: string, result: RuleResult): void {
@@ -997,14 +1061,14 @@ export class EngineGate {
 }
 ```
 
-Note on `append` racing: `append` awaits `settled` then enqueues; the queued job re-reads the cached result, so a stale `expectedLength` becomes a `conflict` (or `wrong-turn`), never a double write. The third test pins that.
+Note on `append` racing: `append` is itself a queued job, and a bot run is a queued job, so a human append that arrives mid-bot-run waits its turn and then re-reads the cached result: a stale `expectedLength` becomes a `conflict` (or `wrong-turn`), never a double write. The "serialises" test pins that.
 
 - [ ] **Step 4: Run tests**
 
 ```bash
 cd ~/Projects/arcs && npx vitest run packages/server-node 2>&1 | tail -8 && npm run typecheck:node
 ```
-Expected: all gate tests pass. If `decodeAction` on `garbage(...)` does not throw, the third test may see `wrong-turn` from `applyExternal` instead — either way `ok` is false and the journal is empty, which is what is asserted.
+Expected: all gate tests pass (the bot tests take a few seconds: ~40 engine steps each). `decodeAction` on `garbage(...)` returns `{type:'garbage'}` and `applyExternal` throws, so the garbage test sees `wrong-turn` with an empty journal, which is what is asserted.
 
 - [ ] **Step 5: Commit**
 
@@ -1043,7 +1107,7 @@ import { replayGame, startGame } from '@arcs/engine'
 import type { RuleResult } from '@arcs/engine'
 import { Notifier, seatLink } from '../src/notify.js'
 import { SqliteStore } from '../src/sqlite-store.js'
-import { RED_FIRST_LEAD, THREE_PLAYER } from './fixtures.js'
+import { RED_OPENING, THREE_PLAYER } from './fixtures.js'
 
 const HOOK = 'https://discord.test/hook'
 
@@ -1061,8 +1125,8 @@ async function setup(webhookUrl: string | undefined = HOOK) {
     now: () => clock,
     windowMs: 60_000,
   })
-  const start = startGame(THREE_PLAYER)
-  const afterRed = replayGame(THREE_PLAYER, [RED_FIRST_LEAD])
+  const start = startGame(THREE_PLAYER) // red is asked
+  const afterRed = replayGame(THREE_PLAYER, RED_OPENING) // red's whole turn done; yellow is asked
   return { store, game, sent, notifier, start, afterRed, tick: (ms: number) => (clock += ms) }
 }
 
@@ -1078,7 +1142,7 @@ describe('Notifier', () => {
 
   it('falls back to the faction when no name is set and says nothing without a webhook', async () => {
     const a = await setup()
-    // yellow is named; ping for blue would say "blue" — simulate by asking for red's turn instead.
+    // Only yellow is named. Going "backwards" from afterRed to start makes red the asked faction.
     await a.notifier.onSettled({ gameId: a.game.gameId, before: a.afterRed, after: a.start })
     expect(a.sent[0]!.content).toContain('**red**')
     const b = await setup(undefined)
@@ -1089,12 +1153,23 @@ describe('Notifier', () => {
   it('sends at most one ping per window and records the journal length', async () => {
     const { store, game, sent, notifier, start, afterRed, tick } = await setup()
     await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
-    await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: start })
+    expect(store.meta(game.gameId)?.lastNotifiedLength).toBe(RED_OPENING.length)
+    // The turn passes to red inside the window: skipped. (`after` is a longer journal so the
+    // "already notified at this length" guard does not hide the window check.)
+    const later = { ...start, state: { ...start.state, journal: [...RED_OPENING, 'x'] } }
+    await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: later })
     expect(sent).toHaveLength(1)
-    expect(store.meta(game.gameId)?.lastNotifiedLength).toBe(1)
     tick(60_001)
-    await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: start })
+    await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: later })
     expect(sent).toHaveLength(2)
+  })
+
+  it('does not ping again while the same player is still being asked mid-turn', async () => {
+    const { game, sent, notifier, start, tick } = await setup()
+    const oneIn = replayGame(THREE_PLAYER, RED_OPENING.slice(0, 1)) // red led; red is asked again
+    tick(120_000)
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: oneIn })
+    expect(sent).toHaveLength(0)
   })
 
   it('does not re-ping the same journal position after a restart', async () => {
@@ -1104,18 +1179,21 @@ describe('Notifier', () => {
     // resumeAll reports before: null for the same position — nothing new happened.
     await notifier.onSettled({ gameId: game.gameId, before: null, after: afterRed })
     expect(sent).toHaveLength(1)
-    expect(store.meta(game.gameId)?.lastNotifiedLength).toBe(1)
+    expect(store.meta(game.gameId)?.lastNotifiedLength).toBe(RED_OPENING.length)
   })
 
   it('announces a chapter change and game over regardless of the window', async () => {
     const { game, sent, notifier, start, afterRed } = await setup()
     await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
-    const nextChapter: RuleResult = { ...afterRed, state: { ...afterRed.state, chapter: afterRed.state.chapter + 1 } }
+    const nextChapter: RuleResult = {
+      ...afterRed,
+      state: { ...afterRed.state, chapter: afterRed.state.chapter + 1, journal: [...RED_OPENING, 'x'] },
+    }
     await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: nextChapter })
     expect(sent).toHaveLength(2)
     expect(sent[1]!.content).toMatch(/Chapter 2/)
     const over: RuleResult = {
-      state: { ...nextChapter.state, isOver: true, winners: ['yellow'] },
+      state: { ...nextChapter.state, isOver: true, winners: ['yellow'], journal: [...RED_OPENING, 'x', 'y'] },
       continue: { kind: 'gameOver', winners: ['yellow'], reason: 'test' },
     }
     await notifier.onSettled({ gameId: game.gameId, before: nextChapter, after: over })
@@ -1134,7 +1212,7 @@ describe('Notifier', () => {
       },
     })
     await expect(
-      notifier.onSettled({ gameId: game.gameId, before: startGame(THREE_PLAYER), after: replayGame(THREE_PLAYER, [RED_FIRST_LEAD]) }),
+      notifier.onSettled({ gameId: game.gameId, before: startGame(THREE_PLAYER), after: replayGame(THREE_PLAYER, RED_OPENING) }),
     ).resolves.toBeUndefined()
   })
 })
@@ -1223,7 +1301,9 @@ export class Notifier {
       }
       const asked = askedOf(after)
       const seat = asked === undefined ? undefined : seats.find((s) => s.faction === asked)
-      const changed = before === null ? false : askedOf(before) !== asked || before.state.journal.length !== length
+      // A turn is many asks in a row for the same player; ping only when the asked player changes.
+      // After a restart (before === null) the length guard above already decided it is news.
+      const changed = before === null ? true : askedOf(before) !== asked
       const inWindow = this.now() - meta.lastNotifiedAt < this.windowMs
       if (seat !== undefined && !seat.isBot && changed && (!inWindow || lines.length > 0)) {
         lines.push(
@@ -1595,7 +1675,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { EngineGate } from '../src/gate.js'
 import { createArcsServer } from '../src/server.js'
 import { SqliteStore } from '../src/sqlite-store.js'
-import { ONE_HUMAN, RED_FIRST_LEAD } from './fixtures.js'
+import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING } from './fixtures.js'
 
 const closers: (() => void)[] = []
 afterEach(() => {
@@ -1645,17 +1725,19 @@ describe('createArcsServer', () => {
     const pushes: { from: number; entries: string[] }[] = []
     sock.on('message', (data) => pushes.push(JSON.parse(String(data))))
 
-    const res = await fetch(`${base}/games/${created.gameId}/actions`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ seatToken: created.seats[0]!.seatToken, expectedLength: 0, action: RED_FIRST_LEAD }),
-    })
-    expect(res.status).toBe(200)
-    // Bots run after the response; wait for the journal to settle.
-    const deadline = Date.now() + 5000
+    for (const [i, action] of RED_OPENING.entries()) {
+      const res = await fetch(`${base}/games/${created.gameId}/actions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ seatToken: created.seats[0]!.seatToken, expectedLength: i, action }),
+      })
+      expect(res.status).toBe(200)
+    }
+    // Bots run after the last response; wait for the journal to settle.
+    const deadline = Date.now() + 10_000
     for (;;) {
       const tail = (await (await fetch(`${base}/games/${created.gameId}`)).json()) as { length: number }
-      if (tail.length > 1 && pushes.length >= tail.length) break
+      if (tail.length > RED_OPENING.length && pushes.length >= tail.length) break
       if (Date.now() > deadline) throw new Error('bots never pushed')
       await new Promise((r) => setTimeout(r, 25))
     }
