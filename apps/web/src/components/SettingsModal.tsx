@@ -1,9 +1,9 @@
 /**
- * Settings: the audio controls, and the only dialog here that is not about a decision. When
- * opened from inside a game, `seat` is passed and the seated-player sections (Player,
- * Notifications, Game) render above the audio ones; on the title screen, hotseat and for
- * spectators `seat` is omitted and only the audio sections show, exactly as before there was a
- * game to be seated in.
+ * Settings: the board and audio controls, and the only dialog here that is not about a decision.
+ * When opened from inside a game, `seat` is passed and the seated-player sections (Player,
+ * Notifications, Game) render above the board and audio ones; on the title screen, hotseat and for
+ * spectators `seat` is omitted and only the board and audio sections show, exactly as before there
+ * was a game to be seated in.
  *
  * It wears the console chrome anyway — `.da-backdrop > .da-modal > .da-head`, draggable by the
  * header — because that shape is what a dialog looks like in this app, and a settings panel that
@@ -22,7 +22,7 @@ import type { GameLink } from '../multiplayer/link.js'
 import { setSettings, useSettings } from '../settings.js'
 import { GameSection, NotificationsSection, PlayerSection } from './settings-sections.js'
 
-function VolumeRow({
+function SliderRow({
   label,
   value,
   onChange,
@@ -99,6 +99,16 @@ export function SettingsModal({
         )}
 
         <section className="set-section">
+          <h3 className="set-heading">Board</h3>
+          <SliderRow
+            label="Dim map art"
+            value={settings.boardDim}
+            onChange={(v) => setSettings({ boardDim: v })}
+            note="Fades the painted map towards a schematic. Planets, symbols, numbers and the lines that matter stay."
+          />
+        </section>
+
+        <section className="set-section">
           <h3 className="set-heading">Music</h3>
           <label className="set-row">
             <span className="set-label">Play music</span>
@@ -110,7 +120,7 @@ export function SettingsModal({
             />
             <span className="set-value">{settings.musicEnabled ? 'On' : 'Off'}</span>
           </label>
-          <VolumeRow
+          <SliderRow
             label="Volume"
             value={settings.musicVolume}
             disabled={!settings.musicEnabled}
@@ -120,7 +130,7 @@ export function SettingsModal({
 
         <section className="set-section">
           <h3 className="set-heading">Sound effects</h3>
-          <VolumeRow
+          <SliderRow
             label="Volume"
             value={settings.sfxVolume}
             onChange={(v) => setSettings({ sfxVolume: v })}

@@ -22,13 +22,16 @@ import {
 } from '@arcs/engine'
 import type { Action, Continue, GameState, SystemInfo } from '@arcs/engine'
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 
 import { store, useBotUi } from '../store.js'
+import { BoardStructure } from './BoardStructure.js'
 import { modeOf } from './Hand.js'
 import { caption, derivePlacement, liveEvents } from '../bot-events.js'
 import type { BotEvent } from '../bot-events.js'
 import { colorOf, figureArt } from '../theme.js'
 import { asset } from '../assets.js'
+import { useSettings } from '../settings.js'
 
 interface Props {
   state: GameState
@@ -494,6 +497,19 @@ export function Board({ state, cont }: Props): JSX.Element {
   const systems = state.board.systems.map(systemInfo)
   const { origins, onward } = moveGraph(cont)
   const [from, setFrom] = useState<string | null>(null)
+  const { boardDim } = useSettings()
+  /*
+   * The dim, as the three filter terms it resolves to. A curve, not a fade: dropping the
+   * saturation and lifting the contrast while pulling the whole thing down takes the painted
+   * fills to black and leaves the printed line art — planet outlines, resource symbols, sector
+   * numbers, gate slot markers — standing. Kept in step with `css_chain` in
+   * scripts/preview_board_structure.py, which is how a level gets checked against the art.
+   */
+  const dimStyle = {
+    '--dim-saturate': 1 - 0.3 * boardDim,
+    '--dim-contrast': 1 + 1.2 * boardDim,
+    '--dim-brightness': 1 - 0.55 * boardDim,
+  } as CSSProperties
 
   /**
    * Map units per CSS pixel.
@@ -619,6 +635,7 @@ export function Board({ state, cont }: Props): JSX.Element {
         ref={svgRef}
         viewBox={`0 0 ${MAP_SIZE.width} ${MAP_SIZE.height}`}
         className="board-svg"
+        style={dimStyle}
       >
         <defs>
           {/*
@@ -673,6 +690,7 @@ export function Board({ state, cont }: Props): JSX.Element {
         {outOfPlayClusters(state.board.clusters).map((i) => (
           <image
             key={`out-${i}`}
+            className="map-out"
             href={asset(`game-assets/map-out-${i}.webp`)}
             x={0}
             y={0}
@@ -683,6 +701,13 @@ export function Board({ state, cont }: Props): JSX.Element {
             }}
           />
         ))}
+
+        {/*
+          What the art stops being able to say once it is dimmed: the seams, and which of them
+          you may travel through. Drawn over the plate and the out-of-play overlays, under the
+          frame and everything that moves.
+        */}
+        <BoardStructure state={state} dim={boardDim} />
 
         {/*
           The board's frame, drawn after the out-of-play overlays so it sits on the board proper.

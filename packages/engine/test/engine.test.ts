@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  BOARD_GEOMETRY,
   COLOR_IDS,
   Continue,
   FACTION_IDS,
   Location,
+  MAP_SIZE,
   RuleRegistry,
   advance,
   allSystems,
@@ -29,6 +31,7 @@ import {
   rng,
   shuffle,
   startGame,
+  system,
   unhandled,
 } from '../src/index.js'
 import type { Action, FactionId, GameState, RuleModule } from '../src/index.js'
@@ -192,6 +195,79 @@ describe('board topology', () => {
     for (const name of boardNames()) {
       expect(board(name).systems).not.toContain('7-Gate')
     }
+  })
+})
+
+/*
+ * The polar geometry behind the dimmed-board view (scripts/build_board_geometry.py). The board is
+ * radial: three shells about the gate ring's centre, and every system a wedge of it. What is worth
+ * asserting is not the numbers — they were measured — but that they still describe *this* board:
+ * the wedges tile the circle, and a seam is only left open where the rules say you may cross it.
+ */
+describe('board geometry', () => {
+  const span = ([lo, hi]: readonly [number, number]): number => (((hi - lo) % 360) + 360) % 360
+
+  it('has three shells, in order, about a centre inside the map', () => {
+    const [cx, cy] = BOARD_GEOMETRY.centre
+    expect(cx).toBeGreaterThan(0)
+    expect(cx).toBeLessThan(MAP_SIZE.width)
+    expect(cy).toBeGreaterThan(0)
+    expect(cy).toBeLessThan(MAP_SIZE.height)
+    expect(BOARD_GEOMETRY.radii.core).toBeLessThan(BOARD_GEOMETRY.radii.ring)
+  })
+
+  it('gives every wedge an arc and the centre disc none', () => {
+    for (const s of allSystems()) {
+      const arc = s.render.arc
+      if (s.id === '7-Gate') {
+        expect(arc, '7-Gate is the centre disc, not a wedge').toBeNull()
+        continue
+      }
+      expect(arc, `${s.id} has an arc`).not.toBeNull()
+      // A wedge, not a sliver and not half the board. Gates are the wide ones: six of them
+      // tile the ring, where eighteen planets share the same circle outside it.
+      expect(span(arc!), `${s.id} span`).toBeGreaterThan(5)
+      expect(span(arc!), `${s.id} span`).toBeLessThan(s.isGate ? 100 : 40)
+    }
+  })
+
+  it('divides the circle 18 ways for planets and 6 for gates', () => {
+    expect(BOARD_GEOMETRY.dividers.planet).toHaveLength(18)
+    expect(BOARD_GEOMETRY.dividers.gate).toHaveLength(6)
+  })
+
+  it('tiles the ring: gate wedges and their joins fill the circle', () => {
+    const gates = allSystems().filter((s) => s.isGate && s.id !== '7-Gate')
+    const total = gates.reduce((n, s) => n + span(s.render.arc!), 0)
+    expect(total).toBeCloseTo(360, 1)
+  })
+
+  /*
+   * The rules claim: two wedges touching does not mean you may travel between them. Within a
+   * cluster angular neighbours are adjacent, and across clusters only 5-Hex/6-Arrow and
+   * 2-Hex/3-Arrow are. The printed board says so by drawing those seams tight and the other four
+   * as wide dark lanes, and the geometry has to carry the same distinction or the dimmed board
+   * would invite a move that is not legal.
+   */
+  it('closes a seam you may cross and opens a lane where you may not', () => {
+    const full = board('BoardFull')
+    const arcOf = (id: string): readonly [number, number] => system(id).render.arc!
+    const lanes: string[] = []
+    for (const d of BOARD_GEOMETRY.dividers.planet) {
+      const gap = (((arcOf(d.b)[0] - arcOf(d.a)[1]) % 360) + 360) % 360
+      if (areConnected(full, d.a, d.b)) {
+        expect(gap, `${d.a}|${d.b} is adjacent and meets`).toBeCloseTo(0, 3)
+      } else {
+        expect(gap, `${d.a}|${d.b} is a dead seam`).toBeCloseTo(BOARD_GEOMETRY.laneDegrees, 3)
+        lanes.push(`${d.a}|${d.b}`)
+      }
+    }
+    expect(lanes.sort()).toEqual([
+      '1-Hex|2-Arrow',
+      '3-Hex|4-Arrow',
+      '4-Hex|5-Arrow',
+      '6-Hex|1-Arrow',
+    ])
   })
 })
 

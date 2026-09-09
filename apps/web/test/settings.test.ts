@@ -58,6 +58,21 @@ describe('the settings store', () => {
     expect(getSettings().sfxVolume).toBe(0.1)
   })
 
+  it('clamps the dim to 0..1 the same way the volumes are', () => {
+    setSettings({ boardDim: 2 })
+    expect(getSettings().boardDim).toBe(1)
+    localStorage.setItem(KEY, JSON.stringify({ boardDim: -3 }))
+    reloadSettings()
+    expect(getSettings().boardDim).toBe(0)
+  })
+
+  it('keeps the board undimmed unless asked', () => {
+    expect(getSettings().boardDim).toBe(0)
+    localStorage.setItem(KEY, JSON.stringify({ boardDim: 'dark' }))
+    reloadSettings()
+    expect(getSettings().boardDim).toBe(DEFAULTS.boardDim)
+  })
+
   it('clamps volumes to 0..1, whichever end they came off', () => {
     setSettings({ musicVolume: 4, sfxVolume: -2 })
     expect(getSettings().musicVolume).toBe(1)
@@ -98,6 +113,8 @@ describe('the settings store', () => {
     const after = getSettings()
     // A write that changes nothing must not churn the snapshot — it would re-render the app.
     setSettings({ musicVolume: 0.9 })
+    expect(getSettings()).toBe(after)
+    setSettings({ boardDim: 0 })
     expect(getSettings()).toBe(after)
   })
 

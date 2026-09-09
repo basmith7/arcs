@@ -1,5 +1,5 @@
 /**
- * Player preferences that outlive the tab — today, the audio ones.
+ * Player preferences that outlive the tab — the audio ones and how the map is drawn.
  *
  * The shelf is `persist.ts`'s: localStorage, capability-checked and try/caught, because a browser
  * that will not store a preference must cost the preference and never an error. What is different
@@ -22,6 +22,13 @@ export interface Settings {
   musicVolume: number
   /** 0..1. Nothing emits sound effects yet; the preference is stored for when something does. */
   sfxVolume: number
+  /**
+   * How far to push the map plate towards a schematic, 0..1. Not a fade: the art goes through a
+   * contrast curve that crushes its painted fills to black while leaving the printed line art —
+   * planet outlines, resource symbols, sector numbers, slot markers — legible. Board.tsx turns it
+   * into CSS custom properties and BoardStructure draws in what the art alone cannot say.
+   */
+  boardDim: number
 }
 
 export const DEFAULTS: Readonly<Settings> = {
@@ -29,6 +36,8 @@ export const DEFAULTS: Readonly<Settings> = {
   // Background music under a game people talk over: audible, never the loudest thing in the room.
   musicVolume: 0.4,
   sfxVolume: 0.6,
+  // Off: the board looks the way it was painted until someone asks for otherwise.
+  boardDim: 0,
 }
 
 const KEY = 'arcs:settings'
@@ -40,7 +49,7 @@ type Listener = () => void
 const listeners = new Set<Listener>()
 
 /** A stored number is only a number if it is finite; NaN and Infinity are corruption. */
-function volume(v: unknown, fallback: number): number {
+function unit(v: unknown, fallback: number): number {
   if (typeof v !== 'number' || !Number.isFinite(v)) return fallback
   return Math.min(1, Math.max(0, v))
 }
@@ -50,8 +59,9 @@ function parse(json: string): Settings {
   if (typeof raw !== 'object' || raw === null) return { ...DEFAULTS }
   return {
     musicEnabled: typeof raw['musicEnabled'] === 'boolean' ? raw['musicEnabled'] : DEFAULTS.musicEnabled,
-    musicVolume: volume(raw['musicVolume'], DEFAULTS.musicVolume),
-    sfxVolume: volume(raw['sfxVolume'], DEFAULTS.sfxVolume),
+    musicVolume: unit(raw['musicVolume'], DEFAULTS.musicVolume),
+    sfxVolume: unit(raw['sfxVolume'], DEFAULTS.sfxVolume),
+    boardDim: unit(raw['boardDim'], DEFAULTS.boardDim),
   }
 }
 
@@ -92,13 +102,15 @@ export function setSettings(patch: Partial<Settings>): void {
   const prev = getSettings()
   const next: Settings = {
     musicEnabled: patch.musicEnabled ?? prev.musicEnabled,
-    musicVolume: patch.musicVolume === undefined ? prev.musicVolume : volume(patch.musicVolume, prev.musicVolume),
-    sfxVolume: patch.sfxVolume === undefined ? prev.sfxVolume : volume(patch.sfxVolume, prev.sfxVolume),
+    musicVolume: patch.musicVolume === undefined ? prev.musicVolume : unit(patch.musicVolume, prev.musicVolume),
+    sfxVolume: patch.sfxVolume === undefined ? prev.sfxVolume : unit(patch.sfxVolume, prev.sfxVolume),
+    boardDim: patch.boardDim === undefined ? prev.boardDim : unit(patch.boardDim, prev.boardDim),
   }
   if (
     next.musicEnabled === prev.musicEnabled &&
     next.musicVolume === prev.musicVolume &&
-    next.sfxVolume === prev.sfxVolume
+    next.sfxVolume === prev.sfxVolume &&
+    next.boardDim === prev.boardDim
   ) {
     return
   }

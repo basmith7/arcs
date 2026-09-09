@@ -1012,10 +1012,51 @@ button {
   /* Room for the plate's shadow to fall outside the map without being clipped. */
   overflow: visible;
 }
-/* Lifts the board off the cover art. Sized in map units, so it holds at any board scale. */
+/*
+ * The dim, then the shadow that lifts the board off the cover art.
+ *
+ * The three colour terms come from the `boardDim` setting via Board.tsx, and default to identity
+ * so an undimmed board pays nothing for them. They are a curve rather than a fade on purpose: the
+ * map prints its planets, resource symbols, sector numbers and gate slot markers as bright line
+ * art over painted fills, so crushing the fills keeps every one of them without redrawing any.
+ * Order matters — the shadow is last so it follows the image's own edge, sized in map units and
+ * holding at any board scale.
+ */
+.map-out {
+  filter: saturate(var(--dim-saturate, 1)) contrast(var(--dim-contrast, 1))
+    brightness(var(--dim-brightness, 1));
+}
 .map-plate {
-  filter: drop-shadow(0 26px 46px rgba(0, 0, 0, 0.85))
+  filter: saturate(var(--dim-saturate, 1)) contrast(var(--dim-contrast, 1))
+    brightness(var(--dim-brightness, 1)) drop-shadow(0 26px 46px rgba(0, 0, 0, 0.85))
     drop-shadow(0 0 90px rgba(0, 0, 0, 0.6));
+}
+/*
+ * The structure layer: only what the dimmed art can no longer say for itself. A plain line is a
+ * seam you may travel through; the paired warm lines are a dead cluster seam, drawn the width of
+ * the printed lane; the gold arc is a join in the gate ring, along the ring rather than across it,
+ * because that is the direction a catapult travels. Widths are map units.
+ */
+.board-structure {
+  pointer-events: none;
+}
+.bs-line,
+.bs-lane,
+.bs-link {
+  fill: none;
+  stroke-linecap: round;
+}
+.bs-line {
+  stroke: rgba(150, 186, 255, 0.85);
+  stroke-width: 4;
+}
+.bs-lane {
+  stroke: rgba(232, 122, 106, 0.9);
+  stroke-width: 5;
+}
+.bs-link {
+  stroke: rgba(255, 206, 112, 0.85);
+  stroke-width: 13;
 }
 /*
  * Heavy gold brackets at the corners, opening into two parallel rails along each edge — the
