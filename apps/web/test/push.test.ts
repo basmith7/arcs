@@ -385,4 +385,9 @@ describe('the live URL', () => {
     const client = new MultiplayerClient('')
     expect(client.liveUrl('a/b', 'https://arcs.example/')).toBe('wss://arcs.example/games/a%2Fb/live')
   })
+
+  it('appends the seat token as a query parameter when given', () => {
+    const client = new MultiplayerClient('')
+    expect(client.liveUrl('g1', 'https://arcs.example/', 'tok-1')).toBe('wss://arcs.example/games/g1/live?seat=tok-1')
+  })
 })

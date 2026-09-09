@@ -39,4 +39,16 @@ describe('MultiplayerClient extras', () => {
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ seatToken: 'tok', name: 'Brian' })
     expect(seats[0]!.name).toBe('Brian')
   })
+
+  it('sets pings and returns the seats', async () => {
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      calls.push({ url, init })
+      return reply({ seats: [{ faction: 'red', isBot: false, pings: false }] })
+    })
+    const c = new MultiplayerClient('')
+    const seats = await c.setPings('g', 'tok', false)
+    expect(calls[0]!.url).toBe('/games/g/seat')
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ seatToken: 'tok', pings: false })
+    expect(seats[0]!.pings).toBe(false)
+  })
 })

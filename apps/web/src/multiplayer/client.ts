@@ -24,6 +24,8 @@ export interface PublicSeat {
   readonly discordLinked?: boolean
   /** The linked user's Discord username, for display. */
   readonly discordName?: string
+  /** Present for human seats: whether they get a Discord turn ping. */
+  readonly pings?: boolean
 }
 
 export interface GameTail {
@@ -79,9 +81,10 @@ export class MultiplayerClient {
    * hand: an `https` page needs `wss`, and getting that wrong fails as a mixed-content block rather
    * than as anything that mentions protocols.
    */
-  liveUrl(gameId: string, pageUrl: string): string {
+  liveUrl(gameId: string, pageUrl: string, seatToken?: string): string {
     const url = new URL(`${this.baseUrl}/games/${encodeURIComponent(gameId)}/live`, pageUrl)
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+    if (seatToken !== undefined) url.searchParams.set('seat', seatToken)
     return url.toString()
   }
 
@@ -136,6 +139,16 @@ export class MultiplayerClient {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ seatToken, name, ...(discordId === undefined ? {} : { discordId }) }),
+    })
+    return body.seats
+  }
+
+  /** Toggle the per-seat Discord turn-ping preference. */
+  async setPings(gameId: string, seatToken: string, pings: boolean): Promise<readonly PublicSeat[]> {
+    const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/seat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ seatToken, pings }),
     })
     return body.seats
   }
