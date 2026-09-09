@@ -28,6 +28,7 @@ import type { SqliteStore } from './sqlite-store.js'
 export interface Push {
   readonly from: number
   readonly entries: readonly string[]
+  readonly seats?: readonly { faction: string; name?: string; isBot: boolean }[]
 }
 
 export type GateAppend = AppendResult | { readonly ok: false; readonly reason: 'wrong-turn' | 'game-over' }
@@ -145,7 +146,7 @@ export class EngineGate {
     const stored = await this.store.append(gameId, seatToken, expectedLength, action)
     if (!stored.ok) return stored
     this.remember(gameId, after)
-    this.emit(gameId, { from: expectedLength, entries: [action] })
+    this.broadcast(gameId, { from: expectedLength, entries: [action] })
 
     // Bots play on the same queue but as their own job, so this append resolves now and the HTTP
     // response is not held for a whole bot round. Nothing else can slip in between: the queue
@@ -197,7 +198,7 @@ export class EngineGate {
       }
       result = step.result
       this.remember(gameId, result)
-      this.emit(gameId, { from: at, entries: [encoded] })
+      this.broadcast(gameId, { from: at, entries: [encoded] })
       await sleep(this.pace)
     }
   }
@@ -229,7 +230,7 @@ export class EngineGate {
     }
   }
 
-  private emit(gameId: string, push: Push): void {
+  broadcast(gameId: string, push: Push): void {
     for (const l of this.listeners.get(gameId) ?? []) {
       try {
         l(push)

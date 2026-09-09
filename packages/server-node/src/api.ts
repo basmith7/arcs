@@ -12,6 +12,7 @@ import type { SqliteStore } from './sqlite-store.js'
 export interface Api {
   readonly store: SqliteStore
   readonly gate: EngineGate
+  readonly onSeatsChanged?: (gameId: string) => void
 }
 
 export interface PublicSeat {
@@ -155,6 +156,7 @@ export async function route(request: Request, api: Api): Promise<Response | unde
     if (store.options(gameId) === undefined) return bad(404, 'no such game')
     const seats = store.setName(gameId, b.seatToken, name)
     if (seats === undefined) return bad(403, 'seat token does not belong to this game')
+    api.onSeatsChanged?.(gameId)
     return json({ seats: publicSeats(store, gameId) })
   }
 
