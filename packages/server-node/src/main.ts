@@ -14,9 +14,9 @@ const DATABASE_PATH = process.env['DATABASE_PATH'] ?? resolve(here, '../data/arc
 const STATIC_DIR = process.env['STATIC_DIR'] ?? resolve(here, '../../../apps/web/dist')
 const PUBLIC_ORIGIN = process.env['PUBLIC_ORIGIN'] ?? `http://localhost:${PORT}`
 const BOT_PACE_MS = Number(process.env['BOT_PACE_MS'] ?? 1000)
-const DISCORD_BOT_TOKEN = process.env['DISCORD_BOT_TOKEN']
-const DISCORD_GUILD_ID = process.env['DISCORD_GUILD_ID']
-const DISCORD_CHANNEL_ID = process.env['DISCORD_CHANNEL_ID']
+const DISCORD_BOT_TOKEN = process.env['DISCORD_BOT_TOKEN'] || undefined
+const DISCORD_GUILD_ID = process.env['DISCORD_GUILD_ID'] || undefined
+const DISCORD_CHANNEL_ID = process.env['DISCORD_CHANNEL_ID'] || undefined
 
 process.on('uncaughtException', (e) => console.error('[fatal]', e))
 process.on('unhandledRejection', (e) => console.error('[unhandled]', e))
