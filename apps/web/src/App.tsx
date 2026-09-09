@@ -24,6 +24,7 @@ import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
 import { NamePrompt } from './components/NamePrompt.js'
 import { SeatBadge } from './components/SeatBadge.js'
+import { SettingsPanel } from './components/SettingsPanel.js'
 import { Watching } from './components/Watching.js'
 import { canAct, viewFor } from './multiplayer/seat.js'
 import { setupLabel } from './setups.js'
@@ -44,6 +45,7 @@ export function App(): JSX.Element {
   const [logOpen, setLogOpen] = useState(false)
   /** Escape/cancel dismisses the name prompt for the rest of this session; it does not reappear. */
   const [nameDismissed, setNameDismissed] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   useEffect(() => {
     if (!logOpen) return
     const onKey = (e: KeyboardEvent): void => {
@@ -166,11 +168,20 @@ export function App(): JSX.Element {
             Log
           </button>
           {loadControl}
+          {seatView.kind === 'seat' ? (
+            <button className="ghost" onClick={() => setSettingsOpen(true)}>
+              Settings
+            </button>
+          ) : null}
           <button className="ghost" onClick={() => store.reset()}>
             New game
           </button>
         </div>
       </header>
+
+      {settingsOpen && seatView.kind === 'seat' ? (
+        <SettingsPanel faction={seatView.faction} link={store.sessionLink()} onClose={() => setSettingsOpen(false)} />
+      ) : null}
 
       <main className="layout">
         <section className="board-col">
