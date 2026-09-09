@@ -74,8 +74,72 @@ describe('SqliteStore extras', () => {
       isBot: false,
       discordId: '123456789012345678',
       discordName: 'brian',
+      pings: true,
     })
     store.close()
+  })
+
+  it('defaults every seat to pings on, flips and persists it', async () => {
+    const path = tempDbPath()
+    const a = new SqliteStore(path)
+    const game = await a.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const red = game.seats[0]!
+    expect(a.seats(game.gameId).every((s) => s.pings)).toBe(true)
+    const seats = a.setPings(game.gameId, red.seatToken, false)
+    expect(seats?.find((s) => s.seatToken === red.seatToken)?.pings).toBe(false)
+    expect(a.setPings(game.gameId, 'nope', false)).toBeUndefined()
+    a.close()
+
+    const b = new SqliteStore(path)
+    expect(b.seats(game.gameId).find((s) => s.seatToken === red.seatToken)?.pings).toBe(false)
+    b.close()
+  })
+
+  it('migrates an old-schema db (no pings column) on open, reading true', async () => {
+    const path = tempDbPath()
+    const raw = new DatabaseSync(path)
+    raw.exec(`
+      CREATE TABLE game (
+        id TEXT PRIMARY KEY,
+        options TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        webhook_url TEXT,
+        last_notified_length INTEGER NOT NULL DEFAULT -1,
+        last_notified_at INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE seat (
+        game_id TEXT NOT NULL,
+        ord INTEGER NOT NULL,
+        faction TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        name TEXT,
+        is_bot INTEGER NOT NULL DEFAULT 0,
+        discord_id TEXT,
+        discord_name TEXT,
+        PRIMARY KEY (game_id, ord)
+      );
+      CREATE TABLE journal (
+        game_id TEXT NOT NULL,
+        idx INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        PRIMARY KEY (game_id, idx)
+      );
+    `)
+    raw.prepare('INSERT INTO game (id, options, created_at) VALUES (?, ?, ?)').run('g1', JSON.stringify(THREE_PLAYER), 1)
+    raw.prepare('INSERT INTO seat (game_id, ord, faction, token) VALUES (?, ?, ?, ?)').run('g1', 0, 'red', 'tok1')
+    raw.close()
+
+    const store = new SqliteStore(path)
+    expect(store.seats('g1')[0]?.pings).toBe(true)
+    store.close()
+  })
+
+  it('counts journal length', async () => {
+    const store = new SqliteStore(':memory:')
+    const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    expect(store.journalLength(game.gameId)).toBe(0)
+    await store.append(game.gameId, game.seats[0]!.seatToken, 0, 'a')
+    expect(store.journalLength(game.gameId)).toBe(1)
   })
 
   it('sets a seat name idempotently and refuses a bad token', async () => {

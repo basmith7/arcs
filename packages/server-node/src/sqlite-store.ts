@@ -26,6 +26,7 @@ export interface SeatRow {
   readonly isBot: boolean
   readonly discordId?: string
   readonly discordName?: string
+  readonly pings: boolean
 }
 
 /**
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS seat (
   is_bot INTEGER NOT NULL DEFAULT 0,
   discord_id TEXT,
   discord_name TEXT,
+  pings INTEGER NOT NULL DEFAULT 1,
   PRIMARY KEY (game_id, ord)
 );
 CREATE TABLE IF NOT EXISTS journal (
@@ -81,6 +83,7 @@ interface SeatDb {
   is_bot: number
   discord_id: string | null
   discord_name: string | null
+  pings: number
 }
 
 // Vite 5 (which vitest runs on) does not know `node:sqlite` as a builtin and would try to resolve a
@@ -113,6 +116,7 @@ export class SqliteStore implements GameStore {
     const have = new Set(columns.map((c) => c.name))
     if (!have.has('discord_id')) this.db.exec('ALTER TABLE seat ADD COLUMN discord_id TEXT')
     if (!have.has('discord_name')) this.db.exec('ALTER TABLE seat ADD COLUMN discord_name TEXT')
+    if (!have.has('pings')) this.db.exec('ALTER TABLE seat ADD COLUMN pings INTEGER NOT NULL DEFAULT 1')
   }
 
   close(): void {
@@ -215,9 +219,20 @@ export class SqliteStore implements GameStore {
 
   seats(gameId: GameId): SeatRow[] {
     return this.db
-      .prepare('SELECT faction, token, name, is_bot, discord_id, discord_name FROM seat WHERE game_id = ? ORDER BY ord')
+      .prepare('SELECT faction, token, name, is_bot, discord_id, discord_name, pings FROM seat WHERE game_id = ? ORDER BY ord')
       .all(gameId)
       .map((r) => toSeat(r as unknown as SeatDb))
+  }
+
+  setPings(gameId: GameId, seatToken: SeatToken, pings: boolean): SeatRow[] | undefined {
+    const seat = this.seatByToken(gameId, seatToken)
+    if (seat === undefined) return undefined
+    this.db.prepare('UPDATE seat SET pings = ? WHERE token = ?').run(pings ? 1 : 0, seatToken)
+    return this.seats(gameId)
+  }
+
+  journalLength(gameId: GameId): number {
+    return this.length(gameId)
   }
 
   setName(gameId: GameId, seatToken: SeatToken, name: string, discord?: DiscordLink): SeatRow[] | undefined {
@@ -289,7 +304,7 @@ export class SqliteStore implements GameStore {
 
   private seatByToken(gameId: GameId, token: SeatToken): SeatRow | undefined {
     const row = this.db
-      .prepare('SELECT faction, token, name, is_bot, discord_id, discord_name FROM seat WHERE game_id = ? AND token = ?')
+      .prepare('SELECT faction, token, name, is_bot, discord_id, discord_name, pings FROM seat WHERE game_id = ? AND token = ?')
       .get(gameId, token) as unknown as SeatDb | undefined
     return row === undefined ? undefined : toSeat(row)
   }
@@ -303,5 +318,6 @@ function toSeat(r: SeatDb): SeatRow {
     isBot: r.is_bot === 1,
     ...(r.discord_id === null ? {} : { discordId: r.discord_id }),
     ...(r.discord_name === null ? {} : { discordName: r.discord_name }),
+    pings: r.pings !== 0,
   }
 }
