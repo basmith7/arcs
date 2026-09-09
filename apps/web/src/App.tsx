@@ -49,13 +49,6 @@ export function App(): JSX.Element {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [logOpen])
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && store.seatView().kind === 'seat') setNameDismissed(true)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
 
   function saveGame(): void {
     const json = store.toJSON()
@@ -130,7 +123,11 @@ export function App(): JSX.Element {
   return (
     <div className="app">
       {needsName && seatView.kind === 'seat' ? (
-        <NamePrompt faction={seatView.faction} onSubmit={(name) => store.claimName(name)} />
+        <NamePrompt
+          faction={seatView.faction}
+          onSubmit={(name) => store.claimName(name)}
+          onDismiss={() => setNameDismissed(true)}
+        />
       ) : null}
       <header className="topbar">
         <span className="brand">Arcs</span>

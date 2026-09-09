@@ -31,4 +31,50 @@ describe('Session seats', () => {
     session.leave()
     vi.unstubAllGlobals()
   })
+
+  it('a name claimed while a poll is in flight beats the stale poll response', async () => {
+    const seen: (readonly PublicSeat[])[] = []
+    const staleSeats: PublicSeat[] = [{ faction: 'red', isBot: false }]
+    const claimedSeats: PublicSeat[] = [{ faction: 'red', name: 'Brian', isBot: false }]
+    let resolveGet: (() => void) | null = null
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? 'GET'
+      if (method === 'POST') {
+        return new Response(JSON.stringify({ seats: claimedSeats }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      // The poll's GET does not resolve until the test says so, simulating it finishing after the claim.
+      return new Promise<Response>((resolve) => {
+        resolveGet = () =>
+          resolve(
+            new Response(
+              JSON.stringify({ options: {}, entries: [], length: 0, yourFaction: 'red', seats: staleSeats }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            ),
+          )
+      })
+    })
+    vi.stubGlobal('WebSocket', undefined)
+
+    const session = new Session('', { gameId: 'g', seatToken: 't' }, {
+      current: () => null,
+      adopt: () => {},
+      applyRemote: () => {},
+      seats: (s) => seen.push(s),
+    })
+
+    const pollPromise = session.poll()
+    const claimPromise = session.claimName('Brian')
+    expect(resolveGet).not.toBeNull()
+    resolveGet?.()
+    await pollPromise
+    await claimPromise
+
+    expect(seen.at(-1)).toEqual(claimedSeats)
+    session.leave()
+    vi.unstubAllGlobals()
+  })
 })

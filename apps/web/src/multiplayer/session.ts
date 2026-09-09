@@ -71,6 +71,8 @@ export class Session {
    * refuse to act for anyone else.
    */
   private seatFaction: string | null = null
+  /** The poll currently in flight, if any — awaited by `claimName` so a stale read cannot clobber a claim. */
+  private inflight: Promise<void> | null = null
   /** The live socket, or `null` while falling back to polling. */
   private socket: WebSocket | null = null
   private retry: ReturnType<typeof setTimeout> | null = null
@@ -238,6 +240,16 @@ export class Session {
   async poll(): Promise<void> {
     if (this.busy || this.gone) return
     this.busy = true
+    const task = this.runPoll()
+    this.inflight = task
+    try {
+      await task
+    } finally {
+      if (this.inflight === task) this.inflight = null
+    }
+  }
+
+  private async runPoll(): Promise<void> {
     try {
       const have = this.host.current()?.state.journal.length ?? 0
       const tail = await this.client.read(this.link.gameId, have)
@@ -303,9 +315,16 @@ export class Session {
     }
   }
 
-  /** Claim a display name for this client's seat. A spectator has no seat and does nothing. */
+  /**
+   * Claim a display name for this client's seat. A spectator has no seat and does nothing.
+   *
+   * Waits out any poll already in flight first: a poll that started before the claim but resolves
+   * after it would otherwise apply a seat list without the name just claimed, clobbering it and
+   * reopening the prompt the user just answered.
+   */
   async claimName(name: string): Promise<void> {
     if (this.link.seatToken === undefined) return
+    if (this.inflight !== null) await this.inflight.catch(() => {})
     this.host.seats(await this.client.claimName(this.link.gameId, this.link.seatToken, name))
   }
 }
