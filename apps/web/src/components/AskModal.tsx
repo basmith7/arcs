@@ -19,7 +19,7 @@ import { courtCard, parseResourceToken } from '@arcs/engine'
 import type { Action, Continue } from '@arcs/engine'
 import { createPortal } from 'react-dom'
 
-import { asset } from '../assets.js'
+import { asset, smallArt } from '../assets.js'
 import { useModalDrag } from '../modal-drag.js'
 import { store } from '../store.js'
 import { ESCAPES, owns } from '../surfaces.js'
@@ -100,7 +100,7 @@ export function AskModal({ cont }: { cont: Continue }): JSX.Element | null {
               const to = String(a['to'] ?? a['from'] ?? '')
               return (
                 <div key={i} className="am-card-slot">
-                  <img src={asset(`game-assets/court/${id}.webp`)} alt={courtCard(id).name} />
+                  <img src={smallArt(`game-assets/court/${id}.webp`)} alt={courtCard(id).name} />
                   <button
                     type="button"
                     className="am-act"

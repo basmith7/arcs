@@ -71,3 +71,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## 3. Background music — attribution unresolved
+
+`assets/audio/halo.mp3` (4:22, re-encoded to 96 kbps for the web build) is the game's background
+music. It was supplied by the repository owner; **its composer and licence are not recorded here**,
+and it is **not** covered by this repository's MIT licence, which applies to the source code only.
+
+Whoever adds the track's provenance should replace this paragraph with the composer, the title as
+published, and the terms it is used under. Until then it sits on the same take-down-on-request
+footing as the artwork above.

@@ -18,11 +18,23 @@ import { createPortal } from 'react-dom'
 
 import { store } from '../store.js'
 import { colorOf } from '../theme.js'
-import { asset } from '../assets.js'
+import { asset, smallArt } from '../assets.js'
 
 export type DraftKind = 'leader' | 'lore'
 
+/** The draft grid, the portrait crop, the end screens — every leader or lore card seen small. */
 export function cardArt(id: string, kind: DraftKind): string {
+  return smallArt(`game-assets/${kind}/${id}.webp`)
+}
+
+/**
+ * The original art, for the two places a card is shown big: the reader below scales a card to
+ * 900px tall, and the end screen's hero portrait is 340px of a crop taken from the full width.
+ * Half-size art would be visibly soft at either on a 2x display, and both draw a handful of
+ * images rather than a boardful — so the decode cost that `smallArt` exists to avoid is not
+ * being paid here in any quantity that matters.
+ */
+function cardArtFull(id: string, kind: DraftKind): string {
   return asset(`game-assets/${kind}/${id}.webp`)
 }
 
@@ -52,7 +64,7 @@ export function LeaderArt({
       style={style}
       title={cardName(id, 'leader')}
     >
-      <img src={cardArt(id, 'leader')} alt={cardName(id, 'leader')} />
+      <img src={cardArtFull(id, 'leader')} alt={cardName(id, 'leader')} />
     </span>
   )
 }
@@ -132,7 +144,7 @@ export function LeaderCardReader({
   return createPortal(
     <div className="draft-reader" onClick={onClose} role="presentation">
       <div className="draft-reader-inner" onClick={(e) => e.stopPropagation()}>
-        <img className={`draft-reader-art ${kind}`} src={cardArt(id, kind)} alt={cardName(id, kind)} />
+        <img className={`draft-reader-art ${kind}`} src={cardArtFull(id, kind)} alt={cardName(id, kind)} />
         <div className="draft-reader-side">
           <div className="cm-name">{cardName(id, kind)}</div>
           <div className="cm-kind">{kind === 'leader' ? 'Leader' : 'Lore card'}</div>

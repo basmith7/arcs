@@ -31,7 +31,7 @@ import type { CreatedGame } from '../multiplayer/client.js'
 import { MULTIPLAYER_URL, multiplayerEnabled } from '../multiplayer/config.js'
 import { hashFor } from '../multiplayer/link.js'
 import { colorOf } from '../theme.js'
-import { asset } from '../assets.js'
+import { asset, smallArt } from '../assets.js'
 
 /**
  * The levels the menu offers, in play order — every rung the engine has, since the ladder was cut
@@ -52,7 +52,7 @@ const ALL_FACTIONS: FactionId[] = ['red', 'yellow', 'blue', 'white']
  * setup on each side** (a 2-player setup backs onto a 4-player one), so the player count varies on
  * the fronts and no per-count back exists to use.
  */
-const CARD_BACK = asset('game-assets/setup/setup-back.webp')
+const CARD_BACK = smallArt('game-assets/setup/setup-back.webp')
 /** `apps/web/public/game-assets` is a symlink to `assets/images`, so this is served as-is. */
 const BANNER = asset('game-assets/arcsheader.jpg')
 

@@ -38,7 +38,7 @@ import type { Action, Continue, FactionId, GameState, StandardAction, Suit } fro
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import { asset } from '../assets.js'
+import { smallArt } from '../assets.js'
 import { store } from '../store.js'
 import { useModalDrag } from '../modal-drag.js'
 import { ESCAPES, owns } from '../surfaces.js'
@@ -89,7 +89,7 @@ interface Entry {
 function sourceArt(row: Row): string {
   if (row.card !== undefined) return cardArt(row.card.id, row.card.kind)
   // A card-less source row is a court card named on the rail; its key is the card id.
-  return asset(`game-assets/court/${row.key}.webp`)
+  return smallArt(`game-assets/court/${row.key}.webp`)
 }
 
 function sourceName(row: Row): string {

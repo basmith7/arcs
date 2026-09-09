@@ -14,7 +14,7 @@ import { liveFlash, playedCardFlash } from '../bot-events.js'
 import { store, useBotUi } from '../store.js'
 import { colorOf } from '../theme.js'
 import { CardFace } from './CardFace.js'
-import { asset } from '../assets.js'
+import { smallArt } from '../assets.js'
 
 export function PlayedCards({ state }: { state: GameState }): JSX.Element {
   const lead = state.roundPlays.find((p) => p.kind === 'lead')
@@ -71,7 +71,7 @@ function Slot({
                 {p.kind === 'copy' ? (
                   <img
                     className="cardface"
-                    src={asset('game-assets/action/card-back.webp')}
+                    src={smallArt('game-assets/action/card-back.webp')}
                     alt="face down"
                   />
                 ) : (

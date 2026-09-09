@@ -35,7 +35,7 @@ import { useState } from 'react'
 import { store } from '../store.js'
 import { colorOf } from '../theme.js'
 import { CardZoom } from './CardZoom.js'
-import { asset } from '../assets.js'
+import { asset, smallArt } from '../assets.js'
 
 const iconFor = (r: Resource, outraged: boolean): string =>
   asset(`game-assets/icon/${r.toLowerCase()}${outraged ? '-outrage' : ''}.webp`)
@@ -195,7 +195,7 @@ export function PreludeScreen({
                       onClick={() => store.apply(a)}
                       title={String(a['label'])}
                     >
-                      <img src={asset(`game-assets/court/${id}.webp`)} alt={courtCard(id).name} />
+                      <img src={smallArt(`game-assets/court/${id}.webp`)} alt={courtCard(id).name} />
                       <span>
                         <span className="pr-card-name">{courtCard(id).name}</span>
                         <br />

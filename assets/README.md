@@ -92,6 +92,18 @@ python3 scripts/fetch_assets.py --group figure  # one group
 Resumable and skips existing files. Rate-limited on purpose — hrf.im is a hobbyist's server, so
 concurrency is capped at 4 with a per-request delay. Don't raise them.
 
+### Downscaled copies
+
+```bash
+python3 scripts/build_small_art.py              # writes a `.sm.webp` beside each card image
+```
+
+**Run this after fetching.** The card art is 744x1039 and the app draws it at 118x165 in the hand,
+98x139 in the court rail; loading the originals for those meant one screen decoded ~10 megapixels
+of bitmap to paint a few hundred thousand pixels of card. Half size covers every such use with a
+2x display in mind, and `smallArt()` in `apps/web/src/assets.ts` is what the app calls for them.
+Only `CardZoom` and the draft's card reader — the two places a card is *read* — load the original.
+
 ## Regenerating
 
 ```bash
@@ -99,3 +111,20 @@ python3 scripts/extract_manifest.py <path-to>/haunt-roll-fail/arcs/meta.scala as
 ```
 
 The extractor reads Scala declarations and performs no network access.
+
+## Audio
+
+`audio/` is not part of the manifest — it holds one file, `halo.mp3`, the background music the web
+app loops. It is served through the `apps/web/public/audio` symlink, the same arrangement
+`public/game-assets` uses for `images/`.
+
+The source was 4:22 at ~237 kbps (7.7 MB). It is committed re-encoded, because the browser
+downloads it in full and nothing about quiet loop music under a board game needs a transparent
+bitrate:
+
+```sh
+ffmpeg -i source.mp3 -map 0:a:0 -map_metadata -1 -codec:a libmp3lame -b:a 96k -joint_stereo 1 \
+  -ar 44100 assets/audio/halo.mp3
+```
+
+That is 3.0 MB. Rights in the track are **not** settled — see `THIRD-PARTY-NOTICES.md` section 3.

@@ -1,4 +1,4 @@
-import { asset } from './assets.js'
+import { smallArt } from './assets.js'
 /**
  * The setup cards, keyed by the engine's board id.
  *
@@ -18,24 +18,24 @@ export interface SetupCard {
 export const SETUP_CARDS: Record<string, SetupCard> = {
   Board2Frontiers: {
     label: 'Frontiers',
-    art: asset('game-assets/setup/setup-2p-01.webp'),
+    art: smallArt('game-assets/setup/setup-2p-01.webp'),
     note: 'For experienced players',
   },
-  Board2MixUp1: { label: 'Mix Up 1', art: asset('game-assets/setup/setup-2p-02.webp') },
-  Board2Homelands: { label: 'Homelands', art: asset('game-assets/setup/setup-2p-03.webp') },
-  Board2MixUp2: { label: 'Mix Up 2', art: asset('game-assets/setup/setup-2p-04.webp') },
-  Board3MixUp: { label: 'Mix Up', art: asset('game-assets/setup/setup-3p-01.webp') },
-  Board3Frontiers: { label: 'Frontiers', art: asset('game-assets/setup/setup-3p-02.webp') },
-  Board3Homelands: { label: 'Homelands', art: asset('game-assets/setup/setup-3p-03.webp') },
+  Board2MixUp1: { label: 'Mix Up 1', art: smallArt('game-assets/setup/setup-2p-02.webp') },
+  Board2Homelands: { label: 'Homelands', art: smallArt('game-assets/setup/setup-2p-03.webp') },
+  Board2MixUp2: { label: 'Mix Up 2', art: smallArt('game-assets/setup/setup-2p-04.webp') },
+  Board3MixUp: { label: 'Mix Up', art: smallArt('game-assets/setup/setup-3p-01.webp') },
+  Board3Frontiers: { label: 'Frontiers', art: smallArt('game-assets/setup/setup-3p-02.webp') },
+  Board3Homelands: { label: 'Homelands', art: smallArt('game-assets/setup/setup-3p-03.webp') },
   Board3CoreConflict: {
     label: 'Core Conflict',
-    art: asset('game-assets/setup/setup-3p-04.webp'),
+    art: smallArt('game-assets/setup/setup-3p-04.webp'),
     note: 'For experienced players',
   },
-  Board4MixUp1: { label: 'Mix Up 1', art: asset('game-assets/setup/setup-4p-01.webp') },
-  Board4MixUp2: { label: 'Mix Up 2', art: asset('game-assets/setup/setup-4p-02.webp') },
-  Board4Frontiers: { label: 'Frontiers', art: asset('game-assets/setup/setup-4p-03.webp') },
-  Board4MixUp3: { label: 'Mix Up 3', art: asset('game-assets/setup/setup-4p-04.webp') },
+  Board4MixUp1: { label: 'Mix Up 1', art: smallArt('game-assets/setup/setup-4p-01.webp') },
+  Board4MixUp2: { label: 'Mix Up 2', art: smallArt('game-assets/setup/setup-4p-02.webp') },
+  Board4Frontiers: { label: 'Frontiers', art: smallArt('game-assets/setup/setup-4p-03.webp') },
+  Board4MixUp3: { label: 'Mix Up 3', art: smallArt('game-assets/setup/setup-4p-04.webp') },
 }
 
 /**
