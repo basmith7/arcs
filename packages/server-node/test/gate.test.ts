@@ -1,9 +1,26 @@
 import { describe, expect, it } from 'vitest'
 
 import { replayGame } from '@arcs/engine'
+import type { RuleResult } from '@arcs/engine'
 import { EngineGate, askedFactions } from '../src/gate.js'
 import { SqliteStore } from '../src/sqlite-store.js'
 import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING, THREE_PLAYER, playOpening, tempDbPath } from './fixtures.js'
+
+/**
+ * A `RuleResult` carries `Map`-backed trackers (`resources`, `cards`, `courtCards`, `figures`)
+ * whose location rules are closures allocated fresh by `tracker.ts` on every call — even two
+ * independent `replayGame` calls on the same journal never produce reference-equal closures, so a
+ * raw `toEqual` (or a `JSON.parse(JSON.stringify(...))` snapshot, which silently serialises every
+ * `Map` to `{}` and would compare nothing) can't be used here. Compare the fields that actually
+ * describe game progress instead.
+ */
+function sameProgress(a: RuleResult | undefined, b: RuleResult): void {
+  expect(a?.state.journal).toEqual(b.state.journal)
+  expect(a?.state.chapter).toEqual(b.state.chapter)
+  expect(a?.state.isOver).toEqual(b.state.isOver)
+  expect(a?.state.winners).toEqual(b.state.winners)
+  expect(a?.continue.kind).toEqual(b.continue.kind)
+}
 
 async function table(options = THREE_PLAYER, path = ':memory:', pace = 0) {
   const store = new SqliteStore(path)
@@ -59,7 +76,7 @@ describe('EngineGate bots', () => {
     // Bot entries carry the bot's faction, so a replay on any client agrees.
     expect(journal.slice(RED_OPENING.length).every((e) => /faction="(yellow|blue)"/.test(e))).toBe(true)
     // What the gate holds equals a fresh replay of what the store holds.
-    expect(gate.resultOf(game.gameId)?.state).toEqual(replayGame(ONE_HUMAN, journal).state)
+    sameProgress(gate.resultOf(game.gameId), replayGame(ONE_HUMAN, journal))
     // onSettled fired once per human append; only the last one had bots to run.
     expect(settled).toHaveLength(RED_OPENING.length)
     expect(settled.at(-1)).toEqual({ before: RED_OPENING.length - 1, after: journal.length })
@@ -99,6 +116,6 @@ describe('EngineGate bots', () => {
     const r = await gate.append(game.gameId, seat('red'), RED_OPENING.length, RED_FIRST_LEAD)
     expect(r.ok).toBe(false)
     await gate.settled(game.gameId)
-    expect(gate.resultOf(game.gameId)?.state).toEqual(replayGame(ONE_HUMAN, store.journal(game.gameId)).state)
+    sameProgress(gate.resultOf(game.gameId), replayGame(ONE_HUMAN, store.journal(game.gameId)))
   })
 })
