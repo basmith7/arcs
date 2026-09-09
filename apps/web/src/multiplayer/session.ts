@@ -322,9 +322,9 @@ export class Session {
    * after it would otherwise apply a seat list without the name just claimed, clobbering it and
    * reopening the prompt the user just answered.
    */
-  async claimName(name: string): Promise<void> {
+  async claimName(name: string, discordId?: string): Promise<void> {
     if (this.link.seatToken === undefined) return
     if (this.inflight !== null) await this.inflight.catch(() => {})
-    this.host.seats(await this.client.claimName(this.link.gameId, this.link.seatToken, name))
+    this.host.seats(await this.client.claimName(this.link.gameId, this.link.seatToken, name, discordId))
   }
 }

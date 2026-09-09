@@ -28,9 +28,11 @@ interface Props {
   current: FactionId | undefined
   /** The display name claimed for a faction's seat, if any. Falls back to the faction label. */
   nameOf?: (faction: FactionId) => string | undefined
+  /** This client's own linked Discord username, appended next to "You are", when present. */
+  myDiscordName?: string
 }
 
-export function SeatBadge({ view, current, nameOf }: Props): JSX.Element | null {
+export function SeatBadge({ view, current, nameOf, myDiscordName }: Props): JSX.Element | null {
   // Hotseat has no "you" — every seat is yours, and a badge saying so would be noise.
   if (view.kind === 'hotseat') return null
 
@@ -54,6 +56,7 @@ export function SeatBadge({ view, current, nameOf }: Props): JSX.Element | null 
       <span className="seat-label">You are</span>
       <span className="seat-who" style={{ borderColor: tint, color: tint }}>
         {nameOf?.(seat) ?? seat}
+        {myDiscordName === undefined ? null : <span className="seat-discord"> @{myDiscordName}</span>}
       </span>
       {/*
         * The waiting half is the part that stops a player sitting there wondering whether the game

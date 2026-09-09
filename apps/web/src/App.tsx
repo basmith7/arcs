@@ -115,6 +115,7 @@ export function App(): JSX.Element {
         : state.current
   const seatView = store.seatView()
   const myName = store.mySeatName()
+  const myDiscordName = store.mySeatDiscordName()
   const needsName = seatView.kind === 'seat' && myName === undefined && !nameDismissed
   const cont = viewFor(engineCont, seatView)
   /*
@@ -128,7 +129,7 @@ export function App(): JSX.Element {
       {needsName && seatView.kind === 'seat' ? (
         <NamePrompt
           faction={seatView.faction}
-          onSubmit={(name) => store.claimName(name)}
+          onSubmit={(name, discordId) => store.claimName(name, discordId)}
           onDismiss={() => setNameDismissed(true)}
         />
       ) : null}
@@ -148,7 +149,12 @@ export function App(): JSX.Element {
             </span>
           </span>
         ) : null}
-        <SeatBadge view={seatView} current={current} nameOf={(f) => store.seatName(f)} />
+        <SeatBadge
+          view={seatView}
+          current={current}
+          nameOf={(f) => store.seatName(f)}
+          {...(myDiscordName === undefined ? {} : { myDiscordName })}
+        />
         <div className="toolbar">
           <button className="ghost" onClick={() => store.undo()} disabled={!store.canUndo()}>
             Undo

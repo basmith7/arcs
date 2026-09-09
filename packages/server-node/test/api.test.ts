@@ -140,6 +140,42 @@ describe('route', () => {
     expect(tail.seats[0].name).toBe('Brian')
   })
 
+  it('normalises a discord mention to the bare id, stores it, and never returns the id', async () => {
+    const a = api()
+    const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }), a))!.json()) as Created
+    const red = created.seats[0]!
+    const ok = await route(
+      post(`/games/${created.gameId}/seat`, {
+        seatToken: red.seatToken,
+        name: 'Brian',
+        discordId: '<@!123456789012345678>',
+      }),
+      a,
+    )
+    expect(ok?.status).toBe(200)
+    const seatsBody = await ok!.json()
+    expect(seatsBody.seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false, discordLinked: true })
+    expect(JSON.stringify(seatsBody)).not.toContain('123456789012345678')
+    const stored = a.store.seats(created.gameId)[0]
+    expect(stored?.discordId).toBe('123456789012345678')
+
+    const garbage = await route(
+      post(`/games/${created.gameId}/seat`, { seatToken: red.seatToken, name: 'Brian', discordId: 'not-an-id' }),
+      a,
+    )
+    expect(garbage?.status).toBe(400)
+    expect((await garbage!.json()).error).toBe('bad-discord-id')
+
+    const cleared = await route(
+      post(`/games/${created.gameId}/seat`, { seatToken: red.seatToken, name: 'Brian', discordId: '' }),
+      a,
+    )
+    expect(cleared?.status).toBe(200)
+    const clearedBody = await cleared!.json()
+    expect(clearedBody.seats[0]).toEqual({ faction: 'red', name: 'Brian', isBot: false })
+    expect(a.store.seats(created.gameId)[0]?.discordId).toBeUndefined()
+  })
+
   it('tells a plain GET on /live to upgrade', async () => {
     const a = api()
     const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }), a))!.json()) as Created

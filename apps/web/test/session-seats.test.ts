@@ -79,6 +79,39 @@ describe('Session seats', () => {
     vi.unstubAllGlobals()
   })
 
+  it('sends discordId in the claim body and threads discordLinked back into seats', async () => {
+    const claimedSeats: PublicSeat[] = [{ faction: 'red', name: 'Brian', isBot: false, discordLinked: true }]
+    let capturedBody: unknown
+    vi.stubGlobal('fetch', async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? 'GET'
+      if (method === 'POST') {
+        capturedBody = JSON.parse(String(init?.body))
+        return new Response(JSON.stringify({ seats: claimedSeats }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      return new Response(
+        JSON.stringify({ options: {}, entries: [], length: 0, yourFaction: 'red', seats: [] }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    })
+    vi.stubGlobal('WebSocket', undefined)
+
+    const seen: (readonly PublicSeat[])[] = []
+    const session = new Session('', { gameId: 'g', seatToken: 't' }, {
+      current: () => null,
+      adopt: () => {},
+      applyRemote: () => {},
+      seats: (s) => seen.push(s),
+    })
+    await session.claimName('Brian', '<@123456789012345678>')
+    expect((capturedBody as { discordId?: string }).discordId).toBe('<@123456789012345678>')
+    expect(seen.at(-1)).toEqual(claimedSeats)
+    session.leave()
+    vi.unstubAllGlobals()
+  })
+
   it('bumps the store seats snapshot on a seats push, so useSyncExternalStore sees a claim', async () => {
     const tail = {
       options: { board: 'Board3MixUp', factions: ['red', 'yellow', 'blue'], seed: 7 },

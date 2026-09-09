@@ -12,12 +12,12 @@ async function setup(includeWebhook = true) {
   const store = new SqliteStore(':memory:')
   const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions, includeWebhook ? { webhookUrl: HOOK } : {})
   store.setName(game.gameId, game.seats[1]!.seatToken, 'Sam')
-  const sent: { url: string; content: string }[] = []
+  const sent: { url: string; content: string; mentions: readonly string[] }[] = []
   let clock = 1_000_000
   const notifier = new Notifier(store, {
     publicOrigin: 'https://arcs.test',
-    post: async (url, content) => {
-      sent.push({ url, content })
+    post: async (url, message) => {
+      sent.push({ url, content: message.content, mentions: message.mentions })
     },
     now: () => clock,
     windowMs: 60_000,
@@ -33,15 +33,16 @@ describe('postToDiscord', () => {
     global.fetch = originalFetch
   })
 
-  it('suppresses @everyone/@here and role/user mentions in the webhook body', async () => {
+  it('suppresses @everyone/@here and role mentions, only allowing the listed users', async () => {
     let capturedBody: string | undefined
     global.fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
       capturedBody = init?.body as string
       return new Response(null, { status: 200 })
     }) as unknown as typeof fetch
-    await postToDiscord('https://discord.test/hook', 'hello @everyone')
-    const parsed = JSON.parse(capturedBody!) as { allowed_mentions?: { parse: string[] } }
+    await postToDiscord('https://discord.test/hook', { content: 'hello @everyone', mentions: ['123'] })
+    const parsed = JSON.parse(capturedBody!) as { allowed_mentions?: { parse: string[]; users: string[] } }
     expect(parsed.allowed_mentions?.parse).toEqual([])
+    expect(parsed.allowed_mentions?.users).toEqual(['123'])
   })
 })
 
@@ -115,6 +116,87 @@ describe('Notifier', () => {
     expect(sent).toHaveLength(3)
     expect(sent[2]!.content).toContain('Sam')
     expect(sent[2]!.content).toMatch(/wins/i)
+  })
+
+  it('tags a linked player with <@id> and lists their id in mentions; untagged pings mention nothing', async () => {
+    const store = new SqliteStore(':memory:')
+    const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions, { webhookUrl: HOOK })
+    store.setName(game.gameId, game.seats[1]!.seatToken, 'Sam', { id: '111222333444555666' })
+    const sent: { content: string; mentions: readonly string[] }[] = []
+    const notifier = new Notifier(store, {
+      publicOrigin: 'https://arcs.test',
+      post: async (_url, message) => {
+        sent.push({ content: message.content, mentions: message.mentions })
+      },
+      windowMs: 60_000,
+    })
+    const start = startGame(THREE_PLAYER)
+    const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    expect(sent[0]!.content).toContain('<@111222333444555666>')
+    expect(sent[0]!.content).toContain('**Sam**')
+    expect(sent[0]!.mentions).toEqual(['111222333444555666'])
+
+    // red (untagged, no discord link) mentions nothing on their own ping.
+    const store2 = new SqliteStore(':memory:')
+    const game2 = await store2.create(THREE_PLAYER, THREE_PLAYER.factions, { webhookUrl: HOOK })
+    const sent2: { content: string; mentions: readonly string[] }[] = []
+    const notifier2 = new Notifier(store2, {
+      publicOrigin: 'https://arcs.test',
+      post: async (_url, message) => {
+        sent2.push({ content: message.content, mentions: message.mentions })
+      },
+    })
+    await notifier2.onSettled({ gameId: game2.gameId, before: afterRed, after: start })
+    expect(sent2[0]!.mentions).toEqual([])
+  })
+
+  it('tags a linked winner in the game-over message', async () => {
+    const store = new SqliteStore(':memory:')
+    const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions, { webhookUrl: HOOK })
+    store.setName(game.gameId, game.seats[1]!.seatToken, 'Sam', { id: '111222333444555666' })
+    const sent: { content: string; mentions: readonly string[] }[] = []
+    const notifier = new Notifier(store, {
+      publicOrigin: 'https://arcs.test',
+      post: async (_url, message) => {
+        sent.push({ content: message.content, mentions: message.mentions })
+      },
+    })
+    const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
+    const over: RuleResult = {
+      state: { ...afterRed.state, isOver: true, winners: ['yellow'], journal: [...RED_OPENING, 'x'] },
+      continue: { kind: 'gameOver', winners: ['yellow'], reason: 'test' },
+    }
+    await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: over })
+    expect(sent[0]!.content).toContain('<@111222333444555666>')
+    expect(sent[0]!.mentions).toEqual(['111222333444555666'])
+  })
+
+  it('posts to a fallback channel when there is no webhook, and nothing when there is neither', async () => {
+    const store = new SqliteStore(':memory:')
+    const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const posted: { channelId: string; content: string; mentions: readonly string[] }[] = []
+    const fakeBot = {
+      postMessage: async (channelId: string, message: { content: string; mentions: readonly string[] }) => {
+        posted.push({ channelId, content: message.content, mentions: message.mentions })
+      },
+    } as unknown as import('../src/discord.js').DiscordBot
+    const notifier = new Notifier(store, {
+      publicOrigin: 'https://arcs.test',
+      fallbackChannel: { channelId: 'chan-1', bot: fakeBot },
+    })
+    const start = startGame(THREE_PLAYER)
+    const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    expect(posted).toHaveLength(1)
+    expect(posted[0]!.channelId).toBe('chan-1')
+
+    const store2 = new SqliteStore(':memory:')
+    const game2 = await store2.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const notifier2 = new Notifier(store2, { publicOrigin: 'https://arcs.test' })
+    const sentNone: unknown[] = []
+    await notifier2.onSettled({ gameId: game2.gameId, before: start, after: afterRed })
+    expect(sentNone).toHaveLength(0)
   })
 
   it('swallows a failing webhook', async () => {

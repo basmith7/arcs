@@ -373,8 +373,22 @@ class GameStore {
     return this.seatName(view.faction)
   }
 
-  async claimName(name: string): Promise<void> {
-    await this.session?.claimName(name)
+  async claimName(name: string, discordId?: string): Promise<void> {
+    await this.session?.claimName(name, discordId)
+  }
+
+  /** `undefined` when this client holds no seat (hotseat or spectator); otherwise whether it's linked. */
+  mySeatDiscordLinked(): boolean | undefined {
+    const view = this.seatView()
+    if (view.kind !== 'seat') return undefined
+    return this.seats.find((s) => s.faction === view.faction)?.discordLinked
+  }
+
+  /** The linked Discord username for this client's own seat, if any. */
+  mySeatDiscordName(): string | undefined {
+    const view = this.seatView()
+    if (view.kind !== 'seat') return undefined
+    return this.seats.find((s) => s.faction === view.faction)?.discordName
   }
 
   /** The joined game's link, or `null` when playing locally. */

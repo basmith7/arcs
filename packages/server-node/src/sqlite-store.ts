@@ -24,7 +24,16 @@ export interface SeatRow {
   readonly seatToken: string
   readonly name?: string
   readonly isBot: boolean
+  readonly discordId?: string
+  readonly discordName?: string
 }
+
+/**
+ * What to do with a seat's Discord link on a name claim: `undefined` leaves it untouched, `null`
+ * clears both the id and the username, and an object sets the id (and the username when given,
+ * else clears the stored username since it can no longer be trusted to match).
+ */
+export type DiscordLink = { readonly id: string; readonly name?: string } | null | undefined
 
 export interface CreateExtra {
   readonly bots?: readonly string[]
@@ -53,6 +62,8 @@ CREATE TABLE IF NOT EXISTS seat (
   token TEXT NOT NULL UNIQUE,
   name TEXT,
   is_bot INTEGER NOT NULL DEFAULT 0,
+  discord_id TEXT,
+  discord_name TEXT,
   PRIMARY KEY (game_id, ord)
 );
 CREATE TABLE IF NOT EXISTS journal (
@@ -68,6 +79,8 @@ interface SeatDb {
   token: string
   name: string | null
   is_bot: number
+  discord_id: string | null
+  discord_name: string | null
 }
 
 // Vite 5 (which vitest runs on) does not know `node:sqlite` as a builtin and would try to resolve a
@@ -86,6 +99,20 @@ export class SqliteStore implements GameStore {
     if (path !== ':memory:') this.db.exec('PRAGMA journal_mode = WAL')
     this.db.exec('PRAGMA foreign_keys = ON')
     this.db.exec(SCHEMA)
+    this.migrateSeatColumns()
+  }
+
+  /**
+   * Production databases predate `discord_id`/`discord_name` on `seat`. `CREATE TABLE IF NOT
+   * EXISTS` never adds columns to an existing table, so an old file needs an explicit `ALTER TABLE`
+   * on open, guarded by `PRAGMA table_info` so a fresh database (which already has the columns from
+   * `SCHEMA`) is left alone.
+   */
+  private migrateSeatColumns(): void {
+    const columns = this.db.prepare('PRAGMA table_info(seat)').all() as { name: string }[]
+    const have = new Set(columns.map((c) => c.name))
+    if (!have.has('discord_id')) this.db.exec('ALTER TABLE seat ADD COLUMN discord_id TEXT')
+    if (!have.has('discord_name')) this.db.exec('ALTER TABLE seat ADD COLUMN discord_name TEXT')
   }
 
   close(): void {
@@ -188,15 +215,25 @@ export class SqliteStore implements GameStore {
 
   seats(gameId: GameId): SeatRow[] {
     return this.db
-      .prepare('SELECT faction, token, name, is_bot FROM seat WHERE game_id = ? ORDER BY ord')
+      .prepare('SELECT faction, token, name, is_bot, discord_id, discord_name FROM seat WHERE game_id = ? ORDER BY ord')
       .all(gameId)
       .map((r) => toSeat(r as unknown as SeatDb))
   }
 
-  setName(gameId: GameId, seatToken: SeatToken, name: string): SeatRow[] | undefined {
+  setName(gameId: GameId, seatToken: SeatToken, name: string, discord?: DiscordLink): SeatRow[] | undefined {
     const seat = this.seatByToken(gameId, seatToken)
     if (seat === undefined) return undefined
-    this.db.prepare('UPDATE seat SET name = ? WHERE token = ?').run(name, seatToken)
+    if (discord === undefined) {
+      this.db.prepare('UPDATE seat SET name = ? WHERE token = ?').run(name, seatToken)
+    } else if (discord === null) {
+      this.db
+        .prepare('UPDATE seat SET name = ?, discord_id = NULL, discord_name = NULL WHERE token = ?')
+        .run(name, seatToken)
+    } else {
+      this.db
+        .prepare('UPDATE seat SET name = ?, discord_id = ?, discord_name = ? WHERE token = ?')
+        .run(name, discord.id, discord.name ?? null, seatToken)
+    }
     return this.seats(gameId)
   }
 
@@ -252,7 +289,7 @@ export class SqliteStore implements GameStore {
 
   private seatByToken(gameId: GameId, token: SeatToken): SeatRow | undefined {
     const row = this.db
-      .prepare('SELECT faction, token, name, is_bot FROM seat WHERE game_id = ? AND token = ?')
+      .prepare('SELECT faction, token, name, is_bot, discord_id, discord_name FROM seat WHERE game_id = ? AND token = ?')
       .get(gameId, token) as unknown as SeatDb | undefined
     return row === undefined ? undefined : toSeat(row)
   }
@@ -264,5 +301,7 @@ function toSeat(r: SeatDb): SeatRow {
     seatToken: r.token,
     ...(r.name === null ? {} : { name: r.name }),
     isBot: r.is_bot === 1,
+    ...(r.discord_id === null ? {} : { discordId: r.discord_id }),
+    ...(r.discord_name === null ? {} : { discordName: r.discord_name }),
   }
 }

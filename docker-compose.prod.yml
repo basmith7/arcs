@@ -11,6 +11,10 @@ services:
       DATABASE_PATH: "/data/arcs.db"
       PUBLIC_ORIGIN: "https://arcs.basmith.net"
       BOT_PACE_MS: "1000"
+      # From a root-only .env next to this compose file on Tower — never committed.
+      DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN:-}"
+      DISCORD_GUILD_ID: "${DISCORD_GUILD_ID:-}"
+      DISCORD_CHANNEL_ID: "${DISCORD_CHANNEL_ID:-}"
     volumes:
       - /mnt/cache/appdata/arcs:/data
     restart: unless-stopped

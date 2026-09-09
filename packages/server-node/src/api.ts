@@ -7,6 +7,7 @@
 import { startGame } from '@arcs/engine'
 import type { FactionId, NewGameOptions } from '@arcs/engine'
 
+import type { DiscordBot } from './discord.js'
 import type { EngineGate } from './gate.js'
 import type { SqliteStore } from './sqlite-store.js'
 
@@ -14,12 +15,28 @@ export interface Api {
   readonly store: SqliteStore
   readonly gate: EngineGate
   readonly onSeatsChanged?: (gameId: string) => void
+  /** When set, the server resolves claimed names to guild members instead of requiring a pasted id. */
+  readonly bot?: DiscordBot
 }
 
 export interface PublicSeat {
   readonly faction: string
   readonly name?: string
   readonly isBot: boolean
+  /** True when the seat has a linked Discord user. The id itself is never returned. */
+  readonly discordLinked?: boolean
+  /** The linked user's Discord username, for display — never the id. */
+  readonly discordName?: string
+}
+
+// Accepts a bare snowflake or a `<@id>`/`<@!id>` mention and normalises to the bare digits.
+// `undefined` means "not a recognisable Discord id at all".
+const DISCORD_ID = /^(?:<@!?(\d{17,20})>|(\d{17,20}))$/
+
+function normaliseDiscordId(raw: string): string | undefined {
+  const m = DISCORD_ID.exec(raw.trim())
+  if (m === null) return undefined
+  return m[1] ?? m[2]
 }
 
 export const NAME_MAX = 24
@@ -75,6 +92,8 @@ export function publicSeats(store: SqliteStore, gameId: string): PublicSeat[] {
     faction: s.faction,
     ...(s.name === undefined ? {} : { name: s.name }),
     isBot: s.isBot,
+    ...(s.discordId === undefined ? {} : { discordLinked: true }),
+    ...(s.discordName === undefined ? {} : { discordName: s.discordName }),
   }))
 }
 
@@ -105,7 +124,7 @@ export async function route(request: Request, api: Api): Promise<Response | unde
 async function routeInner(request: Request, api: Api): Promise<Response | undefined> {
   const url = new URL(request.url)
   const path = url.pathname.replace(/\/+$/, '') || '/'
-  const { store, gate } = api
+  const { store, gate, bot } = api
 
   if (path === '/healthz') return new Response('ok', { status: 200, headers: CORS })
   if (path !== '/games' && !path.startsWith('/games/')) return undefined
@@ -198,13 +217,43 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   // --- POST /games/:id/seat -----------------------------------------------
   if (seat !== null && request.method === 'POST') {
     const gameId = decodeURIComponent(seat[1]!)
-    const b = await body<{ seatToken?: unknown; name?: unknown }>(request)
+    const b = await body<{ seatToken?: unknown; name?: unknown; discordId?: unknown }>(request)
     if (b === undefined) return bad(400, 'body must be JSON')
     if (typeof b.seatToken !== 'string') return bad(400, 'seatToken is required')
     const name = typeof b.name === 'string' ? b.name.trim() : ''
     if (name.length === 0 || name.length > NAME_MAX) return bad(400, `name must be 1-${NAME_MAX} characters`)
     if (store.options(gameId) === undefined) return bad(404, 'no such game')
-    const seats = store.setName(gameId, b.seatToken, name)
+
+    if (
+      b.discordId !== undefined &&
+      b.discordId !== null &&
+      typeof b.discordId !== 'string'
+    ) {
+      return bad(400, 'bad-discord-id')
+    }
+
+    // `discord` follows `SqliteStore.setName`'s three-way contract: undefined leaves the link
+    // alone, null clears it, an object sets it.
+    let discord: { id: string; name?: string } | null | undefined
+    const rawId = typeof b.discordId === 'string' ? b.discordId.trim() : b.discordId
+    if (rawId === null || rawId === '') {
+      discord = null
+    } else if (typeof rawId === 'string') {
+      const id = normaliseDiscordId(rawId)
+      if (id === undefined) return bad(400, 'bad-discord-id')
+      const member = bot === undefined ? undefined : await bot.member(id)
+      discord = { id, ...(member === undefined ? {} : { name: member.username }) }
+    } else if (bot !== undefined) {
+      // No explicit id given: try to resolve the claimed name to a guild member. A miss (zero or
+      // several matches) leaves whatever was already linked untouched — a rename must not silently
+      // unlink an existing player.
+      const member = await bot.resolveMember(name)
+      discord = member === undefined ? undefined : { id: member.id, name: member.username }
+    } else {
+      discord = undefined
+    }
+
+    const seats = store.setName(gameId, b.seatToken, name, discord)
     if (seats === undefined) return bad(403, 'seat token does not belong to this game')
     api.onSeatsChanged?.(gameId)
     return json({ seats: publicSeats(store, gameId) })

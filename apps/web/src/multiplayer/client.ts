@@ -20,6 +20,10 @@ export interface PublicSeat {
   readonly faction: string
   readonly name?: string
   readonly isBot: boolean
+  /** True when the seat has a linked Discord user. The id itself is never sent to the client. */
+  readonly discordLinked?: boolean
+  /** The linked user's Discord username, for display. */
+  readonly discordName?: string
 }
 
 export interface GameTail {
@@ -116,12 +120,22 @@ export class MultiplayerClient {
     })
   }
 
-  /** Claim a seat by name, so the game and other players can show who you are. */
-  async claimName(gameId: string, seatToken: string, name: string): Promise<readonly PublicSeat[]> {
+  /**
+   * Claim a seat by name, so the game and other players can show who you are.
+   *
+   * `discordId` is sent only when the caller passed one — an omitted argument leaves the seat's
+   * existing link (or the server's own name-matching) untouched, while an explicit `""` clears it.
+   */
+  async claimName(
+    gameId: string,
+    seatToken: string,
+    name: string,
+    discordId?: string,
+  ): Promise<readonly PublicSeat[]> {
     const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/seat`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ seatToken, name }),
+      body: JSON.stringify({ seatToken, name, ...(discordId === undefined ? {} : { discordId }) }),
     })
     return body.seats
   }
