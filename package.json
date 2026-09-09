@@ -8,7 +8,7 @@
   ],
   "comment": "build:site sets VITE_MULTIPLAYER_URL to the empty string on purpose — empty means same origin, unset means multiplayer off. See apps/web/src/multiplayer/config.ts.",
   "scripts": {
-    "test": "vitest run",
+    "test": "NODE_OPTIONS=--no-warnings=ExperimentalWarning vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --build --force && tsc -p apps/web --noEmit && tsc -p packages/server-node --noEmit",
     "typecheck:node": "tsc -p packages/server-node --noEmit",
