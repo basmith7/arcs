@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 
+import { isValidDiscordId, isValidName } from '../seat-form.js'
+
 interface Props {
   faction: string
   onSubmit: (name: string, discordId?: string) => Promise<void>
@@ -9,8 +11,6 @@ interface Props {
   initialName?: string
 }
 
-const DISCORD_ID_RE = /^(<@!?\d{17,20}>|\d{17,20})$/
-
 /** Asked once, the first time a seat link is opened with no name on the server. */
 export function NamePrompt({ faction, onSubmit, onDismiss, initialName }: Props): JSX.Element {
   const [name, setName] = useState(initialName ?? '')
@@ -19,8 +19,8 @@ export function NamePrompt({ faction, onSubmit, onDismiss, initialName }: Props)
   const [error, setError] = useState<string | null>(null)
   const trimmed = name.trim()
   const trimmedDiscordId = discordId.trim()
-  const validName = trimmed.length >= 1 && trimmed.length <= 24
-  const validDiscordId = trimmedDiscordId.length === 0 || DISCORD_ID_RE.test(trimmedDiscordId)
+  const validName = isValidName(name)
+  const validDiscordId = isValidDiscordId(discordId)
   const valid = validName && validDiscordId
 
   // Scoped to this component's lifetime, so a stray Escape elsewhere (closing the log, say) never
