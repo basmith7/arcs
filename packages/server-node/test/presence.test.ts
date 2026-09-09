@@ -65,6 +65,13 @@ describe('Presence', () => {
     expect(left).toEqual(['g1/s1'])
   })
 
+  it('touch on an unknown seat does not create an entry', () => {
+    const presence = new Presence()
+    presence.touch('g1', 'unknown')
+    expect(presence.isActive('g1', 'unknown')).toBe(false)
+    expect(presence.send('g1', 'unknown', { x: 1 })).toBe(0)
+  })
+
   it('unregistering twice does not double-fire onLeave', () => {
     const presence = new Presence()
     const listener = vi.fn()

@@ -37,7 +37,7 @@ export class Presence {
   connect(gameId: string, seatToken: string, socket: Socket): () => void {
     const entry = this.entryFor(gameId, seatToken)
     entry.sockets.add(socket)
-    this.touch(gameId, seatToken)
+    entry.lastActive = this.now()
     let unregistered = false
     return () => {
       if (unregistered) return
@@ -55,7 +55,8 @@ export class Presence {
   }
 
   touch(gameId: string, seatToken: string): void {
-    const entry = this.entryFor(gameId, seatToken)
+    const entry = this.games.get(gameId)?.get(seatToken)
+    if (entry === undefined) return
     entry.lastActive = this.now()
   }
 
