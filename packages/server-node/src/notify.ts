@@ -8,6 +8,8 @@
 import type { DiscordBot } from './discord.js'
 import { askedOf } from './gate.js'
 import type { Settled } from './gate.js'
+import type { Presence } from './presence.js'
+import type { SeatRow } from './sqlite-store.js'
 import type { SqliteStore } from './sqlite-store.js'
 
 export interface Message {
@@ -23,12 +25,22 @@ export interface FallbackChannel {
   readonly bot: DiscordBot
 }
 
+export interface Schedule {
+  cancel(): void
+}
+
 export interface NotifierOptions {
   readonly publicOrigin: string
   readonly post?: Poster
   readonly now?: () => number
   readonly windowMs?: number
   readonly fallbackChannel?: FallbackChannel
+  readonly presence?: Presence
+  /** Milliseconds to wait, while the player is active, before pinging Discord anyway. Default 600000. */
+  readonly graceMs?: number
+  /** Milliseconds to wait after the player's last socket closes before pinging. Default 60000. */
+  readonly leaveGraceMs?: number
+  readonly schedule?: (fn: () => void, ms: number) => Schedule
 }
 
 export function seatLink(origin: string, gameId: string, seatToken?: string): string {
@@ -59,12 +71,30 @@ function mentionOf(seat: { readonly name?: string; readonly faction: string; rea
   return { text: `**${seat.name ?? seat.faction}**` }
 }
 
+interface Pending {
+  readonly seatToken: string
+  readonly length: number
+  readonly chapter: number
+  timer: Schedule
+}
+
+function defaultSchedule(fn: () => void, ms: number): Schedule {
+  const handle = setTimeout(fn, ms)
+  handle.unref?.()
+  return { cancel: () => clearTimeout(handle) }
+}
+
 export class Notifier {
   private readonly post: Poster
   private readonly now: () => number
   private readonly windowMs: number
   private readonly origin: string
   private readonly fallbackChannel: FallbackChannel | undefined
+  private readonly presence: Presence | undefined
+  private readonly graceMs: number
+  private readonly leaveGraceMs: number
+  private readonly schedule: (fn: () => void, ms: number) => Schedule
+  private readonly pending = new Map<string, Pending>()
 
   constructor(
     private readonly store: SqliteStore,
@@ -75,9 +105,39 @@ export class Notifier {
     this.windowMs = opts.windowMs ?? 60_000
     this.origin = opts.publicOrigin
     this.fallbackChannel = opts.fallbackChannel
+    this.presence = opts.presence
+    this.graceMs = opts.graceMs ?? 600_000
+    this.leaveGraceMs = opts.leaveGraceMs ?? 60_000
+    this.schedule = opts.schedule ?? defaultSchedule
+    this.presence?.onLeave((gameId, seatToken) => this.onLeave(gameId, seatToken))
+  }
+
+  private onLeave(gameId: string, seatToken: string): void {
+    const pending = this.pending.get(gameId)
+    if (pending === undefined || pending.seatToken !== seatToken) return
+    pending.timer.cancel()
+    pending.timer = this.schedule(() => void this.checkPending(gameId), this.leaveGraceMs)
+  }
+
+  private async checkPending(gameId: string): Promise<void> {
+    const pending = this.pending.get(gameId)
+    if (pending === undefined) return
+    if (this.store.journalLength(gameId) !== pending.length) return
+    this.pending.delete(gameId)
+    const seat = this.store.seats(gameId).find((s) => s.seatToken === pending.seatToken)
+    if (seat === undefined) return
+    const line = this.turnLine(gameId, seat, pending.chapter)
+    if (line === undefined) return
+    await this.postLines(gameId, [line], pending.length)
   }
 
   async onSettled({ gameId, before, after }: Settled): Promise<void> {
+    const existingPending = this.pending.get(gameId)
+    if (existingPending !== undefined) {
+      existingPending.timer.cancel()
+      this.pending.delete(gameId)
+    }
+
     const meta = this.store.meta(gameId)
     if (meta === undefined) return
     const hasWebhook = meta.webhookUrl !== undefined
@@ -86,7 +146,6 @@ export class Notifier {
     if (length <= meta.lastNotifiedLength) return
 
     const seats = this.store.seats(gameId)
-    const nameOf = (faction: string): string => seats.find((s) => s.faction === faction)?.name ?? faction
     const lines: Line[] = []
 
     if (after.state.isOver) {
@@ -106,24 +165,48 @@ export class Notifier {
       // A turn is many asks in a row for the same player; ping only when the asked player changes.
       // After a restart (before === null) the length guard above already decided it is news.
       const changed = before === null ? true : askedOf(before) !== asked
-      const inWindow = this.now() - meta.lastNotifiedAt < this.windowMs
-      if (seat !== undefined && !seat.isBot && changed && (!inWindow || lines.length > 0)) {
-        const link = seatLink(this.origin, gameId, seat.seatToken)
-        if (seat.discordId !== undefined) {
-          lines.push({
-            text: `<@${seat.discordId}> (**${nameOf(seat.faction)}**), it's your turn in Arcs (chapter ${after.state.chapter}) — ${link}`,
-            mentions: [seat.discordId],
-          })
+      if (seat !== undefined && !seat.isBot && changed) {
+        this.presence?.send(gameId, seat.seatToken, { turn: { faction: seat.faction, chapter: after.state.chapter, length } })
+        if (seat.pings && this.presence?.isActive(gameId, seat.seatToken) === true) {
+          // Defer: wait to see if the journal moves before pinging Discord.
+          const timer = this.schedule(() => void this.checkPending(gameId), this.graceMs)
+          this.pending.set(gameId, { seatToken: seat.seatToken, length, chapter: after.state.chapter, timer })
         } else {
-          lines.push({
-            text: `**${nameOf(seat.faction)}**, it's your turn in Arcs (chapter ${after.state.chapter}) — ${link}`,
-            mentions: [],
-          })
+          const inWindow = this.now() - meta.lastNotifiedAt < this.windowMs
+          if (!inWindow || lines.length > 0) {
+            const line = this.turnLine(gameId, seat, after.state.chapter)
+            if (line !== undefined) lines.push(line)
+          }
         }
       }
     }
 
+    await this.postLines(gameId, lines, length)
+  }
+
+  /** Builds the turn-ping line for a seat, or `undefined` when pings are off for it. */
+  private turnLine(gameId: string, seat: SeatRow, chapter: number): Line | undefined {
+    if (!seat.pings) return undefined
+    const seats = this.store.seats(gameId)
+    const nameOf = (faction: string): string => seats.find((s) => s.faction === faction)?.name ?? faction
+    const link = seatLink(this.origin, gameId, seat.seatToken)
+    if (seat.discordId !== undefined) {
+      return {
+        text: `<@${seat.discordId}> (**${nameOf(seat.faction)}**), it's your turn in Arcs (chapter ${chapter}) — ${link}`,
+        mentions: [seat.discordId],
+      }
+    }
+    return {
+      text: `**${nameOf(seat.faction)}**, it's your turn in Arcs (chapter ${chapter}) — ${link}`,
+      mentions: [],
+    }
+  }
+
+  private async postLines(gameId: string, lines: readonly Line[], length: number): Promise<void> {
     if (lines.length === 0) return
+    const meta = this.store.meta(gameId)
+    if (meta === undefined) return
+    const hasWebhook = meta.webhookUrl !== undefined
     const message: Message = {
       content: lines.map((l) => l.text).join('\n'),
       mentions: [...new Set(lines.flatMap((l) => l.mentions))],

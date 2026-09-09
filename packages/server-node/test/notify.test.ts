@@ -3,10 +3,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { replayGame, startGame } from '@arcs/engine'
 import type { RuleResult } from '@arcs/engine'
 import { Notifier, postToDiscord, seatLink } from '../src/notify.js'
+import { Presence } from '../src/presence.js'
 import { SqliteStore } from '../src/sqlite-store.js'
 import { RED_OPENING, THREE_PLAYER } from './fixtures.js'
 
 const HOOK = 'https://discord.test/hook'
+
+interface FakeSchedule {
+  fire(): void
+  cancelled: boolean
+}
 
 async function setup(includeWebhook = true) {
   const store = new SqliteStore(':memory:')
@@ -14,6 +20,22 @@ async function setup(includeWebhook = true) {
   store.setName(game.gameId, game.seats[1]!.seatToken, 'Sam')
   const sent: { url: string; content: string; mentions: readonly string[] }[] = []
   let clock = 1_000_000
+  const presence = new Presence({ now: () => clock, activeMs: 120_000 })
+  const scheduled: { fn: () => void; ms: number; cancel: FakeSchedule }[] = []
+  const schedule = (fn: () => void, ms: number): { cancel(): void } => {
+    const handle: FakeSchedule = {
+      cancelled: false,
+      fire() {
+        if (!this.cancelled) fn()
+      },
+    }
+    scheduled.push({ fn, ms, cancel: handle })
+    return {
+      cancel: () => {
+        handle.cancelled = true
+      },
+    }
+  }
   const notifier = new Notifier(store, {
     publicOrigin: 'https://arcs.test',
     post: async (url, message) => {
@@ -21,10 +43,61 @@ async function setup(includeWebhook = true) {
     },
     now: () => clock,
     windowMs: 60_000,
+    presence,
+    graceMs: 600_000,
+    leaveGraceMs: 60_000,
+    schedule,
   })
   const start = startGame(THREE_PLAYER) // red is asked
   const afterRed = replayGame(THREE_PLAYER, RED_OPENING) // red's whole turn done; yellow is asked
-  return { store, game, sent, notifier, start, afterRed, tick: (ms: number) => (clock += ms) }
+  // Fires the most recently scheduled timer that has not been cancelled.
+  const fireLatest = (): void => {
+    for (let i = scheduled.length - 1; i >= 0; i -= 1) {
+      const entry = scheduled[i]!
+      if (!entry.cancel.cancelled) {
+        entry.fn()
+        return
+      }
+    }
+  }
+  // The notify tests build RuleResults straight from the engine and never append to the store's
+  // own journal, so `checkPending`'s `store.journalLength` comparison needs the store's journal to
+  // actually reach the length a test is pretending happened. Filler actions carry no faction (no
+  // parens), so `actorOf` reads them as unattributed and `append` accepts them from any seat.
+  const growJournal = async (n: number): Promise<void> => {
+    let length = store.journalLength(game.gameId)
+    while (length < n) {
+      const result = await store.append(game.gameId, game.seats[0]!.seatToken, length, `filler${length}`)
+      if (!result.ok) throw new Error(`growJournal failed: ${JSON.stringify(result)}`)
+      length = result.length
+    }
+  }
+
+  return {
+    store,
+    game,
+    sent,
+    notifier,
+    start,
+    afterRed,
+    presence,
+    scheduled,
+    fireLatest,
+    growJournal,
+    tick: (ms: number) => (clock += ms),
+  }
+}
+
+const OPEN = 1
+function fakeSocket() {
+  return {
+    readyState: OPEN,
+    OPEN,
+    sent: [] as unknown[],
+    send(data: string) {
+      this.sent.push(JSON.parse(data))
+    },
+  }
 }
 
 describe('postToDiscord', () => {
@@ -211,5 +284,79 @@ describe('Notifier', () => {
     await expect(
       notifier.onSettled({ gameId: game.gameId, before: startGame(THREE_PLAYER), after: replayGame(THREE_PLAYER, RED_OPENING) }),
     ).resolves.toBeUndefined()
+  })
+
+  it('an active player gets a socket push and no immediate post; the grace timer posts if idle', async () => {
+    const { game, sent, notifier, start, afterRed, presence, fireLatest, growJournal } = await setup()
+    const yellowSeat = game.seats[1]!
+    const socket = fakeSocket()
+    presence.connect(game.gameId, yellowSeat.seatToken, socket)
+    await growJournal(RED_OPENING.length)
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    expect(sent).toHaveLength(0)
+    expect(socket.sent).toHaveLength(1)
+    expect(socket.sent[0]).toMatchObject({ turn: { faction: 'yellow', length: RED_OPENING.length } })
+    fireLatest()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.content).toContain('**Sam**')
+  })
+
+  it('cancels the grace timer when the active player acts before it fires', async () => {
+    const { game, sent, notifier, start, afterRed, presence, fireLatest, growJournal } = await setup()
+    const yellowSeat = game.seats[1]!
+    const socket = fakeSocket()
+    presence.connect(game.gameId, yellowSeat.seatToken, socket)
+    await growJournal(RED_OPENING.length)
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    const later = { ...afterRed, state: { ...afterRed.state, journal: [...RED_OPENING, 'x'] } }
+    await growJournal(RED_OPENING.length + 1)
+    await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: later })
+    fireLatest()
+    expect(sent).toHaveLength(0)
+  })
+
+  it('setPings(false) suppresses the post but the turn payload still reaches the socket', async () => {
+    const { store, game, sent, notifier, start, afterRed, presence, fireLatest, growJournal } = await setup()
+    const yellowSeat = game.seats[1]!
+    store.setPings(game.gameId, yellowSeat.seatToken, false)
+    const socket = fakeSocket()
+    const unregister = presence.connect(game.gameId, yellowSeat.seatToken, socket)
+    await growJournal(RED_OPENING.length)
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    expect(socket.sent).toHaveLength(1)
+    fireLatest()
+    expect(sent).toHaveLength(0)
+
+    // Absent (not active) player with pings off: still nothing.
+    unregister()
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    expect(sent).toHaveLength(0)
+  })
+
+  it('reschedules for leaveGraceMs when the active player leaves, and posts when that fires', async () => {
+    const { game, sent, notifier, start, afterRed, presence, fireLatest, growJournal } = await setup()
+    const yellowSeat = game.seats[1]!
+    const socket = fakeSocket()
+    const unregister = presence.connect(game.gameId, yellowSeat.seatToken, socket)
+    await growJournal(RED_OPENING.length)
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    unregister()
+    fireLatest()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.content).toContain('**Sam**')
+  })
+
+  it('posts immediately for an active winner on game over, ignoring presence', async () => {
+    const { game, sent, notifier, afterRed, presence } = await setup()
+    const yellowSeat = game.seats[1]!
+    const socket = fakeSocket()
+    presence.connect(game.gameId, yellowSeat.seatToken, socket)
+    const over: RuleResult = {
+      state: { ...afterRed.state, isOver: true, winners: ['yellow'], journal: [...RED_OPENING, 'x'] },
+      continue: { kind: 'gameOver', winners: ['yellow'], reason: 'test' },
+    }
+    await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: over })
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.content).toMatch(/wins/i)
   })
 })
