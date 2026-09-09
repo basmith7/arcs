@@ -31,6 +31,7 @@ import type {
 import { useSyncExternalStore } from 'react'
 
 import { Session } from './multiplayer/session.js'
+import type { PublicSeat } from './multiplayer/client.js'
 import type { SeatView } from './multiplayer/seat.js'
 import { remember } from './multiplayer/link.js'
 import type { GameLink } from './multiplayer/link.js'
@@ -70,6 +71,8 @@ class GameStore {
    * know it exists.
    */
   private session: Session | null = null
+  /** The joined game's seats — faction, optional name, bot flag — as last reported by the server. */
+  seats: readonly PublicSeat[] = []
 
   subscribe = (cb: Listener): (() => void) => {
     this.listeners.add(cb)
@@ -330,6 +333,10 @@ class GameStore {
         // Screens show for every client; dismissal is local. Bots are off in joined games.
         this.detectInterlude(prev)
       },
+      seats: (seats) => {
+        this.seats = seats
+        this.emit()
+      },
     })
     this.session = session
     remember(link)
@@ -339,6 +346,22 @@ class GameStore {
   leaveSession(): void {
     this.session?.leave()
     this.session = null
+    this.seats = []
+  }
+
+  seatName(faction: string): string | undefined {
+    return this.seats.find((s) => s.faction === faction)?.name
+  }
+
+  /** `null` when this client holds no seat (hotseat or spectator); otherwise the name or undefined. */
+  mySeatName(): string | undefined | null {
+    const view = this.seatView()
+    if (view.kind !== 'seat') return null
+    return this.seatName(view.faction)
+  }
+
+  async claimName(name: string): Promise<void> {
+    await this.session?.claimName(name)
   }
 
   /** The joined game's link, or `null` when playing locally. */

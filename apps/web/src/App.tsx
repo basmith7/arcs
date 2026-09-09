@@ -22,6 +22,7 @@ import { LogPanel } from './components/LogPanel.js'
 import { NewGame } from './components/NewGame.js'
 import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
+import { NamePrompt } from './components/NamePrompt.js'
 import { SeatBadge } from './components/SeatBadge.js'
 import { Watching } from './components/Watching.js'
 import { canAct, viewFor } from './multiplayer/seat.js'
@@ -38,6 +39,8 @@ export function App(): JSX.Element {
    * the game stays playable behind it.
    */
   const [logOpen, setLogOpen] = useState(false)
+  /** Escape/cancel dismisses the name prompt for the rest of this session; it does not reappear. */
+  const [nameDismissed, setNameDismissed] = useState(false)
   useEffect(() => {
     if (!logOpen) return
     const onKey = (e: KeyboardEvent): void => {
@@ -46,6 +49,13 @@ export function App(): JSX.Element {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [logOpen])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && store.seatView().kind === 'seat') setNameDismissed(true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   function saveGame(): void {
     const json = store.toJSON()
@@ -108,6 +118,8 @@ export function App(): JSX.Element {
         ? undefined
         : state.current
   const seatView = store.seatView()
+  const myName = store.mySeatName()
+  const needsName = seatView.kind === 'seat' && myName === undefined && !nameDismissed
   const cont = viewFor(engineCont, seatView)
   /*
    * Whether the controls work. Separate from what is *drawn* — a watcher sees the dice and the
@@ -117,6 +129,9 @@ export function App(): JSX.Element {
 
   return (
     <div className="app">
+      {needsName && seatView.kind === 'seat' ? (
+        <NamePrompt faction={seatView.faction} onSubmit={(name) => store.claimName(name)} />
+      ) : null}
       <header className="topbar">
         <span className="brand">Arcs</span>
         <span className="board-name">{setupLabel(state.board.name)}</span>
@@ -129,11 +144,11 @@ export function App(): JSX.Element {
           <span className="turn-badge">
             <span className="turn-badge-label">Turn</span>
             <span className="turn-badge-who" style={{ color: colorOf(current) }}>
-              {current}
+              {store.seatName(current) ?? current}
             </span>
           </span>
         ) : null}
-        <SeatBadge view={seatView} current={current} />
+        <SeatBadge view={seatView} current={current} nameOf={(f) => store.seatName(f)} />
         <div className="toolbar">
           <button className="ghost" onClick={() => store.undo()} disabled={!store.canUndo()}>
             Undo

@@ -5886,3 +5886,42 @@ button {
   font-size: 14px;
   color: var(--gold);
 }
+
+/* --- name prompt (joined games) ------------------------------------------ */
+.name-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+.name-card {
+  display: grid;
+  gap: 12px;
+  min-width: 280px;
+  padding: 20px 24px;
+  border-radius: 10px;
+  background: var(--panel, #1e1e24);
+  color: inherit;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.name-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.name-card p {
+  margin: 0;
+  opacity: 0.8;
+}
+.name-card input {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+  color: inherit;
+}
+.name-error {
+  color: #e0604e;
+}

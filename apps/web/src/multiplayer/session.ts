@@ -31,6 +31,7 @@ import { decodeAction, encodeAction, replayGame } from '@arcs/engine'
 import type { Action, NewGameOptions, RuleResult } from '@arcs/engine'
 
 import { ApiError, MultiplayerClient } from './client.js'
+import type { PublicSeat } from './client.js'
 import type { GameLink } from './link.js'
 
 /** How often to ask for the tail. docs/17 section 4: adequate for a game where a turn takes a minute. */
@@ -52,6 +53,8 @@ export interface SessionHost {
   adopt(options: NewGameOptions, result: RuleResult): void
   /** Apply one action that arrived from elsewhere. Must not re-publish it. */
   applyRemote(action: Action): void
+  /** The current seat list — faction, optional name, bot flag — whenever it changes. */
+  seats(seats: readonly PublicSeat[]): void
 }
 
 export class Session {
@@ -189,6 +192,9 @@ export class Session {
     const entries = push.entries
     if (typeof from !== 'number' || !Array.isArray(entries)) return
 
+    const seats = (push as { seats?: unknown }).seats
+    if (Array.isArray(seats)) this.host.seats(seats as PublicSeat[])
+
     const have = this.host.current()?.state.journal.length ?? 0
     if (from > have) {
       void this.resync()
@@ -225,6 +231,7 @@ export class Session {
     this.options = options
     this.seatFaction = tail.yourFaction ?? null
     this.host.adopt(options, replayGame(options, [...tail.entries]))
+    this.host.seats(tail.seats ?? [])
   }
 
   /** Ask for anything new and apply it. Called on a timer; safe to call by hand. */
@@ -243,6 +250,7 @@ export class Session {
         return
       }
       for (const entry of tail.entries) this.host.applyRemote(decodeAction(entry))
+      if (tail.seats !== undefined) this.host.seats(tail.seats)
     } catch (e) {
       /*
        * Only a 404 stops us. Anything else — a dropped connection, a 500, a proxy hiccup — is
@@ -293,5 +301,11 @@ export class Session {
         throw e
       }
     }
+  }
+
+  /** Claim a display name for this client's seat. A spectator has no seat and does nothing. */
+  async claimName(name: string): Promise<void> {
+    if (this.link.seatToken === undefined) return
+    this.host.seats(await this.client.claimName(this.link.gameId, this.link.seatToken, name))
   }
 }

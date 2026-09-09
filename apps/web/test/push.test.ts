@@ -82,6 +82,7 @@ function host(): SessionHost & { result: RuleResult | null; adopted: number; rem
       this.remote.push(action)
       this.result = this.result === null ? null : applyExternal(this.result, action, registry)
     },
+    seats: () => {},
   }
 }
 

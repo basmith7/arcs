@@ -26,9 +26,11 @@ interface Props {
   view: SeatView
   /** Whoever the engine is actually waiting on, seat filter or not. */
   current: FactionId | undefined
+  /** The display name claimed for a faction's seat, if any. Falls back to the faction label. */
+  nameOf?: (faction: FactionId) => string | undefined
 }
 
-export function SeatBadge({ view, current }: Props): JSX.Element | null {
+export function SeatBadge({ view, current, nameOf }: Props): JSX.Element | null {
   // Hotseat has no "you" — every seat is yours, and a badge saying so would be noise.
   if (view.kind === 'hotseat') return null
 
@@ -36,7 +38,9 @@ export function SeatBadge({ view, current }: Props): JSX.Element | null {
     return (
       <span className="seat-badge seat-watching">
         <span className="seat-label">Watching</span>
-        {current === undefined ? null : <span className="seat-wait">{current} to play</span>}
+        {current === undefined ? null : (
+          <span className="seat-wait">{nameOf?.(current) ?? current} to play</span>
+        )}
       </span>
     )
   }
@@ -49,7 +53,7 @@ export function SeatBadge({ view, current }: Props): JSX.Element | null {
     <span className={`seat-badge${yourTurn ? ' seat-active' : ''}`}>
       <span className="seat-label">You are</span>
       <span className="seat-who" style={{ borderColor: tint, color: tint }}>
-        {seat}
+        {nameOf?.(seat) ?? seat}
       </span>
       {/*
         * The waiting half is the part that stops a player sitting there wondering whether the game
@@ -58,7 +62,7 @@ export function SeatBadge({ view, current }: Props): JSX.Element | null {
       {yourTurn ? (
         <span className="seat-turn">your turn</span>
       ) : current === undefined ? null : (
-        <span className="seat-wait">waiting for {current}</span>
+        <span className="seat-wait">waiting for {nameOf?.(current) ?? current}</span>
       )}
     </span>
   )

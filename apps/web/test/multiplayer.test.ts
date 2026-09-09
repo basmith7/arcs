@@ -44,6 +44,7 @@ function host(): SessionHost & { result: RuleResult | null; adopted: number; rem
       this.remote.push(action)
       this.result = this.result === null ? null : applyTo(this.result, action)
     },
+    seats: () => {},
   }
 }
 
