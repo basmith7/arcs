@@ -136,7 +136,9 @@ export class EngineGate {
         return { ok: false, reason: 'conflict', length: before.state.journal.length }
       }
       after = applyExternal(before, decodeAction(action), this.registry)
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.warn('[gate] rejected action', gameId, message)
       return { ok: false, reason: 'wrong-turn' }
     }
 
