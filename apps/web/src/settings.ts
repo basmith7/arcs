@@ -25,8 +25,8 @@ export interface Settings {
   /**
    * How far to push the map plate towards a schematic, 0..1. Not a fade: the art goes through a
    * contrast curve that crushes its painted fills to black while leaving the printed line art —
-   * planet outlines, resource symbols, sector numbers, slot markers — legible. Board.tsx turns it
-   * into CSS custom properties and BoardStructure draws in what the art alone cannot say.
+   * planet outlines, resource symbols, sector numbers, slot markers — legible, which is the whole
+   * reason a curve was worth having over a fade. Board.tsx turns it into CSS custom properties.
    */
   boardDim: number
 }

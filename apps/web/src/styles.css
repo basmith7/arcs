@@ -1032,33 +1032,6 @@ button {
     drop-shadow(0 0 90px rgba(0, 0, 0, 0.6));
 }
 /*
- * The structure layer: only what the dimmed art can no longer say for itself. A plain line is a
- * seam you may travel through; the paired warm lines are a dead cluster seam, drawn the width of
- * the printed lane; the gold arc is a join in the gate ring, along the ring rather than across it,
- * because that is the direction a catapult travels. Widths are map units.
- */
-.board-structure {
-  pointer-events: none;
-}
-.bs-line,
-.bs-lane,
-.bs-link {
-  fill: none;
-  stroke-linecap: round;
-}
-.bs-line {
-  stroke: rgba(150, 186, 255, 0.85);
-  stroke-width: 4;
-}
-.bs-lane {
-  stroke: rgba(232, 122, 106, 0.9);
-  stroke-width: 5;
-}
-.bs-link {
-  stroke: rgba(255, 206, 112, 0.85);
-  stroke-width: 13;
-}
-/*
  * Heavy gold brackets at the corners, opening into two parallel rails along each edge — the
  * ambition track's way of framing a panel. The rails sit on the bracket's own two edges, so the
  * bar reads as splitting rather than as a second border nearby.

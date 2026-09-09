@@ -35,47 +35,8 @@ export interface SystemInfo {
      * ordered most-central first. HRF does the equivalent at runtime via its FitLayer.
      */
     readonly placements: readonly (readonly [number, number])[]
-    /**
-     * The angular span this system occupies about the ring centre, in degrees, as
-     * `[from, to]` sweeping clockwise in screen coordinates and possibly wrapping past 360.
-     * `null` for `7-Gate`, which is the centre disc rather than a wedge.
-     *
-     * The board is radial, and a span runs divider to divider — except at a seam you cannot
-     * travel through, where it stops short and the gap that leaves is the printed dead lane.
-     * See scripts/build_board_geometry.py.
-     */
-    readonly arc: readonly [number, number] | null
   }
 }
-
-/**
- * The printed map as polar geometry: everything needed to draw the board's structure without
- * the art. Derived from the region bitmap by scripts/build_board_geometry.py.
- */
-export interface BoardGeometry {
-  /** Centre of the gate ring, in map coordinates. Not the centre of the map. */
-  readonly centre: readonly [number, number]
-  readonly radii: {
-    /** Where the centre disc ends and the gate ring begins. */
-    readonly core: number
-    /** Where the gate ring ends and the planet wedges begin. */
-    readonly ring: number
-  }
-  /** Width of a dead cluster seam, in degrees. */
-  readonly laneDegrees: number
-  readonly dividers: {
-    readonly planet: readonly BoardDivider[]
-    readonly gate: readonly BoardDivider[]
-  }
-}
-
-export interface BoardDivider {
-  readonly angle: number
-  readonly a: SystemId
-  readonly b: SystemId
-}
-
-export const BOARD_GEOMETRY = topology.geometry as unknown as BoardGeometry
 
 export interface BoardVariant {
   readonly name: string

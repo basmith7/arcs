@@ -25,7 +25,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 import { store, useBotUi } from '../store.js'
-import { BoardStructure } from './BoardStructure.js'
 import { modeOf } from './Hand.js'
 import { caption, derivePlacement, liveEvents } from '../bot-events.js'
 import type { BotEvent } from '../bot-events.js'
@@ -503,7 +502,7 @@ export function Board({ state, cont }: Props): JSX.Element {
    * saturation and lifting the contrast while pulling the whole thing down takes the painted
    * fills to black and leaves the printed line art — planet outlines, resource symbols, sector
    * numbers, gate slot markers — standing. Kept in step with `css_chain` in
-   * scripts/preview_board_structure.py, which is how a level gets checked against the art.
+   * scripts/preview_board_dim.py, which is how a level gets checked against the art.
    */
   const dimStyle = {
     '--dim-saturate': 1 - 0.3 * boardDim,
@@ -701,13 +700,6 @@ export function Board({ state, cont }: Props): JSX.Element {
             }}
           />
         ))}
-
-        {/*
-          What the art stops being able to say once it is dimmed: the seams, and which of them
-          you may travel through. Drawn over the plate and the out-of-play overlays, under the
-          frame and everything that moves.
-        */}
-        <BoardStructure state={state} dim={boardDim} />
 
         {/*
           The board's frame, drawn after the out-of-play overlays so it sits on the board proper.
