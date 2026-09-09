@@ -73,6 +73,17 @@ class GameStore {
   private session: Session | null = null
   /** The joined game's seats — faction, optional name, bot flag — as last reported by the server. */
   seats: readonly PublicSeat[] = []
+  /**
+   * Bumped whenever `seats` changes.
+   *
+   * Same problem as `botUiVersion` above: `getSnapshot` returns `this.result`, so a name claim that
+   * does not move the position is invisible to `useSyncExternalStore` by object identity alone —
+   * which is exactly how the name prompt got stuck on "Saving…" after a successful claim. A
+   * separate primitive snapshot makes the change visible without tying it to the position.
+   */
+  seatsVersion = 0
+
+  getSeatsSnapshot = (): number => this.seatsVersion
 
   subscribe = (cb: Listener): (() => void) => {
     this.listeners.add(cb)
@@ -335,6 +346,7 @@ class GameStore {
       },
       seats: (seats) => {
         this.seats = seats
+        this.seatsVersion += 1
         this.emit()
       },
     })
@@ -347,6 +359,7 @@ class GameStore {
     this.session?.leave()
     this.session = null
     this.seats = []
+    this.seatsVersion += 1
   }
 
   seatName(faction: string): string | undefined {
@@ -561,6 +574,14 @@ export function useBotUi(): number {
 /** Subscribe to the interlude — the chapter/game-over screen state, separate from the position. */
 export function useInterlude(): number {
   return useSyncExternalStore(store.subscribe, store.getInterludeSnapshot, store.getInterludeSnapshot)
+}
+
+/**
+ * Subscribe to the joined game's seat list — same reasoning as `useBotUi`: a name claim does not
+ * move the position, so a component that shows `seatName`/`mySeatName` needs this to re-render.
+ */
+export function useSeats(): number {
+  return useSyncExternalStore(store.subscribe, store.getSeatsSnapshot, store.getSeatsSnapshot)
 }
 
 export function useGame(): RuleResult | null {

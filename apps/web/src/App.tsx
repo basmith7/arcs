@@ -28,10 +28,13 @@ import { Watching } from './components/Watching.js'
 import { canAct, viewFor } from './multiplayer/seat.js'
 import { setupLabel } from './setups.js'
 import { colorOf } from './theme.js'
-import { store, useGame } from './store.js'
+import { store, useGame, useSeats } from './store.js'
 
 export function App(): JSX.Element {
   const result = useGame()
+  // Seats (names) can change without the position moving — a claim while it is your turn, say —
+  // so this needs its own subscription; see the comment on `seatsVersion` in store.ts.
+  useSeats()
   const fileInput = useRef<HTMLInputElement>(null)
   /*
    * The log drawer. Local state, deliberately: nothing else reads it, and it must not entangle

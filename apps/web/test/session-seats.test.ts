@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { Session } from '../src/multiplayer/session.js'
 import type { PublicSeat } from '../src/multiplayer/client.js'
+import { store } from '../src/store.js'
 
 describe('Session seats', () => {
   it('hands seats to the host on resync and on a seats push', async () => {
@@ -75,6 +76,33 @@ describe('Session seats', () => {
 
     expect(seen.at(-1)).toEqual(claimedSeats)
     session.leave()
+    vi.unstubAllGlobals()
+  })
+
+  it('bumps the store seats snapshot on a seats push, so useSyncExternalStore sees a claim', async () => {
+    const tail = {
+      options: { board: 'Board3MixUp', factions: ['red', 'yellow', 'blue'], seed: 7 },
+      entries: [],
+      length: 0,
+      yourFaction: 'red',
+      seats: [{ faction: 'red', isBot: false }],
+    }
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(tail), { status: 200, headers: { 'content-type': 'application/json' } }))
+    vi.stubGlobal('WebSocket', undefined)
+
+    const before = store.getSeatsSnapshot()
+    await store.joinSession('', { gameId: 'g', seatToken: 't' })
+    // The join's resync already delivers a seats list, moving the snapshot without moving `result`.
+    expect(store.getSeatsSnapshot()).not.toBe(before)
+    const afterJoin = store.getSeatsSnapshot()
+
+    // A claim response (a fresh seats push) must bump it again, even though it does not touch the
+    // position at all — this is exactly what the "stuck on Saving…" bug depended on: `useGame`'s
+    // snapshot is `result`, which a name claim never changes.
+    await store.claimName('Brian')
+    expect(store.getSeatsSnapshot()).not.toBe(afterJoin)
+
+    store.leaveSession()
     vi.unstubAllGlobals()
   })
 })
