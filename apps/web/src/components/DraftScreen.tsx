@@ -23,7 +23,7 @@ import { store } from '../store.js'
 import { SetupBoard } from './SetupBoard.js'
 import { colorOf, figureArt } from '../theme.js'
 import { LeaderCardReader, cardArt, cardName } from './LeaderCardReader.js'
-import { asset } from '../assets.js'
+import { smallArt } from '../assets.js'
 
 /** A card on the table: what it is, who has it, and whether it can be taken right now. */
 interface DraftCard {
@@ -254,7 +254,7 @@ function Row({
             className={`draft-pile ${kind}`}
             title={`${left} ${kind} card${left === 1 ? '' : 's'} left in the box`}
           >
-            <img src={asset(`game-assets/${kind}/${kind}-back.webp`)} alt="" />
+            <img src={smallArt(`game-assets/${kind}/${kind}-back.webp`)} alt="" />
             <span className="draft-pile-n">{left}</span>
           </div>
         ) : null}
@@ -312,7 +312,7 @@ function DraftCardView({
         {/* In flow, so it still sizes the card exactly as it did before the flip was added. */}
         <img src={card.art} alt={card.name} />
         <span className="dc-back">
-          <img src={asset(`game-assets/${card.kind}/${card.kind}-back.webp`)} alt="" />
+          <img src={smallArt(`game-assets/${card.kind}/${card.kind}-back.webp`)} alt="" />
         </span>
         {taken ? (
           <span className="draft-owner">

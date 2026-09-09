@@ -32,7 +32,7 @@ import type { Continue, GameState } from '@arcs/engine'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import { asset } from '../assets.js'
+import { smallArt } from '../assets.js'
 import { shelfParts } from '../court-slot.js'
 import type { CourtSlot } from '../court-slot.js'
 import { store } from '../store.js'
@@ -119,7 +119,7 @@ export function CardShelf({ state, cont }: { state: GameState; cont: Continue })
                   title={`${copy.title} ${slot.name}`}
                   onClick={() => store.apply(action)}
                 >
-                  <img src={asset(`game-assets/court/${id}.webp`)} alt={slot.name} />
+                  <img src={smallArt(`game-assets/court/${id}.webp`)} alt={slot.name} />
                   <span className="shelf-name">{slot.name}</span>
                   <Agents slot={slot} />
                 </button>

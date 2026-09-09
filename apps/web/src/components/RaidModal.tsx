@@ -21,7 +21,7 @@ import { store } from '../store.js'
 import { useModalDrag } from '../modal-drag.js'
 import { colorOf } from '../theme.js'
 import { CardZoom } from './CardZoom.js'
-import { asset } from '../assets.js'
+import { asset, smallArt } from '../assets.js'
 
 const resourceIcon = (r: string): string => asset(`game-assets/icon/${r.toLowerCase()}.webp`)
 
@@ -152,7 +152,7 @@ export function RaidModal({ cont }: { cont: Continue }): JSX.Element | null {
                 title={`Take ${courtCard(id).name} for ${cost} key${cost === 1 ? '' : 's'}`}
                 onClick={() => store.apply(a)}
               >
-                <img src={asset(`game-assets/court/${id}.webp`)} alt={courtCard(id).name} />
+                <img src={smallArt(`game-assets/court/${id}.webp`)} alt={courtCard(id).name} />
                 <span className="raid-name">{courtCard(id).name}</span>
                 <Price n={cost} />
               </button>

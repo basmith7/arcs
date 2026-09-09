@@ -92,6 +92,18 @@ python3 scripts/fetch_assets.py --group figure  # one group
 Resumable and skips existing files. Rate-limited on purpose — hrf.im is a hobbyist's server, so
 concurrency is capped at 4 with a per-request delay. Don't raise them.
 
+### Downscaled copies
+
+```bash
+python3 scripts/build_small_art.py              # writes a `.sm.webp` beside each card image
+```
+
+**Run this after fetching.** The card art is 744x1039 and the app draws it at 118x165 in the hand,
+98x139 in the court rail; loading the originals for those meant one screen decoded ~10 megapixels
+of bitmap to paint a few hundred thousand pixels of card. Half size covers every such use with a
+2x display in mind, and `smallArt()` in `apps/web/src/assets.ts` is what the app calls for them.
+Only `CardZoom` and the draft's card reader — the two places a card is *read* — load the original.
+
 ## Regenerating
 
 ```bash
