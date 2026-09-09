@@ -227,7 +227,7 @@ export class SqliteStore implements GameStore {
   setPings(gameId: GameId, seatToken: SeatToken, pings: boolean): SeatRow[] | undefined {
     const seat = this.seatByToken(gameId, seatToken)
     if (seat === undefined) return undefined
-    this.db.prepare('UPDATE seat SET pings = ? WHERE token = ?').run(pings ? 1 : 0, seatToken)
+    this.db.prepare('UPDATE seat SET pings = ? WHERE token = ? AND game_id = ?').run(pings ? 1 : 0, seatToken, gameId)
     return this.seats(gameId)
   }
 
