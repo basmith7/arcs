@@ -2526,8 +2526,19 @@ button {
 .layout.log-pinned {
   grid-template-columns: minmax(0, 1fr) clamp(260px, 24vw, 340px);
 }
+/*
+ * The floating drawer is `position: absolute`, so its height was the layout's and the rows inside
+ * it scrolled. Pinned it becomes a real grid item, and a grid item's automatic minimum is its
+ * content — a long game's log then made the row taller than the viewport and pushed the whole app
+ * past the bottom of the window instead of scrolling inside the panel. The row is capped and the
+ * item is allowed to be shorter than its rows, which puts the overflow back on `.log`.
+ */
+.log-pinned {
+  grid-template-rows: minmax(0, 1fr);
+}
 .log-pinned .log-drawer {
   position: static;
+  min-height: 0;
   box-shadow: none;
   animation: none;
 }
