@@ -170,3 +170,34 @@ export function watchedActor(
   if (view.kind === 'seat') return actor === view.faction ? null : actor
   return bots.includes(actor) ? actor : null
 }
+
+/**
+ * The same ask with nothing to click — what the map is handed while somebody else is acting.
+ *
+ * ## Why the board needs its own answer
+ *
+ * `watchedActor` lets `App` stand a surface down by not mounting it, and that is the whole story
+ * for the tray, the strip and the Prelude. The map is different: it is the thing being watched, so
+ * it has to stay on screen while ceasing to be a menu. Without this it did not — `canAct` is
+ * unconditionally true in hotseat, so `viewFor` passed a bot's ask through untouched and the board
+ * drew "Click a system to move from" under a turn the player could not take.
+ *
+ * ## Why emptying `actions` rather than a `watching` prop
+ *
+ * Every affordance `Board` draws — the hint bar, the move reticles, battle and build and rifles
+ * targets, the hand modes, the declare rows on the ambition track — is derived from `cont.actions`
+ * and from nothing else. Emptying that one field stands all of them down at once, and stands down
+ * the ones nobody has written yet. A boolean prop would have to be *remembered* at each new
+ * affordance, which is the shape of bug `surfaces.ts` exists to document: a rule spread across
+ * components that do not know about each other, silently incomplete the day someone adds a case.
+ *
+ * The actor is kept, because whose move it is has never been secret and the board still colours it.
+ *
+ * Presentation only. This hides an offer that was never this client's to take; `store.mayAct` and
+ * the server's `actorOf` are what refuse the action.
+ */
+export function hushed(cont: Continue): Continue {
+  if (cont.kind === 'ask') return { ...cont, actions: [] }
+  if (cont.kind === 'multiAsk') return { ...cont, asks: cont.asks.map((a) => ({ ...a, actions: [] })) }
+  return cont
+}

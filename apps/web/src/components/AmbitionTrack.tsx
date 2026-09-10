@@ -19,8 +19,8 @@ import type { Action, Ambition, AmbitionMarker, Continue, GameState } from '@arc
 import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import { ambitionFlash, liveFlash } from '../bot-events.js'
-import { store, useBotUi } from '../store.js'
+import { ambitionFlash, liveFlash } from '../turn-events.js'
+import { store, useTurnUi } from '../store.js'
 import { colorOf } from '../theme.js'
 import { asset } from '../assets.js'
 
@@ -75,9 +75,9 @@ export function AmbitionTrack({
   const hideTip = (): void => setTip(null)
   const threshold = 39 - state.factions.length * 3
 
-  // A bot declaring an ambition flashes that row (see bot-events.ts).
-  useBotUi()
-  const flash = liveFlash(store.botEvents, performance.now(), ambitionFlash)
+  // Someone else declaring an ambition flashes that row (see turn-events.ts).
+  useTurnUi()
+  const flash = liveFlash(store.turnEvents, performance.now(), ambitionFlash)
   const rowFlash =
     flash !== undefined && flash.value in ROW_Y ? (
       <div

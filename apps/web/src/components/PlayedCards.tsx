@@ -10,8 +10,8 @@
 
 import type { GameState, RoundPlay } from '@arcs/engine'
 
-import { liveFlash, playedCardFlash } from '../bot-events.js'
-import { store, useBotUi } from '../store.js'
+import { liveFlash, playedCardFlash } from '../turn-events.js'
+import { store, useTurnUi } from '../store.js'
 import { colorOf } from '../theme.js'
 import { CardFace } from './CardFace.js'
 import { smallArt } from '../assets.js'
@@ -22,9 +22,9 @@ export function PlayedCards({ state }: { state: GameState }): JSX.Element {
   // Declaring an ambition zeroes the played card; the zero marker goes on top of it.
   const zeroedCard = state.lead?.zeroed === true ? state.lead.cardId : undefined
 
-  // A bot's lead, surpass, copy or pivot flashes the card it just laid down (see bot-events.ts).
-  useBotUi()
-  const flash = liveFlash(store.botEvents, performance.now(), playedCardFlash)
+  // Someone else's lead, surpass, copy or pivot flashes the card just laid down (see turn-events.ts).
+  useTurnUi()
+  const flash = liveFlash(store.turnEvents, performance.now(), playedCardFlash)
 
   return (
     <div className="play-rail">

@@ -28,7 +28,7 @@ import { RulesModal } from './components/RulesModal.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
 import { initAudio } from './audio.js'
-import { canAct, viewFor, watchedActor } from './multiplayer/seat.js'
+import { canAct, hushed, viewFor, watchedActor } from './multiplayer/seat.js'
 import { setSettings, useSettings } from './settings.js'
 import { setupLabel } from './setups.js'
 import { colorOf } from './theme.js'
@@ -165,6 +165,15 @@ export function App(): JSX.Element {
    * holding your own cards while somebody else plays is what the table does.
    */
   const watched = watchTurns ? watchedActor(engineCont, seatView, store.botSeats()) : null
+  /*
+   * The board's copy of the ask, hushed while somebody else acts (`seat.ts`).
+   *
+   * The map and the ambition track cannot be stood down by not mounting them — they are what a
+   * watcher is watching — so instead they are handed an ask with no actions in it, and every
+   * affordance they derive from those actions goes quiet at once. The hand keeps the unhushed
+   * `cont`: it is not a decision surface and `handOwner` already decides whose cards it fans.
+   */
+  const boardCont = watched === null ? cont : hushed(cont)
 
   return (
     <div className="app">
@@ -231,7 +240,7 @@ export function App(): JSX.Element {
               * watcher gets the board at full strength and simply cannot move anything on it.
               */}
             <Watching canAct={acting}>
-              <Board state={state} cont={cont} />
+              <Board state={state} cont={boardCont} />
             </Watching>
             {/*
               * The turn feed, over the map's lower-left and outside `Watching` — it is narration,
@@ -245,7 +254,7 @@ export function App(): JSX.Element {
               </div>
             ) : null}
           </div>
-          <AmbitionTrack state={state} cont={cont} />
+          <AmbitionTrack state={state} cont={boardCont} />
           {/*
             * The decision surfaces. Wrapped so a watcher sees them and cannot touch them —
             * `Watching` is `display: contents`, so `.hand-row` and its siblings stay grid items of

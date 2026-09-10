@@ -15,9 +15,9 @@ import { CourtPile, contentsOf, courtSlots } from '@arcs/engine'
 import type { GameState } from '@arcs/engine'
 import { useState } from 'react'
 
-import { courtFlashSlot, liveFlash } from '../bot-events.js'
+import { courtFlashSlot, liveFlash } from '../turn-events.js'
 import { readSlot } from '../court-slot.js'
-import { store, useBotUi } from '../store.js'
+import { store, useTurnUi } from '../store.js'
 import { colorOf, figureArt } from '../theme.js'
 import { CardZoom } from './CardZoom.js'
 import { smallArt } from '../assets.js'
@@ -26,9 +26,9 @@ export function CourtPanel({ state }: { state: GameState }): JSX.Element {
   const slots = courtSlots(state.factions.length).map((n) => readSlot(state, n))
   const deckLeft = contentsOf(state.courtCards, CourtPile.deck()).length
   const [open, setOpen] = useState<number | null>(null)
-  // A bot influencing, securing or ransacking flashes the slot it acted on (see bot-events.ts).
-  useBotUi()
-  const flash = liveFlash(store.botEvents, performance.now(), courtFlashSlot)
+  // Someone else influencing, securing or ransacking flashes the slot (see turn-events.ts).
+  useTurnUi()
+  const flash = liveFlash(store.turnEvents, performance.now(), courtFlashSlot)
 
   const zoomed = open === null ? undefined : slots.find((s) => s.n === open)
 

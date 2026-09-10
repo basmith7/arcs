@@ -35,7 +35,8 @@ import type { PublicSeat } from './multiplayer/client.js'
 import type { SeatView } from './multiplayer/seat.js'
 import { remember } from './multiplayer/link.js'
 import type { GameLink } from './multiplayer/link.js'
-import type { BotEvent } from './bot-events.js'
+import { eventActor, queueAt } from './turn-events.js'
+import type { TurnEvent } from './turn-events.js'
 import { buildChapterReport, buildGameHistory, chapterEnded } from './chapter-report.js'
 import { clearAutosave, readAutosave, saveAutosave } from './persist.js'
 import type { ChapterReport, GameHistory } from './chapter-report.js'
@@ -85,7 +86,7 @@ class GameStore {
   /**
    * Bumped whenever `seats` changes.
    *
-   * Same problem as `botUiVersion` above: `getSnapshot` returns `this.result`, so a name claim that
+   * Same problem as `turnUiVersion` above: `getSnapshot` returns `this.result`, so a name claim that
    * does not move the position is invisible to `useSyncExternalStore` by object identity alone —
    * which is exactly how the name prompt got stuck on "Saving…" after a successful claim. A
    * separate primitive snapshot makes the change visible without tying it to the position.
@@ -114,12 +115,12 @@ class GameStore {
 
   /**
    * Bot turns always run, paced so a human can follow (docs/19 section 2a) — the step/take-over
-   * panel is gone; the pacing plus the on-board event visuals (`bot-events.ts`) are the whole
+   * panel is gone; the pacing plus the on-board event visuals (`turn-events.ts`) are the whole
    * presentation. Presentation only — none of it reaches the journal, so a paced game and a
    * skipped one produce identical saves.
    */
-  /** The last few bot actions, drawn on the board and the side surfaces as they happen. */
-  botEvents: BotEvent[] = []
+  /** The last few actions taken by anyone else — bot or remote — drawn where they happened. */
+  turnEvents: TurnEvent[] = []
   private nextEventId = 1
 
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -147,14 +148,14 @@ class GameStore {
    * event fired, React re-used the old render. A separate primitive snapshot is what makes those
    * changes visible.
    */
-  botUiVersion = 0
+  turnUiVersion = 0
 
-  private emitBotUi(): void {
-    this.botUiVersion += 1
+  private emitTurnUi(): void {
+    this.turnUiVersion += 1
     this.emit()
   }
 
-  getBotUiSnapshot = (): number => this.botUiVersion
+  getTurnUiSnapshot = (): number => this.turnUiVersion
 
   /** Whose turn it is, if a bot should take it. */
   botTurn(): FactionId | undefined {
@@ -275,25 +276,69 @@ class GameStore {
     const faction = this.botTurn()
     if (faction === undefined) return
     const prev = this.result
-    // The log lines appended by this one action are the event's own narration (bot-events.ts).
+    // The log lines appended by this one action are the event's own narration (turn-events.ts).
     const logBefore = prev.state.log.length
     const out = stepBot(prev, botForLevel(this.options?.botLevel), faction, this.registry, this.botAsked)
     this.result = out.result
     this.botAsked = out.asked
-    this.botEvents = [
-      ...this.botEvents.slice(-7),
-      {
-        id: this.nextEventId++,
-        faction,
-        action: out.decision.action,
-        lines: out.result.state.log.slice(logBefore),
-        at: performance.now(),
-      },
-    ]
-    this.emitBotUi()
+    this.record(faction, out.decision.action, out.result.state.log.slice(logBefore))
     this.persist()
     // A chapter interlude holds the game: the timer re-arms when it is dismissed.
     if (!this.detectInterlude(prev)) this.scheduleBot()
+  }
+
+  /**
+   * Note that somebody else just did something, for the surfaces that narrate it.
+   *
+   * The single writer of `turnEvents`, and it has two callers with nothing else in common:
+   * `stepBotOnce` above, and `applyRemote` below. That is the whole reason it is a method rather
+   * than an inline literal in each — the cap, the id, the stagger and the snapshot bump are one
+   * rule about how an event is made, and a second copy of it would be free to drift.
+   *
+   * Presentation only. Nothing here reaches the journal, so a narrated game and a silent one save
+   * identically.
+   */
+  private record(faction: FactionId, action: Action, lines: readonly string[]): void {
+    this.turnEvents = [
+      ...this.turnEvents.slice(-7),
+      {
+        id: this.nextEventId++,
+        faction,
+        action,
+        lines,
+        at: queueAt(this.turnEvents, performance.now()),
+      },
+    ]
+    this.emitTurnUi()
+  }
+
+  /**
+   * Apply one action that arrived from another player, and narrate it.
+   *
+   * Identical to `apply` except that it does **not** publish — an action that came from the server
+   * must not be sent back to it, which would append it twice.
+   *
+   * A method rather than the closure it used to be inside `joinSession`, because it is now the
+   * remote half of the narration and wanted testing directly. Your own actions never come through
+   * here: publishing is optimistic and applied locally first, so by the time the entry comes back
+   * it is already in the journal and `session.ts` skips it. Which means every event this records
+   * is somebody else's — the same thing `stepBotOnce` can say about a bot.
+   */
+  applyRemote(action: Action): void {
+    if (this.result === null) return
+    const prev = this.result
+    const logBefore = prev.state.log.length
+    this.result = applyExternal(prev, action, this.registry)
+    /*
+     * The actor is read off the position the action *answered*, not the one it produced — after it
+     * lands the ask has usually moved on to the next player, and colouring the pulse with that one
+     * would credit every action to whoever comes next.
+     */
+    const actor = eventActor(prev.continue, action)
+    if (actor !== undefined) this.record(actor, action, this.result.state.log.slice(logBefore))
+    this.emit()
+    // Screens show for every client; dismissal is local. Bots are off in joined games.
+    this.detectInterlude(prev)
   }
 
   /**
@@ -335,24 +380,14 @@ class GameStore {
         this.options = options
         this.result = result
         this.generation += 1
-        this.botEvents = []
+        this.turnEvents = []
         this.clearInterlude()
         this.emit()
         // Adopting a finished game shows its summary, same as loading one.
         if (result.state.isOver) this.openInterlude({ kind: 'gameOver' })
       },
-      applyRemote: (action) => {
-        if (this.result === null) return
-        /*
-         * The second hook. Identical to `apply` except that it does **not** publish — an action that
-         * arrived from the server must not be sent back to it, which would append it twice.
-         */
-        const prev = this.result
-        this.result = applyExternal(prev, action, this.registry)
-        this.emit()
-        // Screens show for every client; dismissal is local. Bots are off in joined games.
-        this.detectInterlude(prev)
-      },
+      // The second hook, and a real method — see `applyRemote`, which also narrates the action.
+      applyRemote: (action) => this.applyRemote(action),
       seats: (seats) => {
         this.seats = seats
         this.seatsVersion += 1
@@ -509,7 +544,7 @@ class GameStore {
     this.options = options
     this.generation += 1
     this.result = startGame(options, this.registry)
-    this.botEvents = []
+    this.turnEvents = []
     this.clearInterlude()
     this.emit()
     this.persist()
@@ -550,7 +585,7 @@ class GameStore {
     this.clearBotTimer()
     this.forgetBotTurn()
     this.result = engineUndo(this.options, this.result, this.registry)
-    this.botEvents = []
+    this.turnEvents = []
     this.clearInterlude()
     this.emit()
     this.persist()
@@ -602,7 +637,7 @@ class GameStore {
     const { options, result } = loadGame(json, this.registry)
     this.options = options
     this.result = result
-    this.botEvents = []
+    this.turnEvents = []
     this.clearInterlude()
     /*
      * Firing off a bot move the instant a file opens is startling — a save parked on a bot's
@@ -619,7 +654,7 @@ class GameStore {
   reset(): void {
     this.clearBotTimer()
     this.forgetBotTurn()
-    this.botEvents = []
+    this.turnEvents = []
     this.clearInterlude()
     clearAutosave()
     this.result = null
@@ -635,13 +670,14 @@ class GameStore {
 export const store = new GameStore()
 
 /**
- * Subscribe to bot presentation state — mode, pace, last decision, override count.
+ * Subscribe to watch-mode presentation state — mode, pace, last decision, override count, and the
+ * events other players' actions leave on the board.
  *
  * Separate from `useGame` because those change without the position changing, and `useGame`'s
  * snapshot is the position. A component showing both needs both.
  */
-export function useBotUi(): number {
-  return useSyncExternalStore(store.subscribe, store.getBotUiSnapshot, store.getBotUiSnapshot)
+export function useTurnUi(): number {
+  return useSyncExternalStore(store.subscribe, store.getTurnUiSnapshot, store.getTurnUiSnapshot)
 }
 
 /** Subscribe to the interlude — the chapter/game-over screen state, separate from the position. */
@@ -650,7 +686,7 @@ export function useInterlude(): number {
 }
 
 /**
- * Subscribe to the joined game's seat list — same reasoning as `useBotUi`: a name claim does not
+ * Subscribe to the joined game's seat list — same reasoning as `useTurnUi`: a name claim does not
  * move the position, so a component that shows `seatName`/`mySeatName` needs this to re-render.
  */
 export function useSeats(): number {

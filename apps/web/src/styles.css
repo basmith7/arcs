@@ -2296,8 +2296,8 @@ button {
   }
 }
 
-/* --- bot events: the bot's last actions, drawn where they happened --- */
-.bot-events {
+/* --- turn events: the last few actions taken by anyone else, drawn where they happened --- */
+.turn-events {
   pointer-events: none;
 }
 /* An expanding, fading ring — the "something just landed here" gesture. Runs once per event. */
@@ -2309,7 +2309,7 @@ button {
   transform-origin: center;
   animation: evt-pulse 2.2s ease-out forwards;
 }
-.bot-event.battle .evt-pulse {
+.turn-event.battle .evt-pulse {
   stroke: #e0604e;
 }
 @keyframes evt-pulse {
@@ -2334,7 +2334,7 @@ button {
   text-anchor: middle;
   paint-order: stroke;
 }
-.bot-event.battle .evt-caption rect {
+.turn-event.battle .evt-caption rect {
   stroke: rgba(224, 96, 78, 0.6);
 }
 /*
@@ -2680,6 +2680,96 @@ button {
   /* Long turns scroll rather than growing up the board; the newest line is the one pinned in view. */
   max-height: 30vh;
   padding: 8px 10px;
+}
+
+/* --- the log's names ------------------------------------------------------
+ *
+ * A card and a system inside a sentence. Both are marked lightly and on purpose: the log is read
+ * as prose, and underlining every proper noun in a three-hour game turns a column of sentences
+ * into a column of links. So the resting state is a dotted baseline and the faintest lift in
+ * color, and the full treatment arrives on hover — at which point the pointer has already said
+ * which one is meant.
+ */
+.log-card {
+  /* A button that has to sit inside a line of text: no chrome, inherited metrics. */
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--parchment, #e8dcc0);
+  border-bottom: 1px dotted rgba(201, 169, 97, 0.5);
+  cursor: pointer;
+}
+.log-card:hover,
+.log-card:focus-visible {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+  outline: none;
+}
+.log-sys {
+  color: var(--parchment, #e8dcc0);
+  border-bottom: 1px dotted rgba(140, 170, 200, 0.45);
+}
+/* The row is the target, so the system marks in it light together — including a move's two ends. */
+.log-head:hover .log-sys,
+.log-line:hover .log-sys {
+  color: #b8d4f0;
+  border-bottom-color: rgba(184, 212, 240, 0.8);
+}
+
+/*
+ * The card floated beside its name. Fixed, portalled to `body`, and positioned in viewport
+ * coordinates by the panel — see `CardPreview`, and `CardZoom` for why anything positioned inside
+ * the drawer or the feed would be clipped by it.
+ *
+ * `pointer-events: none` is what keeps it from being a trap: the art can land over the very name
+ * that opened it, and a card that swallowed the pointer would flicker between opening and closing
+ * as fast as the browser could dispatch.
+ */
+.log-preview {
+  position: fixed;
+  z-index: 320; /* over the drawer (260) and the trays; under the readers it opens (400+) */
+  pointer-events: none;
+  animation: log-preview-in 90ms ease-out;
+}
+.log-preview img {
+  display: block;
+  width: 240px;
+  height: 336px;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.6);
+}
+@keyframes log-preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+/* An action card opened from the log: the same backdrop as the court modal, art and nothing else. */
+.log-action-art {
+  max-width: 90vw;
+  max-height: 86vh;
+  border-radius: 14px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * What a hovered row points at on the map. The reticle and the route are the turn events' own —
+ * see `LogHighlight` — so only the pulse is restated here: the event version animates once and
+ * fades, and this one is held for as long as the pointer is.
+ */
+.log-highlight {
+  pointer-events: none;
+}
+.log-highlight .evt-pulse {
+  animation: none;
+  opacity: 0.5;
+  stroke: #9ec5ea;
+}
+.log-highlight .route {
+  opacity: 0.85;
 }
 
 /* --- narrower screens ---------------------------------------------------- */

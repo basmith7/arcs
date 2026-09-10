@@ -24,10 +24,11 @@ import type { Action, Continue, GameState, SystemInfo } from '@arcs/engine'
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
-import { store, useBotUi } from '../store.js'
+import { store, useTurnUi } from '../store.js'
 import { modeOf } from './Hand.js'
-import { caption, derivePlacement, liveEvents } from '../bot-events.js'
-import type { BotEvent } from '../bot-events.js'
+import { useHoveredSystems } from '../log-hover.js'
+import { caption, derivePlacement, liveEvents } from '../turn-events.js'
+import type { TurnEvent } from '../turn-events.js'
 import { colorOf, figureArt } from '../theme.js'
 import { asset } from '../assets.js'
 import { useSettings } from '../settings.js'
@@ -430,39 +431,81 @@ function Route({
 /**
  * The bot's actions, drawn where they happened.
  *
- * Replaces the BotPanel's prose narration: each event from `store.botEvents` renders for
+ * Replaces the BotPanel's prose narration: each event from `store.turnEvents` renders for
  * ~2.6 seconds as a pulse (or battle pulse) on its system — an arrow along its move — with the
  * engine's own log line as a caption chip. The interval only runs while something is live, and
  * expiry is handled here so the store never needs a cleanup timer.
  */
-function BotEventLayer({ state }: { state: GameState }): JSX.Element | null {
-  useBotUi()
+function TurnEventLayer({ state }: { state: GameState }): JSX.Element | null {
+  useTurnUi()
   const [, bump] = useState(0)
-  const events = liveEvents(store.botEvents, performance.now())
+  const events = liveEvents(store.turnEvents, performance.now())
   useEffect(() => {
-    if (store.botEvents.length === 0) return
+    if (store.turnEvents.length === 0) return
     const t = setInterval(() => bump((n) => n + 1), 300)
     return () => clearInterval(t)
-  }, [store.botEvents.length > 0 ? store.botEvents[store.botEvents.length - 1]!.id : 0])
+  }, [store.turnEvents.length > 0 ? store.turnEvents[store.turnEvents.length - 1]!.id : 0])
   if (events.length === 0) return null
 
   const known = new Set(state.board.systems)
   return (
-    <g className="bot-events">
+    <g className="turn-events">
       {events.map((e) => (
-        <BotEventMark key={e.id} state={state} event={e} known={known} />
+        <TurnEventMark key={e.id} state={state} event={e} known={known} />
       ))}
     </g>
   )
 }
 
-function BotEventMark({
+/**
+ * What the log is pointing at, drawn on the map.
+ *
+ * The other half of `log-hover.ts`. Hovering a log row lights the systems that row names, so a
+ * sentence like "moved 2 ships 1-Gate → 1-Arrow" can be read on the board instead of on the map
+ * key — which is most of what makes a long log worth scrolling back through at all.
+ *
+ * Deliberately thin. It reuses the reticle and the route the turn events already draw rather than
+ * inventing a highlight of its own, because a second visual vocabulary for "look here" would leave
+ * the player working out which kind of ring means what. The difference is only that this one is
+ * held by the pointer instead of by a timer.
+ *
+ * Unknown ids are dropped rather than trusted: the parser reads system names out of prose, and a
+ * board that does not have the system a line names — a different map, a fate-only system out of
+ * play — must cost a highlight and never a crash.
+ */
+function LogHighlight({ state }: { state: GameState }): JSX.Element | null {
+  const systems = useHoveredSystems()
+  if (systems.length === 0) return null
+  const known = new Set(state.board.systems)
+  const hits = systems.filter((id) => known.has(id))
+  if (hits.length === 0) return null
+  const centres = hits.map((id) => centreOf(state, id))
+  return (
+    <g className="log-highlight">
+      {/*
+        * Two systems is a move, so the route between them is drawn — the same curve the turn
+        * events use. Three or more is a line naming several places rather than a journey between
+        * them, and a chain of arrows through them would be inventing a path the engine never
+        * claimed.
+        */}
+      {centres.length === 2 ? <Route from={centres[0]!} to={centres[1]!} /> : null}
+      {centres.map(({ cx, cy }, i) => (
+        <g key={hits[i]}>
+          <Reticle cx={cx} cy={cy} kind="dest" />
+          <circle className="evt-pulse" cx={cx} cy={cy} r={RETICLE_R} />
+        </g>
+      ))}
+    </g>
+  )
+}
+
+function TurnEventMark({
   state,
   event,
   known,
 }: {
   state: GameState
-  event: BotEvent
+  event: TurnEvent
   known: ReadonlySet<string>
 }): JSX.Element | null {
   const place = derivePlacement(event.action)
@@ -478,7 +521,7 @@ function BotEventMark({
   const below = cy + RETICLE_R + 46
   const capY = below + 19 > MAP_SIZE.height - 8 ? cy - RETICLE_R - 46 : below
   return (
-    <g className={`bot-event${battle ? ' battle' : ''}`}>
+    <g className={`turn-event${battle ? ' battle' : ''}`}>
       {place.kind === 'arrow' && place.from !== undefined && known.has(place.from) ? (
         <Route from={centreOf(state, place.from)} to={centreOf(state, at)} />
       ) : null}
@@ -894,7 +937,8 @@ export function Board({ state, cont }: Props): JSX.Element {
               </g>
             )
           })}
-        <BotEventLayer state={state} />
+        <LogHighlight state={state} />
+        <TurnEventLayer state={state} />
       </svg>
       {fleet !== null ? (
         <div className="board-hint">

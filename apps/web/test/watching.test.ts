@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { watchedActor } from '../src/multiplayer/seat.js'
+import { hushed, watchedActor } from '../src/multiplayer/seat.js'
 import type { SeatView } from '../src/multiplayer/seat.js'
 import type { Ask, Continue } from '@arcs/engine'
 
@@ -62,5 +62,42 @@ describe('watchedActor outside an ask', () => {
   it('is null on a simultaneous ask, which has no single actor to narrate', () => {
     const multi: Continue = { kind: 'multiAsk', asks: [ask('red'), ask('blue')] }
     expect(watchedActor(multi, { kind: 'seat', faction: 'red' }, [])).toBeNull()
+  })
+})
+
+/**
+ * The other half of watch mode: what the *board* is allowed to offer while somebody else acts.
+ *
+ * `App` stands the tray, the strip and the Prelude down by not mounting them, which the surfaces
+ * above decide. The map cannot be stood down that way — it is the thing being watched — so it is
+ * hushed instead: the same ask, with nothing to click. Every affordance `Board` draws is derived
+ * from `cont.actions`, so emptying that one field is what takes the hint bar and every reticle
+ * with it, including affordances nobody has written yet.
+ */
+describe('hushed', () => {
+  const offer: Ask = {
+    kind: 'ask',
+    faction: 'yellow',
+    actions: [{ type: 'action/move-pick', faction: 'yellow', from: '1-Gate', to: '1-Arrow' }],
+  }
+
+  it('empties the actions, which is what silences the board hint', () => {
+    const out = hushed(offer)
+    expect(out).toMatchObject({ kind: 'ask', faction: 'yellow', actions: [] })
+  })
+
+  it('keeps the actor, so the board still colours whose move it is', () => {
+    expect((hushed(offer) as Ask).faction).toBe('yellow')
+  })
+
+  it('leaves a non-ask alone — game over is nobody’s decision to hush', () => {
+    const over: Continue = { kind: 'gameOver', winners: ['red'], reason: 'power' }
+    expect(hushed(over)).toBe(over)
+  })
+
+  it('empties every ask in a simultaneous one rather than passing them through', () => {
+    const multi: Continue = { kind: 'multiAsk', asks: [offer, { ...offer, faction: 'blue' }] }
+    const out = hushed(multi) as { kind: 'multiAsk'; asks: readonly Ask[] }
+    expect(out.asks.every((a) => a.actions.length === 0)).toBe(true)
   })
 })

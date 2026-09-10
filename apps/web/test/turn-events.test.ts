@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import type { Action } from '@arcs/engine'
+import type { Action, Continue } from '@arcs/engine'
 
 import {
   EVENT_LIFE_MS,
@@ -17,13 +17,16 @@ import {
   caption,
   courtFlashSlot,
   derivePlacement,
+  STAGGER_MS,
+  eventActor,
   liveEvents,
   liveFlash,
   playedCardFlash,
-} from '../src/bot-events.js'
-import type { BotEvent } from '../src/bot-events.js'
+  queueAt,
+} from '../src/turn-events.js'
+import type { TurnEvent } from '../src/turn-events.js'
 
-function event(action: Action, lines: string[] = [], at = 0, id = 1): BotEvent {
+function event(action: Action, lines: string[] = [], at = 0, id = 1): TurnEvent {
   return { id, faction: 'red', action, lines, at }
 }
 
@@ -130,5 +133,74 @@ describe('liveEvents', () => {
   it('keeps events younger than the life and drops the rest', () => {
     const events = [event({ type: 'x' } as Action, [], 0, 1), event({ type: 'x' } as Action, [], 1000, 2)]
     expect(liveEvents(events, EVENT_LIFE_MS + 1).map((e) => e.id)).toEqual([2])
+  })
+
+  /*
+   * The other end of the window, and the half that only exists because of `queueAt`: a staggered
+   * burst holds events whose moment has not arrived. `now - at` is *negative* for those, which the
+   * age test alone reads as "very fresh" — so a queued burst would all flash at once, which is the
+   * pile-up the stagger was added to prevent.
+   */
+  it('holds an event whose turn has not come yet', () => {
+    const events = [event({ type: 'x' } as Action, [], 1000, 1)]
+    expect(liveEvents(events, 999)).toEqual([])
+    expect(liveEvents(events, 1000).map((e) => e.id)).toEqual([1])
+  })
+})
+
+/**
+ * When an event gets to play.
+ *
+ * A bot steps on a timer, so its actions are already spaced and this is the identity. A remote
+ * player's normally are too — each publish is its own WebSocket push. The case this exists for is
+ * catch-up: the one poll after the socket opens or reopens, and the polling fallback, both of
+ * which hand `applyRemote` several actions in a single loop (`session.ts`). Without a stagger
+ * those share an instant and their captions land on top of each other.
+ */
+describe('queueAt', () => {
+  it('is now when nothing is queued ahead of it', () => {
+    expect(queueAt([], 5000)).toBe(5000)
+  })
+
+  it('is now when the last event is already older than the stagger', () => {
+    const events = [event({ type: 'x' } as Action, [], 1000, 1)]
+    expect(queueAt(events, 1000 + STAGGER_MS + 1)).toBe(1000 + STAGGER_MS + 1)
+  })
+
+  it('spaces a burst that arrives in one instant', () => {
+    let events: TurnEvent[] = []
+    const at: number[] = []
+    for (let i = 0; i < 4; i++) {
+      const t = queueAt(events, 1000)
+      at.push(t)
+      events = [...events, event({ type: 'x' } as Action, [], t, i + 1)]
+    }
+    expect(at).toEqual([1000, 1000 + STAGGER_MS, 1000 + 2 * STAGGER_MS, 1000 + 3 * STAGGER_MS])
+  })
+})
+
+/**
+ * Who acted, for an action that arrived from the network.
+ *
+ * The bot path is told the faction outright — the store picked it. A remote action carries only
+ * what was published, so the actor is read off the position it was applied to: the engine
+ * addresses an ask to whoever must answer it, which is by definition whoever sent this.
+ */
+describe('eventActor', () => {
+  const ask = (faction: string): Continue =>
+    ({ kind: 'ask', faction, actions: [] }) as unknown as Continue
+
+  it('reads the actor off the ask the action answered', () => {
+    expect(eventActor(ask('blue'), { type: 'action/build', system: '1-Hex' } as Action)).toBe('blue')
+  })
+
+  it('falls back to the action\'s own faction outside an ask', () => {
+    const over = { kind: 'gameOver', winners: [], reason: 'x' } as unknown as Continue
+    expect(eventActor(over, { type: 'action/build', faction: 'yellow' } as Action)).toBe('yellow')
+  })
+
+  it('is undefined when neither names anybody, so nothing is drawn in the wrong colour', () => {
+    const over = { kind: 'gameOver', winners: [], reason: 'x' } as unknown as Continue
+    expect(eventActor(over, { type: 'action/build' } as Action)).toBeUndefined()
   })
 })
