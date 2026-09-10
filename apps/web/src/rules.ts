@@ -8,6 +8,9 @@
  *
  * `pages` is written by hand and checked against what the script actually rendered by
  * `test/rules.test.ts` — the reader has no way to notice a document that grew or shrank.
+ *
+ * Pages cannot be searched. The reader's other tab can: `rules-text.ts` holds the same rules as
+ * text, from the publisher's codex. These are the printed documents; that is the index of them.
  */
 import { asset } from './assets.js'
 
@@ -46,7 +49,7 @@ export const RULES: readonly RulesDoc[] = [
   {
     id: 'base-rulebook',
     title: 'Rulebook',
-    blurb: 'The full base rulebook, April 11 2024 — including the glossary and index.',
+    blurb: 'The full base rulebook, August 27 2025 — including the glossary and index.',
     pages: 24,
     aspect: 1418 / 2048,
   },

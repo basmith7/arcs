@@ -22,3 +22,15 @@ packages/engine/src/ai/fitted-weights*.json
 # Vite's local env overrides. `VITE_MULTIPLAYER_URL` points a dev build at a local Worker; it is
 # per-developer and must not decide where anyone else's build talks to.
 *.env.local
+
+# Local copies of the Leder-era FAQ (the Google Doc behind
+# <https://ledergames.com/pages/arcs-faq>, plus the Cardboard Appendix mirror). Kept out of the
+# repo because `assets/rules` is served as `public/rules`, and publishing another publisher's FAQ
+# is a step past hosting the rulebook — the corrections that matter are already carried by
+# `assets/rules/data/rules-text.json`, which the reader shows against the rules they correct.
+assets/rules/faq/
+
+# `pdftotext -layout` dumps of the rules PDFs. Regenerable from the committed PDFs, and handy for
+# grepping the rules while writing the engine — but they churn on every reprint, and the searchable
+# copy that the app actually ships is `assets/rules/data/rules-text.json`.
+assets/rules/text/

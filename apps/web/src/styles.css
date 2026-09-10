@@ -6381,3 +6381,138 @@ button {
   background: #fff;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
+
+/*
+ * The search tab. Same fixed-height dialog as the page tabs, so the box and the credit line stay
+ * put and only the middle scrolls — a results list that carried the search box off the top would
+ * make every second query a scroll back up.
+ */
+.rules-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--line);
+}
+.rules-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: inherit;
+  font-size: 13px;
+}
+.rules-search-input:focus {
+  outline: none;
+  border-color: var(--gold-dim);
+}
+.rules-text-body {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.55;
+  padding-right: 4px;
+}
+.rules-contents,
+.rules-hits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+/* A hit is a whole row of text, so it is a button that does not look like one. */
+.rules-hit {
+  display: grid;
+  grid-template-columns: 3.6em 1fr;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 8px 6px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rules-hit:hover {
+  background: rgba(201, 169, 97, 0.07);
+}
+.rules-hit-title {
+  font-weight: 600;
+}
+.rules-number {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.rules-snippet {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 12px;
+}
+.rules-trail {
+  color: var(--muted);
+  font-weight: 400;
+}
+p.rules-trail {
+  margin: 6px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rules-section {
+  margin: 12px 0;
+}
+.rules-section p {
+  margin: 6px 0;
+}
+.rules-section-head {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+}
+/* Corrections the publisher has issued since printing: worth reading before the rule, not after. */
+.rules-erratum {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-left: 2px solid var(--gold-dim);
+  background: rgba(201, 169, 97, 0.07);
+  border-radius: 0 6px 6px 0;
+}
+.rules-erratum-tag {
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.rules-li {
+  margin: 4px 0 4px 1.1em;
+  list-style: disc;
+}
+/* A cross-reference reads as a link inside the sentence; it just happens to move this reader. */
+.rules-ref {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--gold);
+  text-decoration: underline;
+  text-decoration-color: var(--gold-dim);
+  cursor: pointer;
+}
+.rules-symbol {
+  color: var(--gold);
+}
+.rules-credit {
+  margin: 0;
+  padding: 8px 2px 0;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--muted);
+}

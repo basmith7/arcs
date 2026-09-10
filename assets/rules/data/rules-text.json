@@ -1,0 +1,5523 @@
+{
+ "source": "https://rules.buriedgiant.com/?product=arcs&locale=en-US&printing=p1",
+ "publisher": "Buried Giant Studios",
+ "updated": "Oct 8, 2025",
+ "fetched": "2026-09-10",
+ "chunk": "chunk-WZM3UTAU.js",
+ "sections": [
+  {
+   "number": "1",
+   "anchor": "1-introduction",
+   "title": "Introduction",
+   "trail": [],
+   "text": "In Arcs, you lead a spacefaring society through an epic saga, as you try to survive in the harsh and dangerous Reach at the galaxy's edge. A game of Arcs lasts until someone has enough **Power**—essentially points. In games with 4 players, someone needs to have at least **27 Power**. With 3 players, **30 Power**. With 2 players, **33 Power**. When the game ends, the player with the most Power wins.<br><br>\nYou gain Power by completing **ambitions**, which are objectives that you declare in play. These are scored at the end of the **chapter**, when everyone runs out of action cards. The game lasts a varying number of chapters, usually three to five.<br><br>\nYour first game of Arcs will take about 45 minutes per player. After you play a few times, a game should take about 30 minutes per player.<br><br>\nIf you want to learn Arcs by watching a video, click **[here](https://buriedgiantstudios.com/pages/how-to-play-arcs)**."
+  },
+  {
+   "number": "2",
+   "anchor": "2-whats-in-the-box",
+   "title": "What's in the Box",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "2.1",
+   "anchor": "2.1-map",
+   "title": "Map",
+   "trail": [
+    "What's in the Box"
+   ],
+   "text": "The map of the Reach is where the action happens. You can move your ships around it, battle Rivals for control over its systems, and tax resources from the cities you build on its planets."
+  },
+  {
+   "number": "2.2",
+   "anchor": "2.2-player-pieces",
+   "title": "Player Pieces",
+   "trail": [
+    "What's in the Box"
+   ],
+   "text": "Each player has the following pieces. The box contains pieces for 4 players."
+  },
+  {
+   "number": "2.2.1",
+   "anchor": "2.2.1-player-board",
+   "title": "Player Board",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "This board holds resources, your unbuilt cities, and Rival pieces you take as Trophies and Captives."
+  },
+  {
+   "number": "2.2.2",
+   "anchor": "2.2.2-starports",
+   "title": "Starports",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "Starports are built on planets and are used to build ships. Each player has **5 starports**."
+  },
+  {
+   "number": "2.2.3",
+   "anchor": "2.2.3-cities",
+   "title": "Cities",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "Cities are built on planets and can be taxed to gain resource tokens onto your player board. Each player has **5 cities**."
+  },
+  {
+   "number": "2.2.4",
+   "anchor": "2.2.4-ships",
+   "title": "Ships",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "Ships can move around the map and engage in battles. Each player has **15 ships**."
+  },
+  {
+   "number": "2.2.5",
+   "anchor": "2.2.5-agents",
+   "title": "Agents",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "Agents are placed on cards in the Court, a card row next to the map. Once you have the most agents on a card in the Court, you can take it. Each player has **10 agents**."
+  },
+  {
+   "number": "2.2.6",
+   "anchor": "2.2.6-power-marker",
+   "title": "Power Marker",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "This marker tracks your current Power on the bottom map edge. The second marker is used in expansions to track negative Power and very high Power. Each player has **2 power markers**."
+  },
+  {
+   "number": "2.2.7",
+   "anchor": "2.2.7-objective-marker",
+   "title": "Objective Marker",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "This shows how close you are to completing your Fate's objective."
+  },
+  {
+   "number": "2.2.8",
+   "anchor": "2.2.8-flagship-piece",
+   "title": "Flagship Piece",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "Some Fates turn you into a Flagship, adding this piece to the map."
+  },
+  {
+   "number": "2.2.9",
+   "anchor": "2.2.9-flagship-board",
+   "title": "Flagship Board",
+   "trail": [
+    "What's in the Box",
+    "Player Pieces"
+   ],
+   "text": "Some Fates turn you into a Flagship, giving you this board."
+  },
+  {
+   "number": "2.3",
+   "anchor": "2.3-cards",
+   "title": "Cards",
+   "trail": [
+    "What's in the Box"
+   ],
+   "text": ""
+  },
+  {
+   "number": "2.3.1",
+   "anchor": "2.3.1-action",
+   "title": "Action",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "These cards are played to take actions and declare ambitions. With 2 or 3 players, you don't use the “1” and “7” action cards. There are **28 action cards**."
+  },
+  {
+   "number": "2.3.2",
+   "anchor": "2.3.2-setup",
+   "title": "Setup",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "One of these cards is used in setup to place players' starting pieces and cover parts of the map. There are **12 setup cards**, 4 each for 2-4 players."
+  },
+  {
+   "number": "2.3.3",
+   "anchor": "2.3.3-leader",
+   "title": "Leader",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "These cards give special powers and show a player's starting pieces and resources. They are used in Leaders & Lore mode (`rule-relative:Leaders & Lore`). There are **8 leader cards** in the base game and **8 leader cards** in the Leaders & Lore pack."
+  },
+  {
+   "number": "2.3.4",
+   "anchor": "2.3.4-guild",
+   "title": "Guild",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "These cards represent the support of guildmasters and task forces. They are gained from the Court, often give new actions, and can be stolen."
+  },
+  {
+   "number": "2.3.4.1",
+   "anchor": "2.3.4.1-base-game",
+   "title": "Base Game",
+   "trail": [
+    "What's in the Box",
+    "Cards",
+    "Guild"
+   ],
+   "text": "There are **25 Guild cards** for the base game, marked “BC” in their bottom-left corner."
+  },
+  {
+   "number": "2.3.4.2",
+   "anchor": "2.3.4.2-campaign",
+   "title": "Campaign",
+   "trail": [
+    "What's in the Box",
+    "Cards",
+    "Guild"
+   ],
+   "text": "There are **10 Guild cards** for the campaign game, marked “CC” in their bottom-left corner."
+  },
+  {
+   "number": "2.3.5",
+   "anchor": "2.3.5-vox",
+   "title": "Vox",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "These cards represent incidents in the Reach that you can turn to your own ends. They are gained from the Court and resolve immediately."
+  },
+  {
+   "number": "2.3.5.1",
+   "anchor": "2.3.5.1-base-game",
+   "title": "Base Game",
+   "trail": [
+    "What's in the Box",
+    "Cards",
+    "Vox"
+   ],
+   "text": "There are **6 Vox cards** for the base game, marked “BC” in their bottom-left corner."
+  },
+  {
+   "number": "2.3.5.2",
+   "anchor": "2.3.5.2-campaign",
+   "title": "Campaign",
+   "trail": [
+    "What's in the Box",
+    "Cards",
+    "Vox"
+   ],
+   "text": "There are **5 Vox cards** for the campaign game, marked “CC” in their bottom-left corner."
+  },
+  {
+   "number": "2.3.6",
+   "anchor": "2.3.6-lore",
+   "title": "Lore",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "These cards represent long-lost technologies and the intangible qualities of leadership, charm, and rank. They are used in Leaders & Lore mode (`rule-relative:Leaders & Lore`). There are 14 lore cards in the base game and 14 lore cards in the Leaders & Lore pack."
+  },
+  {
+   "number": "2.3.7",
+   "anchor": "2.3.7-event",
+   "title": "Event",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "Two or three of these new action cards are added to the action deck during campaign setup. There are **3 Event cards**."
+  },
+  {
+   "number": "2.3.8",
+   "anchor": "2.3.8-imperial-council",
+   "title": "Imperial Council",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "This new card in the Court during campaign lets players take advantage of Imperial politics. It is marked `symbol:diamond`01."
+  },
+  {
+   "number": "2.3.9",
+   "anchor": "2.3.9-edict",
+   "title": "Edict",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "These are put in the rules booklet and may resolve during events. They are marked `symbol:diamond`02–05. There are **4 Edict cards**."
+  },
+  {
+   "number": "2.3.10",
+   "anchor": "2.3.10-regent-outlaw-title",
+   "title": "Regent/Outlaw Title",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "In the campaign, every player starts as an Imperial Regent and might become an Outlaw. They are marked `symbol:diamond`06–09. There are **4 Regent/Outlaw Title cards**."
+  },
+  {
+   "number": "2.3.11",
+   "anchor": "2.3.11-flagship-upgrades-4",
+   "title": "Flagship Upgrades (4)",
+   "trail": [
+    "What's in the Box",
+    "Cards"
+   ],
+   "text": "These aid cards give the rules for Flagship Upgrades, marked `symbol:diamond`10–13. There are **4 Flagship Upgrades cards**."
+  },
+  {
+   "number": "2.4",
+   "anchor": "2.4-fates",
+   "title": "Fates",
+   "trail": [
+    "What's in the Box"
+   ],
+   "text": ""
+  },
+  {
+   "number": "2.4.1",
+   "anchor": "2.4.1-cards",
+   "title": "Cards",
+   "trail": [
+    "What's in the Box",
+    "Fates"
+   ],
+   "text": "These tarot-size cards show your Fate, which can change over time. There are **24 Fate cards**, 8 each of A, B, and C."
+  },
+  {
+   "number": "2.4.2",
+   "anchor": "2.4.2-sets",
+   "title": "Sets",
+   "trail": [
+    "What's in the Box",
+    "Fates"
+   ],
+   "text": "Each Fate has a set of many cards and pieces you will use in play."
+  },
+  {
+   "number": "2.4.3",
+   "anchor": "2.4.3-set-dividers",
+   "title": "Set Dividers",
+   "trail": [
+    "What's in the Box",
+    "Fates"
+   ],
+   "text": "Each Fate Set is stored behind the divider of matching number."
+  },
+  {
+   "number": "2.5",
+   "anchor": "2.5-other-pieces",
+   "title": "Other Pieces",
+   "trail": [
+    "What's in the Box"
+   ],
+   "text": ""
+  },
+  {
+   "number": "2.5.1",
+   "anchor": "2.5.1-resource-tokens",
+   "title": "Resource Tokens",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "Resources represent both assets and the people skilled in using them. They add to ambitions and can be spent for special actions. There are **25 resource tokens**, 5 each of Material, Fuel, Weapons, Relics, and Psionic."
+  },
+  {
+   "number": "2.5.2",
+   "anchor": "2.5.2-battle-dice",
+   "title": "Battle Dice",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "These dice are used to resolve battle. There are **18 battle dice**, 6 each of Assault, Skirmish, and Raid."
+  },
+  {
+   "number": "2.5.3",
+   "anchor": "2.5.3-chapter-marker",
+   "title": "Chapter Marker",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "This marker tracks the current chapter of the game on the map."
+  },
+  {
+   "number": "2.5.4",
+   "anchor": "2.5.4-ambition-markers",
+   "title": "Ambition Markers",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "These markers show which ambitions are currently declared. They start on their blue side with lower numbers. There are **3 ambition markers**."
+  },
+  {
+   "number": "2.5.5",
+   "anchor": "2.5.5-zero-marker",
+   "title": "Zero Marker",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "This marker covers the card number of the lead card, making it 0, when an ambition is declared."
+  },
+  {
+   "number": "2.5.6",
+   "anchor": "2.5.6-initiative-marker",
+   "title": "Initiative Marker",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "This marker shows which player will take the first turn of a round."
+  },
+  {
+   "number": "2.5.7",
+   "anchor": "2.5.7-path-markers",
+   "title": "Path Markers",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "These are added to the map during setup. They cover gates, making them out of play and connecting the gates of neighboring clusters. There are **4 path markers**, 2 each of long and short."
+  },
+  {
+   "number": "2.5.8",
+   "anchor": "2.5.8-out-of-play-markers",
+   "title": "Out-of-play Markers",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "These are added to the map during setup. They cover planets, making them out of play for the game. There are **6 out-of-play markers**."
+  },
+  {
+   "number": "2.5.9",
+   "anchor": "2.5.9-blight-tokens",
+   "title": "Blight Tokens",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "The Blight is a mysterious entity spreading through the Reach. There are **24 Blight tokens**."
+  },
+  {
+   "number": "2.5.10",
+   "anchor": "2.5.10-free-cities-starports",
+   "title": "Free Cities & Starports",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "Players can act with Free buildings they control. There are **28 Free cities** and **14 Free starports**."
+  },
+  {
+   "number": "2.5.11",
+   "anchor": "2.5.11-imperial-ships",
+   "title": "Imperial Ships",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "These ships control systems for the Empire, and Regents can act with them. There are **15 Imperial ships**."
+  },
+  {
+   "number": "2.5.12",
+   "anchor": "2.5.12-number-event-dice",
+   "title": "Number & Event Dice",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "These are rolled in setup and during some events in play."
+  },
+  {
+   "number": "2.5.13",
+   "anchor": "2.5.13-chapter-track-tile",
+   "title": "Chapter Track Tile",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "This double-sided tile covers the chapter track on the map."
+  },
+  {
+   "number": "2.5.14",
+   "anchor": "2.5.14-first-regent-tile",
+   "title": "First Regent Tile",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "This shows which Regent is the First Regent and holds the Imperial Trust."
+  },
+  {
+   "number": "2.5.15",
+   "anchor": "2.5.15-rules-booklet",
+   "title": "Rules Booklet",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "This booklet holds various cards that are added in play."
+  },
+  {
+   "number": "2.5.16",
+   "anchor": "2.5.16-overflow-markers",
+   "title": "Overflow Markers",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "These hold pieces from crowded parts of the map between sessions. There are **4 overflow markers**."
+  },
+  {
+   "number": "2.5.17",
+   "anchor": "2.5.17-other-dividers",
+   "title": "Other Dividers",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "You can store cards and pieces behind these dividers (`rule-relative:Intermission$Next Act?$Next Act.$Packing Up.`). There are **6 other dividers**."
+  },
+  {
+   "number": "2.5.18",
+   "anchor": "2.5.18-aid-sheets",
+   "title": "Aid Sheets",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": ""
+  },
+  {
+   "number": "2.5.18.1",
+   "anchor": "2.5.18.1-base-game",
+   "title": "Base Game",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces",
+    "Aid Sheets"
+   ],
+   "text": "These sheets summarize how to play and what actions you can take. There are **4 aid sheets** for the base game."
+  },
+  {
+   "number": "2.5.18.2",
+   "anchor": "2.5.18.2-campaign",
+   "title": "Campaign",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces",
+    "Aid Sheets"
+   ],
+   "text": "These aids give rules for campaign play, ending games, and setting up later games. There are **2 aid sheets** for the campaign."
+  },
+  {
+   "number": "2.5.19",
+   "anchor": "2.5.19-log-sheet-pad",
+   "title": "Log Sheet Pad",
+   "trail": [
+    "What's in the Box",
+    "Other Pieces"
+   ],
+   "text": "These sheets record players' details between games."
+  },
+  {
+   "number": "3",
+   "anchor": "3-setup",
+   "title": "Setup",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "3.1",
+   "anchor": "3.1-base-game",
+   "title": "Base Game",
+   "trail": [
+    "Setup"
+   ],
+   "text": "If you are starting a non-campaign game, use this section. This section assumes that  you are not using Leaders & Lore (`rule-relative:Leaders & Lore$Setup`)."
+  },
+  {
+   "number": "3.1.1",
+   "anchor": "3.1.1-step-1-set-up-table",
+   "title": "Step 1. Set Up Table",
+   "trail": [
+    "Setup",
+    "Base Game"
+   ],
+   "text": ""
+  },
+  {
+   "number": "3.1.1.1",
+   "anchor": "3.1.1.1-map-dice-and-tokens",
+   "title": "Map, Dice, and Tokens",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the map and collect the 18 battle dice and 25 resource tokens."
+  },
+  {
+   "number": "3.1.1.2",
+   "anchor": "3.1.1.2-initiative-marker",
+   "title": "Initiative Marker",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Give the initiative marker to a random player."
+  },
+  {
+   "number": "3.1.1.3",
+   "anchor": "3.1.1.3-action-deck",
+   "title": "Action Deck",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle the 20 action cards marked \"2\" through \"6\" to start the action deck."
+  },
+  {
+   "number": "3.1.1.4",
+   "anchor": "3.1.1.4-action-deck-4-players-only",
+   "title": "Action Deck (4 Players Only)",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle the 8 action cards marked \"1\" and \"7\" into the action deck. (Otherwise, return them to the box.)"
+  },
+  {
+   "number": "3.1.1.5",
+   "anchor": "3.1.1.5-ambition-markers",
+   "title": "Ambition Markers",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the 3 ambition markers on their blue, lower-numbered sides in the Available Markers section of the map."
+  },
+  {
+   "number": "3.1.1.6",
+   "anchor": "3.1.1.6-chapter-marker",
+   "title": "Chapter Marker",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the chapter marker on the \"1\" space of the Chapter track on the map."
+  },
+  {
+   "number": "3.1.1.7",
+   "anchor": "3.1.1.7-zero-marker",
+   "title": "Zero Marker",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the zero marker in the Ambition Declared slot on the map."
+  },
+  {
+   "number": "3.1.1.8",
+   "anchor": "3.1.1.8-court-deck-and-row",
+   "title": "Court Deck and Row",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle all 6 Vox and 25 Guild cards to make the Court deck. Draw **3 cards (2 players)** or **4 cards (3–4 players)** from this deck to make a face-up Court row."
+  },
+  {
+   "number": "3.1.1.9",
+   "anchor": "3.1.1.9-setup-card",
+   "title": "Setup Card",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle the setup cards that list your number of players. Draw 1 setup card."
+  },
+  {
+   "number": "3.1.1.10",
+   "anchor": "3.1.1.10-path-and-out-of-play-markers",
+   "title": "Path and Out-of-Play Markers",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "In the **2 clusters (2–3 players)** or **1 cluster (4 players)** on the map marked Out of Play on the setup card, place a path marker over its numbered gate and place 3 out-of-play markers over the planets touching that gate."
+  },
+  {
+   "number": "3.1.1.11",
+   "anchor": "3.1.1.11-resources-on-ambitions-2-players-only",
+   "title": "Resources on Ambitions (2 Players Only)",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the 6 resource tokens matching the 6 planets covered by out-of-play markers onto the ambition boxes:<br> \\- Material and Fuel go on Tycoon.<br> \\- Weapons go on Warlord.<br> \\- Relics go on Keeper.<br> \\- Psionics go on Empath."
+  },
+  {
+   "number": "3.1.2",
+   "anchor": "3.1.2-step-2-set-up-players",
+   "title": "Step 2. Set Up Players",
+   "trail": [
+    "Setup",
+    "Base Game"
+   ],
+   "text": ""
+  },
+  {
+   "number": "3.1.2.1",
+   "anchor": "3.1.2.1-player-pieces",
+   "title": "Player Pieces",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player chooses a color, collects the matching player board, 5 cities, 5 starports, 15 ships, and 10 agents, and places the cities in the triangle slots along the top of their player board."
+  },
+  {
+   "number": "3.1.2.2",
+   "anchor": "3.1.2.2-power-marker",
+   "title": "Power Marker",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player puts their Power marker on the \"0\" Power track space on the map."
+  },
+  {
+   "number": "3.1.2.3",
+   "anchor": "3.1.2.3-starting-placement",
+   "title": "Starting Placement",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Players simultaneously place their starting pieces onto the map as follows. The player with the initiative marker performs the following steps. Then, going clockwise from the player with initiative, the 2nd, 3rd, and 4th players set up in the same way in the systems marked 2A–C, 3A–C, and 4A–C on the setup card, respectively.<br>\n  \\- Place **3 ships and 1 city** in the system marked 1A on the setup card.\n    Place the leftmost city from your player board.<br>\n  \\- Place **3 ships and 1 starport** in the system marked 1B.<br>\n  \\- Place **2 ships** in the system (3–4 players) or 2 systems (2 players)\n    marked 1C."
+  },
+  {
+   "number": "3.1.2.4",
+   "anchor": "3.1.2.4-starting-resources",
+   "title": "Starting Resources",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player gains the 2 resource tokens matching the planet icons in their A and B systems, putting them in the leftmost and next leftmost circle slots on their player board, respectively."
+  },
+  {
+   "number": "3.1.2.5",
+   "anchor": "3.1.2.5-starting-hand",
+   "title": "Starting Hand",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player draws 6 action cards into their hand.<br> ***2 Players Only:*** The player without initiative may  discard all 6 action cards in their hand and draw 6 new ones."
+  },
+  {
+   "number": "3.1.2.6",
+   "anchor": "3.1.2.6-action-discard-pile",
+   "title": "Action Discard Pile",
+   "trail": [
+    "Setup",
+    "Base Game",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Discard all action cards not in players' hands into a facedown action discard pile on the map, then shuffle it."
+  },
+  {
+   "number": "3.2",
+   "anchor": "3.2-campaign-act-i",
+   "title": "Campaign (Act I)",
+   "trail": [
+    "Setup"
+   ],
+   "text": "If you are starting a campaign from the beginning, use this section. Otherwise, use Act II & III Setup (`rule:3.2`). Campaign setup is very different from single session setup. Here are the important changes:\n\n  - Do not use setup cards. No clusters will be out of play, and players place\n    their starting pieces differently.\n  - Use the Guild and Vox cards specific to the campaign Court (marked \"CC\"). Do\n    not use the cards for the base Court (marked \"BC\").\n  - Use the same deck of lore cards as the base game (marked \"L\"), but you will\n    shuffle lore into the Court deck after dealing the Court."
+  },
+  {
+   "number": "3.2.1",
+   "anchor": "3.2.1-step-1-set-up-table",
+   "title": "Step 1. Set Up Table",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)"
+   ],
+   "text": ""
+  },
+  {
+   "number": "3.2.1.1",
+   "anchor": "3.2.1.1-map-dice-tokens-and-free-pieces",
+   "title": "Map, Dice, Tokens, and Free Pieces",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the map on the table and collect the 18 battle dice, 25 resource tokens, 24 Blight tokens, 28 Free cities, and 14 Free starports."
+  },
+  {
+   "number": "3.2.1.2",
+   "anchor": "3.2.1.2-initiative-marker",
+   "title": "Initiative Marker",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Give the initiative marker to a random player."
+  },
+  {
+   "number": "3.2.1.3",
+   "anchor": "3.2.1.3-action-deck",
+   "title": "Action Deck ",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle the 20 action cards marked \"2\" through \"6\" to start the action deck."
+  },
+  {
+   "number": "3.2.1.4",
+   "anchor": "3.2.1.4-action-deck-4-players-only",
+   "title": "Action Deck (4 Players Only)",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle the 8 action cards marked \"1\" and \"7\" into the action deck."
+  },
+  {
+   "number": "3.2.1.5",
+   "anchor": "3.2.1.5-event-cards",
+   "title": "Event Cards",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle 2 Event action cards (2–3 players) or 3 Event action cards (4 players) into the action deck."
+  },
+  {
+   "number": "3.2.1.6",
+   "anchor": "3.2.1.6-ambition-markers",
+   "title": "Ambition Markers",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the 3 ambition markers on their blue, lower-numbered sides in the Available Markers section of the map."
+  },
+  {
+   "number": "3.2.1.7",
+   "anchor": "3.2.1.7-chapter-track-tile-and-marker",
+   "title": "Chapter Track Tile and Marker",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the Chapter track tile to cover the chapter track on the map, with its \"Act I & II\" side face up, and place the chapter marker on its \"1\" space."
+  },
+  {
+   "number": "3.2.1.8",
+   "anchor": "3.2.1.8-zero-marker",
+   "title": "Zero Marker",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the zero marker in the Ambition Declared slot on the map."
+  },
+  {
+   "number": "3.2.1.9",
+   "anchor": "3.2.1.9-court-deck-and-row",
+   "title": "Court Deck and Row",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle all 15 campaign Vox and Guild cards (marked \"CC\") to make the Court deck. Deal 3 cards (2 players) or 4 cards (3–4 players) from it into the Court row."
+  },
+  {
+   "number": "3.2.1.10",
+   "anchor": "3.2.1.10-lore-cards",
+   "title": "Lore Cards",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle 1 lore card per player at random from the lore deck into the Court deck. _Use the same lore deck as you use in the base game. You can add any lore cards you want from expansion packs._"
+  },
+  {
+   "number": "3.2.1.11",
+   "anchor": "3.2.1.11-imperial-council-card",
+   "title": "Imperial Council Card",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the Imperial Council card (`symbol:diamond`01) on its In Session side as the leftmost Court card."
+  },
+  {
+   "number": "3.2.1.12",
+   "anchor": "3.2.1.12-guild-envoys-depart-2-players-only",
+   "title": "Guild Envoys Depart (2 Players Only)",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Slide the Guild Envoys Depart edict card (`symbol:diamond`02) into the first slot in the rules booklet."
+  },
+  {
+   "number": "3.2.1.13",
+   "anchor": "3.2.1.13-govern-edict-cards",
+   "title": "Govern Edict Cards",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Shuffle the 3 Govern the Imperial Reach edict cards (`symbol:diamond`03–05) face down, flip them all over, and slide them all face up into the first available slot in the rules booklet."
+  },
+  {
+   "number": "3.2.1.14",
+   "anchor": "3.2.1.14-imperial-ships",
+   "title": "Imperial Ships",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Roll the number die, then set up the 2 Imperial clusters—in the rolled cluster and the next clockwise cluster, place 1 Imperial ship in each system. _(8 total.)_"
+  },
+  {
+   "number": "3.2.1.15",
+   "anchor": "3.2.1.15-free-cities",
+   "title": "Free Cities",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Roll the event die. Place 1 Free city on each planet of the rolled planet ID symbol outside the Imperial clusters."
+  },
+  {
+   "number": "3.2.1.16",
+   "anchor": "3.2.1.16-damaged-blight",
+   "title": "Damaged Blight",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place 1 damaged Blight _(shaded side)_ in each system outside the Imperial clusters."
+  },
+  {
+   "number": "3.2.1.17",
+   "anchor": "3.2.1.17-resources-on-ambitions-2-players-only",
+   "title": "Resources on Ambitions (2 Players Only)",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 1. Set Up Table"
+   ],
+   "text": "Place the 6 resource tokens matching the planets in Imperial clusters onto the ambition boxes:<br>\n  \\- Material and Fuel go on Tycoon.<br>\n  \\- Weapons go on Warlord.<br>\n  \\- Relics go on Keeper.<br>\n  \\- Psionics go on Empath."
+  },
+  {
+   "number": "3.2.2",
+   "anchor": "3.2.2-step-2-set-up-players",
+   "title": "Step 2. Set Up Players",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)"
+   ],
+   "text": ""
+  },
+  {
+   "number": "3.2.2.1",
+   "anchor": "3.2.2.1-player-pieces",
+   "title": "Player Pieces",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player chooses a color, collects the player board, 15 ships, 5 cities, 5 starports, and 10 agents of that color, and places those cities in the 5 triangle slots along the top of their player board."
+  },
+  {
+   "number": "3.2.2.2",
+   "anchor": "3.2.2.2-fate-cards-and-sets",
+   "title": "Fate Cards and Sets",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player draws 2 \"A\" Fate cards (\"A\" on card back) and chooses one secretly. After everyone chooses, reveal them and take the matching Fate Sets (`rule-relative:What's in the Box$Fates`)."
+  },
+  {
+   "number": "3.2.2.3",
+   "anchor": "3.2.2.3-objective-card-setup",
+   "title": "Objective Card Setup",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player sets up based on the Setup side of their objective card—the first card in their Fate Set—then flips the card to its Objective side."
+  },
+  {
+   "number": "3.2.2.4",
+   "anchor": "3.2.2.4-objective-marker",
+   "title": "Objective Marker",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player places their objective marker on the Power track space shown by the large clock on their objective card."
+  },
+  {
+   "number": "3.2.2.5",
+   "anchor": "3.2.2.5-power-marker",
+   "title": "Power Marker",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player puts their Power marker on the \"0\" Power track space on the map."
+  },
+  {
+   "number": "3.2.2.6",
+   "anchor": "3.2.2.6-regent-outlaw-title-card",
+   "title": "Regent/Outlaw Title Card",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player takes a Regent/Outlaw title card (`symbol:diamond`06–09) and tucks it partially under their Fate card with its Regent side up. If no one has the First Regent tile from their setup, the player with initiative takes it."
+  },
+  {
+   "number": "3.2.2.7",
+   "anchor": "3.2.2.7-first-placement",
+   "title": "First Placement",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "In turn order, each player places 3 ships and 1 building in an empty building slot at a planet with an Imperial ship and gains 1 resource token of that planet type. _(The planet can have Rival pieces.)_"
+  },
+  {
+   "number": "3.2.2.8",
+   "anchor": "3.2.2.8-second-placement",
+   "title": "Second Placement",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Repeat the previous step but in reverse turn order—start with the last player in turn order and go counterclockwise."
+  },
+  {
+   "number": "3.2.2.9",
+   "anchor": "3.2.2.9-remaining-free-cities",
+   "title": "Remaining Free Cities",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Place Free cities in all empty building slots on planets with Imperial ships. _(With 4 players, you might not place any.)_"
+  },
+  {
+   "number": "3.2.2.10",
+   "anchor": "3.2.2.10-starting-hand",
+   "title": "Starting Hand",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Each player draws 6 action cards into their hand.<br> ***2 Players Only:*** The player without initiative may discard all of the  action cards in their hand except Events and draw the same number of new cards  from the action deck."
+  },
+  {
+   "number": "3.2.2.11",
+   "anchor": "3.2.2.11-action-discard-pile",
+   "title": "Action Discard Pile",
+   "trail": [
+    "Setup",
+    "Campaign (Act I)",
+    "Step 2. Set Up Players"
+   ],
+   "text": "Discard all action cards not in players' hands into the action discard pile on the map."
+  },
+  {
+   "number": "3.3",
+   "anchor": "3.3-campaign-act-ii-iii",
+   "title": "Campaign (Act II & III)",
+   "trail": [
+    "Setup"
+   ],
+   "text": "Set up Act II or III so it's the same as the previous Act, including Power, with these changes:"
+  },
+  {
+   "number": "3.3.1",
+   "anchor": "3.3.1-ambition-markers",
+   "title": "Ambition Markers",
+   "trail": [
+    "Setup",
+    "Campaign (Act II & III)"
+   ],
+   "text": "In Act II, flip the lowest-Power ambition marker to its higher-Power side. In Act III, flip the two lowest-Power ones to their higher-Power sides. The others start on their lower-Power sides."
+  },
+  {
+   "number": "3.3.2",
+   "anchor": "3.3.2-court-deck-and-imperial-council",
+   "title": "Court Deck and Imperial Council",
+   "trail": [
+    "Setup",
+    "Campaign (Act II & III)"
+   ],
+   "text": "Shuffle the Court deck and deal 3 cards (2 players) or 4 cards (3–4 players) from it into the Court. Flip the Imperial Council card to In Session."
+  },
+  {
+   "number": "3.3.3",
+   "anchor": "3.3.3-blight-on-gates",
+   "title": "Blight on Gates",
+   "trail": [
+    "Setup",
+    "Campaign (Act II & III)"
+   ],
+   "text": "Place 1 damaged Blight on each gate that has no Blight and no ships."
+  },
+  {
+   "number": "3.3.4",
+   "anchor": "3.3.4-blight-on-planets",
+   "title": "Blight on Planets",
+   "trail": [
+    "Setup",
+    "Campaign (Act II & III)"
+   ],
+   "text": "Roll the event die. In each cluster, place 1 damaged Blight at the planet with the rolled ID symbol if it has no Blight. If it does have Blight, place 1 damaged Blight at each planet in its cluster with no Blight."
+  },
+  {
+   "number": "3.3.5",
+   "anchor": "3.3.5-resources-on-ambitions-2-players-only",
+   "title": "Resources on Ambitions (2 Players Only)",
+   "trail": [
+    "Setup",
+    "Campaign (Act II & III)"
+   ],
+   "text": "Roll the number die twice. Place the 6 resource tokens matching the planets in the 2 rolled clusters onto ambition boxes as in `rule:3.2.1.17`. _(If the resource supply empties, just place as much as you can.)_"
+  },
+  {
+   "number": "3.3.6",
+   "anchor": "3.3.6-objective-card-setup-and-resources",
+   "title": "Objective Card Setup and Resources",
+   "trail": [
+    "Setup",
+    "Campaign (Act II & III)"
+   ],
+   "text": "Each player sets up using the Setup side of their objective card, then flips it to its Objective side. Each player may also rearrange their resource tokens. If player setups affect each other, resolve them in turn order. _(To speed up setup, feel free to do all this simultaneously!)_"
+  },
+  {
+   "number": "3.3.7",
+   "anchor": "3.3.7-objective-marker",
+   "title": "Objective Marker",
+   "trail": [
+    "Setup",
+    "Campaign (Act II & III)"
+   ],
+   "text": "Each player places their objective marker on the Power track space as shown at the top of their objective card. In Act III, only players with a \"C\" Fate do this step."
+  },
+  {
+   "number": "3.3.8",
+   "anchor": "3.3.8-chapter-track-and-action-cards",
+   "title": "Chapter Track and Action Cards",
+   "trail": [
+    "Setup",
+    "Campaign (Act II & III)"
+   ],
+   "text": "Place the Chapter track tile on its side that lists the current Act. Place the chapter marker on its \"1\" space. Draw and discard action cards exactly as in `rule:3.2.2.10`-`rule:3.2.2.11`."
+  },
+  {
+   "number": "4",
+   "anchor": "4-core-concepts",
+   "title": "Core Concepts",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "4.1",
+   "anchor": "4.1-the-arc-of-play",
+   "title": "The Arc of Play",
+   "trail": [
+    "Core Concepts"
+   ],
+   "text": "In a game of Arcs, you play through a number of **chapters**, usually three to five. Each chapter is made up of several **rounds**.<br><br>\nBroadly, in a round, each player will take one **turn** by playing an action card to do various actions, starting with the player who has initiative. After everyone takes a turn, players check who gets initiative for the next round. You'll learn more in **Playing a Chapter** (`rule-relative:Playing a Chapter`)!<br><br>\nKeep playing rounds until everyone runs out of action cards in their hand. At this point, the chapter ends, players gain Power from ambitions they fulfilled, and everyone draws a new hand of cards. You'll learn more in **Ending a Chapter** (`rule-relative:Ending a Chapter`)!"
+  },
+  {
+   "number": "4.2",
+   "anchor": "4.2-power-ambitions",
+   "title": "Power & Ambitions",
+   "trail": [
+    "Core Concepts"
+   ],
+   "text": "Players gain Power by fulfilling **ambitions**. The player with the initiative marker may choose to declare the ambition shown on the action card they play on their turn, marking the matching ambition box on the right map edge.<br><br>\nAt the end of the chapter, players gain Power from declared ambitions that they fulfilled best. It doesn't matter whether another player declared an ambition—anyone can fulfill it."
+  },
+  {
+   "number": "4.3",
+   "anchor": "4.3-the-map",
+   "title": "The Map",
+   "trail": [
+    "Core Concepts"
+   ],
+   "text": ""
+  },
+  {
+   "number": "4.3.1",
+   "anchor": "4.3.1-clusters",
+   "title": "Clusters",
+   "trail": [
+    "Core Concepts",
+    "The Map"
+   ],
+   "text": "The map is made of 6 **clusters**. Each cluster has 4 **systems**: 3 **planets** and 1 **gate**, which lists the cluster number."
+  },
+  {
+   "number": "4.3.2",
+   "anchor": "4.3.2-adjacency",
+   "title": "Adjacency",
+   "trail": [
+    "Core Concepts",
+    "The Map"
+   ],
+   "text": "A system is **adjacent** to other systems sharing a thin border. Adjacency is most important when moving (`rule-relative:Standard Actions$Move`)."
+  },
+  {
+   "number": "4.3.2.1",
+   "anchor": "4.3.2.1-gates",
+   "title": "Gates",
+   "trail": [
+    "Core Concepts",
+    "The Map",
+    "Adjacency"
+   ],
+   "text": "Each gate is adjacent to the 3 planets in its cluster and to the gates of its 2 neighboring clusters."
+  },
+  {
+   "number": "4.3.2.2",
+   "anchor": "4.3.2.2-planets",
+   "title": "Planets",
+   "trail": [
+    "Core Concepts",
+    "The Map",
+    "Adjacency"
+   ],
+   "text": "Each planet is adjacent to the gate in its cluster, and it is adjacent to one or both neighboring planets. Planets separated by a thick, irregular border are not adjacent."
+  },
+  {
+   "number": "4.3.3",
+   "anchor": "4.3.3-planets",
+   "title": "Planets",
+   "trail": [
+    "Core Concepts",
+    "The Map"
+   ],
+   "text": "Each **planet** has a **planet type**, along with 1 or 2 **building slots** where you can build cities and starports. _(Each planet also has an ***ID symbol*** of `symbol:arrow`, `symbol:hex`, or `symbol:moon`, used in expansions.)_"
+  },
+  {
+   "number": "4.3.4",
+   "anchor": "4.3.4-out-of-play",
+   "title": "Out of Play",
+   "trail": [
+    "Core Concepts",
+    "The Map"
+   ],
+   "text": "In setup, 1 or 2 clusters are covered with **out-of-play markers** on its planets and a **path marker** on its gate. These clusters are out of play in every way. The path marker joins together the gates of the two neighboring clusters, allowing for movement between them in a single move. The center of the map with the Arcs logo is not in play."
+  },
+  {
+   "number": "4.4",
+   "anchor": "4.4-resources-cities",
+   "title": "Resources & Cities",
+   "trail": [
+    "Core Concepts"
+   ],
+   "text": "There are 5 types of **resources** matching the 5 planet types. Usually, you gain them by taxing cities (**Tax**, `rule-relative:Standard Actions$Tax`) and raiding Rivals in battle (**Battle**, `rule-relative:Standard Actions$Battle`).<br><br>\nResources can be spent for various actions (**Resources**, `rule-relative:Resources`), and some of them add to the **Tycoon**, **Keeper**, and **Empath** ambitions (`rule:6.2.1`).<br><br>\nYou hold resource tokens in the **resource slots** on your player board. As you build **cities**, you open resource slots and uncover Power bonuses for winning ambitions."
+  },
+  {
+   "number": "4.5",
+   "anchor": "4.5-agents-the-court",
+   "title": "Agents & The Court",
+   "trail": [
+    "Core Concepts"
+   ],
+   "text": "Your agents are the bureaucrats and diplomats that administer your cities and influence powerful interests in the Reach.<br><br>\nThrough play, you can place agents on cards in the **Court**, a row of cards along the edge of the map (**Influence**, `rule-relative:Standard Actions$Influence`). If you have the most agents on a card in the Court, you can take it (**Secure**, `rule-relative:Standard Actions$Secure`)."
+  },
+  {
+   "number": "4.6",
+   "anchor": "4.6-damage-control",
+   "title": "Damage & Control",
+   "trail": [
+    "Core Concepts"
+   ],
+   "text": ""
+  },
+  {
+   "number": "4.6.1",
+   "anchor": "4.6.1-fresh",
+   "title": "Fresh",
+   "trail": [
+    "Core Concepts",
+    "Damage & Control"
+   ],
+   "text": "Pieces start off **fresh**—ships are fresh when standing upright, and buildings are fresh on their fully colored side."
+  },
+  {
+   "number": "4.6.2",
+   "anchor": "4.6.2-damaged-and-destroyed",
+   "title": "Damaged and Destroyed",
+   "trail": [
+    "Core Concepts",
+    "Damage & Control"
+   ],
+   "text": "By battling, fresh pieces can become **damaged**, shown by flipping or tipping it over. If a damaged piece is damaged again, it is **destroyed**, removing it from the map."
+  },
+  {
+   "number": "4.6.3",
+   "anchor": "4.6.3-control",
+   "title": "Control",
+   "trail": [
+    "Core Concepts",
+    "Damage & Control"
+   ],
+   "text": "You **control** a system and its contents if you have ***more fresh ships*** there than each **Rival** _(other player)_. On a tie, no one controls the system."
+  },
+  {
+   "number": "4.6.3.1",
+   "anchor": "4.6.3.1-benefits-of-control",
+   "title": "Benefits of Control",
+   "trail": [
+    "Core Concepts",
+    "Damage & Control",
+    "Control"
+   ],
+   "text": "Controlling a system lets you tax Rival cities there and capture their agents, restricts how their ships move, and damages pieces they build (`rule-relative:Standard Actions$Tax`-`rule-relative:Standard Actions$Move`)."
+  },
+  {
+   "number": "4.7",
+   "anchor": "4.7-trophies-captives",
+   "title": "Trophies & Captives",
+   "trail": [
+    "Core Concepts"
+   ],
+   "text": ""
+  },
+  {
+   "number": "4.7.1",
+   "anchor": "4.7.1-trophies",
+   "title": "Trophies",
+   "trail": [
+    "Core Concepts",
+    "Trophies & Captives"
+   ],
+   "text": "If you **destroy** a Rival's pieces, put them in the **Trophies box** on your player board. Trophies add to the **Warlord** ambition. Actions such as Battle (`rule-relative:Standard Actions$Battle`) let you destroy Rival pieces."
+  },
+  {
+   "number": "4.7.2",
+   "anchor": "4.7.2-captives",
+   "title": "Captives",
+   "trail": [
+    "Core Concepts",
+    "Trophies & Captives"
+   ],
+   "text": "If you **capture** a Rival's agents, put them in the **Captives box** on your player board. Captives add to the **Tyrant** ambition. Actions such as Tax (`rule-relative:Standard Actions$Tax`) and Secure (`rule-relative:Standard Actions$Secure`) let you capture Rival agents."
+  },
+  {
+   "number": "5",
+   "anchor": "5-playing-a-chapter",
+   "title": "Playing a Chapter",
+   "trail": [],
+   "text": "A game of Arcs lasts up to 5 **chapters**. In each chapter, you play some number of **rounds**. In a round, each player takes one **turn**, starting with the player with the initiative marker. Broadly, on your turn, you must play 1 **action card**, which lets you take one or more actions. At the end of the round, the initiative marker might go to a new player based on which cards were played. Keep playing rounds until everyone runs out of action cards. At this point, the chapter ends (`rule-relative:Ending a Chapter`)."
+  },
+  {
+   "number": "5.1",
+   "anchor": "5.1-step-1-player-with-initiative-takes-turn",
+   "title": "Step 1: Player with Initiative Takes Turn",
+   "trail": [
+    "Playing a Chapter"
+   ],
+   "text": ""
+  },
+  {
+   "number": "5.1.1",
+   "anchor": "5.1.1-lead-card",
+   "title": "Lead Card",
+   "trail": [
+    "Playing a Chapter",
+    "Step 1: Player with Initiative Takes Turn"
+   ],
+   "text": "As the player with initiative, you must play one action card face up as the **lead card**. You may take one action (`rule-relative:Standard Actions`) for each **action pip** on the lead card based on its suit:\n\n  - **Administration** pips can **tax**, **repair**, or **influence**.\n  - **Aggression** pips can **battle**, **move**, or **secure**.\n  - **Construction** pips can **build** or **repair**.\n  - **Mobilization** pips can **move** or **influence**.\n\nPlace the card in the “Lead” card slot on the left map edge, so players can reference it during the round."
+  },
+  {
+   "number": "5.1.2",
+   "anchor": "5.1.2-passing-initiative",
+   "title": "Passing Initiative",
+   "trail": [
+    "Playing a Chapter",
+    "Step 1: Player with Initiative Takes Turn"
+   ],
+   "text": "If you have the initiative, but you have no cards in your hand or just choose to skip your turn, you must **pass the initiative**. When you pass the initiative, give the initiative marker to the next clockwise player who has any cards in their hand, then immediately end the round. The player who now has initiative will play the lead card of the new round."
+  },
+  {
+   "number": "5.1.2.1",
+   "anchor": "5.1.2.1-early-chapter-end",
+   "title": "Early Chapter End",
+   "trail": [
+    "Playing a Chapter",
+    "Step 1: Player with Initiative Takes Turn",
+    "Passing Initiative"
+   ],
+   "text": "If everyone with cards in their hand passes consecutively, discard all action cards and end the chapter (`rule-relative:Ending a Chapter`)."
+  },
+  {
+   "number": "5.1.3",
+   "anchor": "5.1.3-declaring-an-ambition",
+   "title": "Declaring an Ambition",
+   "trail": [
+    "Playing a Chapter",
+    "Step 1: Player with Initiative Takes Turn"
+   ],
+   "text": "If you have the initiative, you may declare the ambition shown on your lead card before taking ***any*** actions. Then, place the zero marker onto the lead card to cover the **card number** in its top-left corner—its card number is now 0."
+  },
+  {
+   "number": "5.1.3.1",
+   "anchor": "5.1.3.1-declaration",
+   "title": "Declaration",
+   "trail": [
+    "Playing a Chapter",
+    "Step 1: Player with Initiative Takes Turn",
+    "Declaring an Ambition"
+   ],
+   "text": "To **declare an ambition**, take the highest-number ambition marker from the Available Markers section on the right map edge, and place it in the ambition box of the declared ambition."
+  },
+  {
+   "number": "5.1.3.2",
+   "anchor": "5.1.3.2-ambitions-by-card",
+   "title": "Ambitions by Card",
+   "trail": [
+    "Playing a Chapter",
+    "Step 1: Player with Initiative Takes Turn",
+    "Declaring an Ambition"
+   ],
+   "text": "Most action cards have an ambition, depending on their card number:<br>\n  \\- The “1” cards have ***no*** ambition. _(Four players only.)_<br>\n  \\- The “2” through 6” cards let you declare the ***matching*** ambition. _(They\n    are listed in\n    `rule:6.2.1`.)_<br>\n  \\- The “7” cards let you declare ***any*** ambition. _(Four players only.)_"
+  },
+  {
+   "number": "5.1.3.3",
+   "anchor": "5.1.3.3-ambitions-are-limited",
+   "title": "Ambitions are Limited",
+   "trail": [
+    "Playing a Chapter",
+    "Step 1: Player with Initiative Takes Turn",
+    "Declaring an Ambition"
+   ],
+   "text": "You cannot declare an ambition if all ambitions markers are already placed."
+  },
+  {
+   "number": "5.2",
+   "anchor": "5.2-step-2-other-players-take-turns",
+   "title": "Step 2: Other Players Take Turns",
+   "trail": [
+    "Playing a Chapter"
+   ],
+   "text": ""
+  },
+  {
+   "number": "5.2.1",
+   "anchor": "5.2.1-turn-order",
+   "title": "Turn Order",
+   "trail": [
+    "Playing a Chapter",
+    "Step 2: Other Players Take Turns"
+   ],
+   "text": "After the player with initiative takes their turn, each other player in clockwise order takes a turn. Players with no cards in their hand skip their turn."
+  },
+  {
+   "number": "5.2.2",
+   "anchor": "5.2.2-non-lead-card",
+   "title": "Non-Lead Card",
+   "trail": [
+    "Playing a Chapter",
+    "Step 2: Other Players Take Turns"
+   ],
+   "text": "On your turn, you must play an action card in one of three ways: Surpass, Copy, or Pivot. Place the card in the “Surpass, Copy, or Pivot” card slot on the left map edge, so players can reference it during the round."
+  },
+  {
+   "number": "5.2.2.1",
+   "anchor": "5.2.2.1-surpass",
+   "title": "Surpass",
+   "trail": [
+    "Playing a Chapter",
+    "Step 2: Other Players Take Turns",
+    "Non-Lead Card"
+   ],
+   "text": "Play an action card face up of the lead card's suit. Its card number must be higher than the lead card. You may take actions up to the number of action pips on ***your card***."
+  },
+  {
+   "number": "5.2.2.2",
+   "anchor": "5.2.2.2-copy",
+   "title": "Copy",
+   "trail": [
+    "Playing a Chapter",
+    "Step 2: Other Players Take Turns",
+    "Non-Lead Card"
+   ],
+   "text": "Play any action card face down. You may take only one action of ***the lead card***."
+  },
+  {
+   "number": "5.2.2.3",
+   "anchor": "5.2.2.3-pivot",
+   "title": "Pivot",
+   "trail": [
+    "Playing a Chapter",
+    "Step 2: Other Players Take Turns",
+    "Non-Lead Card"
+   ],
+   "text": "Play an action card face up that is not of the lead card's suit. It can have any card number. You may take only one action on ***your card***."
+  },
+  {
+   "number": "5.2.3",
+   "anchor": "5.2.3-seizing-the-initiative",
+   "title": "Seizing the Initiative",
+   "trail": [
+    "Playing a Chapter",
+    "Step 2: Other Players Take Turns"
+   ],
+   "text": "When you play a card, before taking **any** actions, you can **seize the initiative** from the player who holds it by doing one of the following:\n\n  - **You may choose to play an extra action card.** Place it face down beside the card\n    you played as a reminder. You do not get actions for it.\n  - **You Surpass with a “7” action card.** You still get to take its actions. _(Only\n    four-player games have “7” cards.)_"
+  },
+  {
+   "number": "5.2.3.1",
+   "anchor": "5.2.3.1-seize-the-initiative",
+   "title": "Seize the Initiative",
+   "trail": [
+    "Playing a Chapter",
+    "Step 2: Other Players Take Turns",
+    "Seizing the Initiative"
+   ],
+   "text": "To **seize the initiative**, take the initiative marker and lay it down to show it is seized. For the rest of this round, players cannot seize the initiative."
+  },
+  {
+   "number": "5.2.3.2",
+   "anchor": "5.2.3.2-no-self-seize",
+   "title": "No Self Seize",
+   "trail": [
+    "Playing a Chapter",
+    "Step 2: Other Players Take Turns",
+    "Seizing the Initiative"
+   ],
+   "text": "The player with initiative cannot seize the initiative."
+  },
+  {
+   "number": "5.3",
+   "anchor": "5.3-step-3-check-initiative",
+   "title": "Step 3: Check Initiative",
+   "trail": [
+    "Playing a Chapter"
+   ],
+   "text": "After everyone has taken a turn, check whether the initiative marker goes to a new player."
+  },
+  {
+   "number": "5.3.1",
+   "anchor": "5.3.1-surpassed",
+   "title": "Surpassed",
+   "trail": [
+    "Playing a Chapter",
+    "Step 3: Check Initiative"
+   ],
+   "text": "If no one seized the initiative this round, give the initiative to the player who ***Surpassed with the highest card number.*** If no one Surpassed, the initiative stays with its holder."
+  },
+  {
+   "number": "5.3.2",
+   "anchor": "5.3.2-seized",
+   "title": "Seized",
+   "trail": [
+    "Playing a Chapter",
+    "Step 3: Check Initiative"
+   ],
+   "text": "If someone seized the initiative this round, that player keeps the initiative."
+  },
+  {
+   "number": "5.4",
+   "anchor": "5.4-step-4-discard-cards-check-for-new-round",
+   "title": "Step 4: Discard Cards & Check for New Round",
+   "trail": [
+    "Playing a Chapter"
+   ],
+   "text": ""
+  },
+  {
+   "number": "5.4.1",
+   "anchor": "5.4.1-discard-cards",
+   "title": "Discard Cards",
+   "trail": [
+    "Playing a Chapter",
+    "Step 4: Discard Cards & Check for New Round"
+   ],
+   "text": "Discard all played action cards, and any action card used to seize the initiative, into the action discard pile on the map ***face down***."
+  },
+  {
+   "number": "5.4.2",
+   "anchor": "5.4.2-end-of-round",
+   "title": "End of Round",
+   "trail": [
+    "Playing a Chapter",
+    "Step 4: Discard Cards & Check for New Round"
+   ],
+   "text": "If any players have any action cards left in their hand, start the next round. Otherwise, end the chapter (`rule-relative:Ending a Chapter`)."
+  },
+  {
+   "number": "6",
+   "anchor": "6-ending-a-chapter",
+   "title": "Ending a Chapter",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "6.1",
+   "anchor": "6.1-end-condition",
+   "title": "End Condition",
+   "trail": [
+    "Ending a Chapter"
+   ],
+   "text": "The chapter ends when everyone runs out of action cards or when everyone with cards passes the initiative."
+  },
+  {
+   "number": "6.2",
+   "anchor": "6.2-end-procedure",
+   "title": "End Procedure",
+   "trail": [
+    "Ending a Chapter"
+   ],
+   "text": "When the chapter ends, resolve the following steps:"
+  },
+  {
+   "number": "6.2.1",
+   "anchor": "6.2.1-step-1-score-ambitions",
+   "title": "Step 1: Score Ambitions",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure"
+   ],
+   "text": "Score each ambition that has any number of ambition markers in its ambition box on the map:\n\n  - **Tycoon.** Have the most total Fuel and Material icons from resources and Guild\n    cards.\n  - **Tyrant.** Have the most Captives on your player board _(gained from_ **taxing**\n    _and_ **securing**_)._\n  - **Warlord.** Have the most Trophies on your player board _(gained in_\n    **battle**_)._\n  - **Keeper.** Have the most Relic icons from resources and Guild cards.\n  - **Empath.** Have the most Psionic icons from resources and Guild cards.\n\nThe player who gets ***first place*** for the ambition gains the higher Power shown on all its ambition markers. The player who gets ***second place*** for it gains the lower Power shown on all its ambition markers. Show the Power you gained by advancing your Power marker on the Power track on the bottom edge of the map."
+  },
+  {
+   "number": "6.2.1.1",
+   "anchor": "6.2.1.1-ties",
+   "title": "Ties",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 1: Score Ambitions"
+   ],
+   "text": "On a tie for first place, all tied players get second place. _(Other players do not place and gain no Power.)_  On a tie for second place, the tied players do not place and gain no Power."
+  },
+  {
+   "number": "6.2.1.2",
+   "anchor": "6.2.1.2-qualifying",
+   "title": "Qualifying",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 1: Score Ambitions"
+   ],
+   "text": "You cannot gain Power from an ambition if you have none of the thing it is counting. _(For example, if Warlord is declared and nobody has Trophies, nobody gains Power.)_"
+  },
+  {
+   "number": "6.2.1.3",
+   "anchor": "6.2.1.3-bonus-city-power",
+   "title": "Bonus City Power",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 1: Score Ambitions"
+   ],
+   "text": "Each time you get first place in an ambition _(not tied)_, gain 2 extra Power if the “+2 to won ambitions” city slot on your player board is uncovered, or gain 5 extra if both the “+2 to won ambitions” and “+3 to won ambitions” city slots on your player board are uncovered."
+  },
+  {
+   "number": "6.2.1.4",
+   "anchor": "6.2.1.4-two-player-scoring",
+   "title": "Two-Player Scoring",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 1: Score Ambitions"
+   ],
+   "text": "During setup with 2 players, 6 resources matching the planets with out-of-play markers are placed on the ambition boxes. For scoring, count these resources as if a third player had them. Weapons on the Warlord box count as Trophies. Otherwise, these resources are out of play."
+  },
+  {
+   "number": "6.2.2",
+   "anchor": "6.2.2-step-2-clean-up-flip-ambition",
+   "title": "Step 2: Clean Up & Flip Ambition",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure"
+   ],
+   "text": "Resolve the following steps:"
+  },
+  {
+   "number": "6.2.2.1",
+   "anchor": "6.2.2.1-step-1-warlord-and-tyrant",
+   "title": "Step 1: Warlord and Tyrant",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 2: Clean Up & Flip Ambition"
+   ],
+   "text": "If Warlord was scored, return all Trophies. If Tyrant was scored, return all Captives."
+  },
+  {
+   "number": "6.2.2.2",
+   "anchor": "6.2.2.2-step-2-return-ambitions",
+   "title": "Step 2: Return Ambitions",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 2: Clean Up & Flip Ambition"
+   ],
+   "text": "Return all ambition markers to the Available Markers spaces on the map."
+  },
+  {
+   "number": "6.2.2.3",
+   "anchor": "6.2.2.3-step-3-flip-ambition",
+   "title": "Step 3: Flip Ambition",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 2: Clean Up & Flip Ambition"
+   ],
+   "text": "Flip over the ambition marker with the ***lowest Power*** that hasn't been flipped yet to its side with more Power."
+  },
+  {
+   "number": "6.2.3",
+   "anchor": "6.2.3-step-3-end-game-or-advance-chapter",
+   "title": "Step 3: End Game or Advance Chapter",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure"
+   ],
+   "text": "The game ends if any player has at least ***27 Power*** (4 players), ***30 Power*** (3 players), or ***33 Power*** (2 players), or if the chapter marker is currently on Chapter 5."
+  },
+  {
+   "number": "6.2.3.1",
+   "anchor": "6.2.3.1-determining-a-winner",
+   "title": "Determining a Winner",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 3: End Game or Advance Chapter"
+   ],
+   "text": "If the game ends, the player with the most Power is the winner. On a tie, the tied player earliest in turn order is the winner."
+  },
+  {
+   "number": "6.2.3.2",
+   "anchor": "6.2.3.2-next-chapter",
+   "title": "Next Chapter",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 3: End Game or Advance Chapter"
+   ],
+   "text": "If the game does not end, advance the chapter marker to the next space."
+  },
+  {
+   "number": "6.2.4",
+   "anchor": "6.2.4-step-4-draw-cards",
+   "title": "Step 4: Draw Cards",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure"
+   ],
+   "text": "Shuffle all of the action cards. Each player draws a hand of ***6 action cards***. Discard all action cards not in players' hands into the action discard pile on the map ***face down***, then shuffle it. The player with initiative starts the next chapter."
+  },
+  {
+   "number": "6.2.4.1",
+   "anchor": "6.2.4.1-two-player-mulligans",
+   "title": "Two-Player Mulligans",
+   "trail": [
+    "Ending a Chapter",
+    "End Procedure",
+    "Step 4: Draw Cards"
+   ],
+   "text": "In games with 2 players, after drawing, the player ***without*** initiative may discard their hand of 6 action cards to draw a new hand of 6 action cards. They must accept this new hand."
+  },
+  {
+   "number": "7",
+   "anchor": "7-standard-actions",
+   "title": "Standard Actions",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "7.1",
+   "anchor": "7.1-tax",
+   "title": "Tax",
+   "trail": [
+    "Standard Actions"
+   ],
+   "text": "The Tax action appears on Administration cards."
+  },
+  {
+   "number": "7.1.1",
+   "anchor": "7.1.1-tax",
+   "title": "Tax",
+   "trail": [
+    "Standard Actions",
+    "Tax"
+   ],
+   "text": "To take this action, resolve the following steps:"
+  },
+  {
+   "number": "7.1.1.1",
+   "anchor": "7.1.1.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Standard Actions",
+    "Tax",
+    "Tax"
+   ],
+   "text": "Choose a Loyal city or choose a Rival city you control."
+  },
+  {
+   "number": "7.1.1.2",
+   "anchor": "7.1.1.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Standard Actions",
+    "Tax",
+    "Tax"
+   ],
+   "text": "Gain 1 resource of the city's planet type from the supply."
+  },
+  {
+   "number": "7.1.1.3",
+   "anchor": "7.1.1.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Standard Actions",
+    "Tax",
+    "Tax"
+   ],
+   "text": "If you tax a Rival city, you also capture 1 agent of that Rival from their supply, even if you didn't gain the resource."
+  },
+  {
+   "number": "7.1.1.3.1",
+   "anchor": "7.1.1.3.1-captives",
+   "title": "Captives",
+   "trail": [
+    "Standard Actions",
+    "Tax",
+    "Tax",
+    "Step 3"
+   ],
+   "text": "Place captured agents in the Captives box on your player board. They add to your **Tyrant** ambition (`rule-relative:Ending a Chapter`)."
+  },
+  {
+   "number": "7.1.2",
+   "anchor": "7.1.2-tax-limit",
+   "title": "Tax Limit",
+   "trail": [
+    "Standard Actions",
+    "Tax"
+   ],
+   "text": "You cannot tax a city more than once per turn."
+  },
+  {
+   "number": "7.2",
+   "anchor": "7.2-build",
+   "title": "Build",
+   "trail": [
+    "Standard Actions"
+   ],
+   "text": "The Build action appears on Construction cards."
+  },
+  {
+   "number": "7.2.1",
+   "anchor": "7.2.1-build",
+   "title": "Build",
+   "trail": [
+    "Standard Actions",
+    "Build"
+   ],
+   "text": "You may build a **building** or a **ship**:\n\n  - **Building:** Place 1 starport or city in an empty building slot in a system with a\n    Loyal piece. When building a city, use the leftmost city on your player board.\n  - **Ship:** Place 1 ship at a Loyal starport. Each starport can only build one ship\n    per turn."
+  },
+  {
+   "number": "7.2.2",
+   "anchor": "7.2.2-control",
+   "title": "Control",
+   "trail": [
+    "Standard Actions",
+    "Build"
+   ],
+   "text": "When you build anything in a system that is controlled by anyone other than you, place the piece damaged."
+  },
+  {
+   "number": "7.3",
+   "anchor": "7.3-move",
+   "title": "Move",
+   "trail": [
+    "Standard Actions"
+   ],
+   "text": "The Move action appears on Mobilization and Aggression cards."
+  },
+  {
+   "number": "7.3.1",
+   "anchor": "7.3.1-move",
+   "title": "Move",
+   "trail": [
+    "Standard Actions",
+    "Move"
+   ],
+   "text": "Move any number of Loyal ships from one system to an adjacent system."
+  },
+  {
+   "number": "7.3.2",
+   "anchor": "7.3.2-catapult-move",
+   "title": "Catapult Move",
+   "trail": [
+    "Standard Actions",
+    "Move"
+   ],
+   "text": "If you move from a system with a Loyal starport, you may take **Catapult moves**—keep moving the ships as much as you want, dropping them off as you want, until they move to a gate controlled by anyone else or they move to any planet."
+  },
+  {
+   "number": "7.3.3",
+   "anchor": "7.3.3-out-of-play-clusters",
+   "title": "Out-of-Play Clusters",
+   "trail": [
+    "Standard Actions",
+    "Move"
+   ],
+   "text": "You cannot move into any systems in out-of-play clusters. The path marker placed on out-of-play gates makes its two neighboring gates adjacent."
+  },
+  {
+   "number": "7.4",
+   "anchor": "7.4-repair",
+   "title": "Repair",
+   "trail": [
+    "Standard Actions"
+   ],
+   "text": "The Repair action appears on Construction and Administration cards."
+  },
+  {
+   "number": "7.4.1",
+   "anchor": "7.4.1-repair",
+   "title": "Repair",
+   "trail": [
+    "Standard Actions",
+    "Repair"
+   ],
+   "text": "Stand up 1 damaged Loyal ship, or flip over 1 damaged Loyal building. _(This can be anywhere on the map!)_"
+  },
+  {
+   "number": "7.5",
+   "anchor": "7.5-influence",
+   "title": "Influence",
+   "trail": [
+    "Standard Actions"
+   ],
+   "text": "The Influence action appears on Mobilization and Administration cards."
+  },
+  {
+   "number": "7.5.1",
+   "anchor": "7.5.1-influence",
+   "title": "Influence",
+   "trail": [
+    "Standard Actions",
+    "Influence"
+   ],
+   "text": "Place 1 agent on any card in the Court. _(The Court is the card row along the map edge.)_"
+  },
+  {
+   "number": "7.6",
+   "anchor": "7.6-secure",
+   "title": "Secure",
+   "trail": [
+    "Standard Actions"
+   ],
+   "text": "The Secure action appears on Aggression cards."
+  },
+  {
+   "number": "7.6.1",
+   "anchor": "7.6.1-secure",
+   "title": "Secure",
+   "trail": [
+    "Standard Actions",
+    "Secure"
+   ],
+   "text": "To take this action, resolve the following steps:"
+  },
+  {
+   "number": "7.6.1.1",
+   "anchor": "7.6.1.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Standard Actions",
+    "Secure",
+    "Secure"
+   ],
+   "text": "Take 1 card from the Court if you have more Loyal agents on it than each Rival. Return all Loyal agents on it to your supply, and capture all Rival agents from the secured card."
+  },
+  {
+   "number": "7.6.1.1.1",
+   "anchor": "7.6.1.1.1-captives",
+   "title": "Captives",
+   "trail": [
+    "Standard Actions",
+    "Secure",
+    "Secure",
+    "Step 1"
+   ],
+   "text": "Put agents you capture in the Captives box on your player board. They add to your **Tyrant** ambition (`rule-relative:Ending a Chapter`)."
+  },
+  {
+   "number": "7.6.1.2",
+   "anchor": "7.6.1.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Standard Actions",
+    "Secure",
+    "Secure"
+   ],
+   "text": "Resolve its **When Secured** action, if any. If it says to discard it, place it in a face-up Court discard pile near the Court deck."
+  },
+  {
+   "number": "7.6.1.3",
+   "anchor": "7.6.1.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Standard Actions",
+    "Secure",
+    "Secure"
+   ],
+   "text": "Draw a card from the Court deck and place it face up in the Court in the same spot as the secured card."
+  },
+  {
+   "number": "7.7",
+   "anchor": "7.7-battle",
+   "title": "Battle",
+   "trail": [
+    "Standard Actions"
+   ],
+   "text": "The Battle action appears on Aggression cards."
+  },
+  {
+   "number": "7.7.1",
+   "anchor": "7.7.1-battle",
+   "title": "Battle",
+   "trail": [
+    "Standard Actions",
+    "Battle"
+   ],
+   "text": "To take this action, resolve the following steps:"
+  },
+  {
+   "number": "7.7.1.1",
+   "anchor": "7.7.1.1-step-1-choose-battle-system",
+   "title": "Step 1: Choose Battle System",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle"
+   ],
+   "text": "Choose 1 system that has any Loyal ships. This is the battle system. These are your **attacking ships**."
+  },
+  {
+   "number": "7.7.1.2",
+   "anchor": "7.7.1.2-step-2-choose-defender",
+   "title": "Step 2: Choose Defender",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle"
+   ],
+   "text": "Choose 1 Rival whose pieces are in the battle system. These are their **defending pieces**."
+  },
+  {
+   "number": "7.7.1.3",
+   "anchor": "7.7.1.3-step-3-collect-dice",
+   "title": "Step 3: Collect Dice",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle"
+   ],
+   "text": "For each attacking ship, you may collect 1 assault, skirmish, or raid die.<br>\n  \\- **Assault dice** damage the defender quickly at some cost to you.<br>\n  \\- **Skirmish dice** damage the defender slowly but keep you safe.<br>\n  \\- **Raid dice** steal stuff from the defender and might damage them but are risky."
+  },
+  {
+   "number": "7.7.1.3.1",
+   "anchor": "7.7.1.3.1-raid-dice-limit",
+   "title": "Raid Dice Limit",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle",
+    "Step 3: Collect Dice"
+   ],
+   "text": "You can only collect raid dice if there are ***defending buildings*** or if the defender has no Loyal buildings in any systems on the map."
+  },
+  {
+   "number": "7.7.1.4",
+   "anchor": "7.7.1.4-step-4-roll-and-resolve-dice",
+   "title": "Step 4: Roll and Resolve Dice",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle"
+   ],
+   "text": "Roll the collected dice. You must resolve all rolled faces in this order:"
+  },
+  {
+   "number": "7.7.1.4.1",
+   "anchor": "7.7.1.4.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle",
+    "Step 4: Roll and Resolve Dice"
+   ],
+   "text": "Hit any of your ***attacking ships*** once per `symbol:selfhit`."
+  },
+  {
+   "number": "7.7.1.4.2",
+   "anchor": "7.7.1.4.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle",
+    "Step 4: Roll and Resolve Dice"
+   ],
+   "text": "If you rolled any number of `symbol:intercept`, the defender **intercepts** you—hit any of your ***attacking ships*** once per fresh defending ship. _(This can only happen once per battle!)_"
+  },
+  {
+   "number": "7.7.1.4.3",
+   "anchor": "7.7.1.4.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle",
+    "Step 4: Roll and Resolve Dice"
+   ],
+   "text": "Hit any of their ***defending ships*** once per `symbol:hit`. Once no defending ships remain, hit any of their defending buildings instead."
+  },
+  {
+   "number": "7.7.1.4.4",
+   "anchor": "7.7.1.4.4-step-4",
+   "title": "Step 4",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle",
+    "Step 4: Roll and Resolve Dice"
+   ],
+   "text": "Hit any of their ***defending buildings*** once per `symbol:buildinghit`."
+  },
+  {
+   "number": "7.7.1.4.5",
+   "anchor": "7.7.1.4.5-step-5",
+   "title": "Step 5",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Battle",
+    "Step 4: Roll and Resolve Dice"
+   ],
+   "text": "Raid their ***resources and cards*** by spending `symbol:key`, if you have any attacking ships left (**Raiding**, `rule-relative:Standard Actions$Battle$Raiding.`)."
+  },
+  {
+   "number": "7.7.2",
+   "anchor": "7.7.2-damaging-pieces",
+   "title": "Damaging Pieces",
+   "trail": [
+    "Standard Actions",
+    "Battle"
+   ],
+   "text": "If you hit a fresh piece, it becomes **damaged**—tip it over if it's a ship or flip it over if it's a building."
+  },
+  {
+   "number": "7.7.3",
+   "anchor": "7.7.3-destroying-pieces",
+   "title": "Destroying Pieces",
+   "trail": [
+    "Standard Actions",
+    "Battle"
+   ],
+   "text": "If you hit a damaged piece, it is **destroyed**—remove it. The attacker takes destroyed defending pieces as Trophies. The defender takes destroyed attacking pieces as Trophies."
+  },
+  {
+   "number": "7.7.3.1",
+   "anchor": "7.7.3.1-trophies",
+   "title": "Trophies",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Destroying Pieces"
+   ],
+   "text": "Place pieces taken as Trophies in the Trophies box on the respective player board. These add to the **Warlord** ambition (`rule-relative:Ending a Chapter`)."
+  },
+  {
+   "number": "7.7.4",
+   "anchor": "7.7.4-destroying-cities",
+   "title": "Destroying Cities",
+   "trail": [
+    "Standard Actions",
+    "Battle"
+   ],
+   "text": "If you destroy a city—even outside battle—do the following:"
+  },
+  {
+   "number": "7.7.4.1",
+   "anchor": "7.7.4.1-step-1-provoke-outrage",
+   "title": "Step 1: Provoke Outrage",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Destroying Cities"
+   ],
+   "text": "Discard all resources and Guild cards you have of that city's planet type, placing the discarded cards in a face-up Court discard pile near the Court deck. Place an agent to cover the Outrage icon of that city's planet type on your player board—that resource is now **Outraged**."
+  },
+  {
+   "number": "7.7.4.1.1",
+   "anchor": "7.7.4.1.1-outrage",
+   "title": "Outrage",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Destroying Cities",
+    "Step 1: Provoke Outrage"
+   ],
+   "text": "You cannot spend Outraged resources for their normal Prelude action (`rule-relative:Standard Actions$Battle$Destroying Cities.`)."
+  },
+  {
+   "number": "7.7.4.2",
+   "anchor": "7.7.4.2-step-2-ransack-the-court",
+   "title": "Step 2: Ransack the Court",
+   "trail": [
+    "Standard Actions",
+    "Battle",
+    "Destroying Cities"
+   ],
+   "text": "Secure any card that has ***any number*** of the defender's agents. Take all Rival agents on the card as ***Trophies***, not Captives."
+  },
+  {
+   "number": "7.7.5",
+   "anchor": "7.7.5-raiding",
+   "title": "Raiding",
+   "trail": [
+    "Standard Actions",
+    "Battle"
+   ],
+   "text": "If any attacking ships remain after taking hits, you may spend `symbol:key` you rolled to steal resources and Guild cards from the defender, one at a time, by spending the number `symbol:key` of in its **raid cost**, shown above the resource slot on the player board or in the top-left corner of the Guild card (`rule-relative:Guild Cards$Card Anatomy$Raid Cost.`)."
+  },
+  {
+   "number": "8",
+   "anchor": "8-other-actions",
+   "title": "Other Actions",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "8.1",
+   "anchor": "8.1-prelude-actions",
+   "title": "Prelude Actions",
+   "trail": [
+    "Other Actions"
+   ],
+   "text": "Many cards and all resources (`rule-relative:Resources`) give **Prelude actions**. On cards, these actions begin with **“Prelude:”**"
+  },
+  {
+   "number": "8.1.1",
+   "anchor": "8.1.1-timing",
+   "title": "Timing",
+   "trail": [
+    "Other Actions",
+    "Prelude Actions"
+   ],
+   "text": "Your Prelude begins once you play an action card and ends once you spend an action pip from your played card."
+  },
+  {
+   "number": "8.1.2",
+   "anchor": "8.1.2-limits",
+   "title": "Limits",
+   "trail": [
+    "Other Actions",
+    "Prelude Actions"
+   ],
+   "text": "You can take any number of Prelude actions, with two limits:\n  - Resources spent in Prelude return to the supply at the ***end*** of your Prelude,\n    so you cannot regain them until then.\n  - You cannot use Prelude actions on cards that you secured from the Court in the same\n    Prelude."
+  },
+  {
+   "number": "8.1.3",
+   "anchor": "8.1.3-discarding-cards",
+   "title": "Discarding Cards",
+   "trail": [
+    "Other Actions",
+    "Prelude Actions"
+   ],
+   "text": "Some Prelude actions on cards make you discard the card. Place it in a face-up Court discard pile near the Court deck."
+  },
+  {
+   "number": "8.2",
+   "anchor": "8.2-new-actions",
+   "title": "New Actions",
+   "trail": [
+    "Other Actions"
+   ],
+   "text": "Cards can give you a **new action** followed by the name of a standard action in parentheses, such as **Assassinate (Battle)**. When you would take the standard action by spending an action pip or resource, you may instead take the new action."
+  },
+  {
+   "number": "8.3",
+   "anchor": "8.3-modifiers",
+   "title": "Modifiers",
+   "trail": [
+    "Other Actions"
+   ],
+   "text": "Cards can give you **modifiers** to standard actions, which are shown in **bold**, such as “In **battle**, collect 1 extra die.”"
+  },
+  {
+   "number": "8.3.1",
+   "anchor": "8.3.1-new-actions",
+   "title": "New Actions",
+   "trail": [
+    "Other Actions",
+    "Modifiers"
+   ],
+   "text": "Modifiers do not modify new actions, but they do modify standard actions that are within new actions."
+  },
+  {
+   "number": "8.3.2",
+   "anchor": "8.3.2-play-steps",
+   "title": "Play Steps",
+   "trail": [
+    "Other Actions",
+    "Modifiers"
+   ],
+   "text": "Modifiers can also affect critical play steps, such as **setup** (`rule:3.1`), **scoring** (`rule:6.2.1`), **declare an ambition** (`rule:5.1`), and **seize the initiative** (`rule:5.2.3`)."
+  },
+  {
+   "number": "9",
+   "anchor": "9-resources",
+   "title": "Resources",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "9.1",
+   "anchor": "9.1-prelude-actions",
+   "title": "Prelude Actions",
+   "trail": [
+    "Resources"
+   ],
+   "text": "In your turn's Prelude (`rule-relative:Other Actions$Prelude Actions`), you may spend any number and mix of your resource tokens to optionally use their actions:\n  - **Material:** Take a Build or Repair action.\n  - **Fuel:** Take a Move action.\n  - **Weapon:** This turn, you may spend any action pips from your card play to take Battle\n    actions.\n  - **Relic:** Take a Secure action.\n  - **Psionic:** Take an action listed on the lead card."
+  },
+  {
+   "number": "9.2",
+   "anchor": "9.2-slots",
+   "title": "Slots",
+   "trail": [
+    "Resources"
+   ],
+   "text": "Resources are held in resource slots."
+  },
+  {
+   "number": "9.2.1",
+   "anchor": "9.2.1-placing-resources",
+   "title": "Placing Resources",
+   "trail": [
+    "Resources",
+    "Slots"
+   ],
+   "text": "When you take a resource, place it in an empty resource slot of yours. At this time, you may rearrange any resources in your resource slots, but you must discard resources you cannot hold."
+  },
+  {
+   "number": "9.2.1.1",
+   "anchor": "9.2.1.1-returning-cities",
+   "title": "Returning Cities",
+   "trail": [
+    "Resources",
+    "Slots",
+    "Placing Resources"
+   ],
+   "text": "If a city returns to your player board and covers a resource slot, rearrange and discard resources as described in `rule-relative:Resources$Slots$Placing Resources.`."
+  },
+  {
+   "number": "9.2.2",
+   "anchor": "9.2.2-raid-cost",
+   "title": "Raid Cost",
+   "trail": [
+    "Resources",
+    "Slots"
+   ],
+   "text": "Each resource slot has a **raid cost**: the number of `symbol:key` attacker in battle must spend to steal the resource."
+  },
+  {
+   "number": "9.3",
+   "anchor": "9.3-resources-on-cards",
+   "title": "Resources on Cards",
+   "trail": [
+    "Resources"
+   ],
+   "text": ""
+  },
+  {
+   "number": "9.3.1",
+   "anchor": "9.3.1-access",
+   "title": "Access",
+   "trail": [
+    "Resources",
+    "Resources on Cards"
+   ],
+   "text": "Some cards say they hold resources. These resources can be spent and add to ambitions,  but they cannot be stolen in battle unless explicitly allowed. If a card holding resources  is stolen, the resources on the card stay on it. If it is buried, discarded, or scrapped,  the resources on it return to the supply."
+  },
+  {
+   "number": "9.3.2",
+   "anchor": "9.3.2-removal",
+   "title": "Removal",
+   "trail": [
+    "Resources",
+    "Resources on Cards"
+   ],
+   "text": "If a card holding resources is stolen, the resources on the card stay on it. If it is buried, discarded or scrapped, the resources on it return to the supply."
+  },
+  {
+   "number": "10",
+   "anchor": "10-guild-cards",
+   "title": "Guild Cards",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "10.1",
+   "anchor": "10.1-acquisition",
+   "title": "Acquisition",
+   "trail": [
+    "Guild Cards"
+   ],
+   "text": "You can gain Guild cards by influencing them in the Court and then securing them (`rule-relative:Standard Actions$Secure`)."
+  },
+  {
+   "number": "10.2",
+   "anchor": "10.2-card-anatomy",
+   "title": "Card Anatomy",
+   "trail": [
+    "Guild Cards"
+   ],
+   "text": "Guild cards have 3 parts: their **suit**, **rules**, and **raid cost**."
+  },
+  {
+   "number": "10.2.1",
+   "anchor": "10.2.1-suit",
+   "title": "Suit",
+   "trail": [
+    "Guild Cards",
+    "Card Anatomy"
+   ],
+   "text": "This suit icon matches 1 of the 5 resources. It adds to ambitions just like resources—Material and Fuel cards add to the Tycoon ambition, Relic cards add to the Keeper ambition, and Psionic cards add to the Empath ambition. Weapon cards do not add to any ambitions."
+  },
+  {
+   "number": "10.2.2",
+   "anchor": "10.2.2-rules",
+   "title": "Rules",
+   "trail": [
+    "Guild Cards",
+    "Card Anatomy"
+   ],
+   "text": "Guild cards give new actions and modifiers (`rule-relative:Other Actions$New Actions`-`rule-relative:Other Actions$Modifiers`)."
+  },
+  {
+   "number": "10.2.3",
+   "anchor": "10.2.3-raid-cost",
+   "title": "Raid Cost",
+   "trail": [
+    "Guild Cards",
+    "Card Anatomy"
+   ],
+   "text": "This shows how many `symbol:key` an attacker must spend in battle in order to steal the card."
+  },
+  {
+   "number": "11",
+   "anchor": "11-leaders-lore",
+   "title": "Leaders & Lore",
+   "trail": [],
+   "text": "After playing a game or two, you're ready to play with **Leaders and Lore**! This mode gives players wild, unique abilities, but they can be hard to handle if you're starting out. ***Really, don't play your first game with Leaders and Lore.***\n\n  - Your **leader card** gives you unique powers, starting pieces, and starting resources.\n  - **Lore cards** give persistent powers. They don't have a guild icon or raid cost, so they\n    do not add to ambitions and cannot be stolen."
+  },
+  {
+   "number": "11.1",
+   "anchor": "11.1-setup",
+   "title": "Setup",
+   "trail": [
+    "Leaders & Lore"
+   ],
+   "text": "Replace the Starting Placement (`rule:3.1.2.3`) and Starting Resources (`rule:3.1.2.4`) steps of the base game setup with the following:"
+  },
+  {
+   "number": "11.1.1",
+   "anchor": "11.1.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Leaders & Lore",
+    "Setup"
+   ],
+   "text": "Lay out **lore cards** and **leader cards** in face-up rows, each with cards equal to the ***players plus one***."
+  },
+  {
+   "number": "11.1.2",
+   "anchor": "11.1.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Leaders & Lore",
+    "Setup"
+   ],
+   "text": "In reverse turn order—start with the player to the right of the player with initiative, and go counterclockwise—each player may take 1 leader or lore card."
+  },
+  {
+   "number": "11.1.3",
+   "anchor": "11.1.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Leaders & Lore",
+    "Setup"
+   ],
+   "text": "Continue this until each player has 1 leader card and 1 lore card. You cannot take a leader card if you already have one, and you cannot take a lore card if you already have one."
+  },
+  {
+   "number": "11.1.3.1",
+   "anchor": "11.1.3.1-extra-lore",
+   "title": "Extra Lore",
+   "trail": [
+    "Leaders & Lore",
+    "Setup",
+    "Step 3"
+   ],
+   "text": "If you want to increase chaos and uniqueness even more, you can let players choose a second lore card. Just add 1 extra lore card per player to the starting row, and keep choosing cards until each player has 1 leader card and 2 lore cards."
+  },
+  {
+   "number": "11.1.4",
+   "anchor": "11.1.4-step-4",
+   "title": "Step 4",
+   "trail": [
+    "Leaders & Lore",
+    "Setup"
+   ],
+   "text": "Each player places their starting pieces onto the map in the systems marked on the setup card as shown in the ***A, B, and C boxes shown on their leader card.*** _Pips under a ship icon show how many ships to place._"
+  },
+  {
+   "number": "11.1.5",
+   "anchor": "11.1.5-step-5",
+   "title": "Step 5",
+   "trail": [
+    "Leaders & Lore",
+    "Setup"
+   ],
+   "text": "Each player gains the ***2 resource tokens shown on their leader card***, placing them in their 2 leftmost resource slots in the order shown."
+  },
+  {
+   "number": "11.1.6",
+   "anchor": "11.1.6-step-6",
+   "title": "Step 6",
+   "trail": [
+    "Leaders & Lore",
+    "Setup"
+   ],
+   "text": "If any leaders have extra setup steps, players perform them in turn order."
+  },
+  {
+   "number": "12",
+   "anchor": "12-the-campaign",
+   "title": "The Campaign",
+   "trail": [],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "12.1",
+   "anchor": "12.1-the-blighted-reach",
+   "title": "The Blighted Reach",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "The galaxy is in crisis. The **Empire** is crumbling. The **Blight** is spreading through the Reach, destroying everything it touches. What is it? What does it want?<br><br>\nSome believe this is the end. Others, just the beginning. In this time of chaos, new movements bloom loud like desert flowers, promising safety, liberation, communion, or simply the honor of glorious death in the struggle. What will you promise? What is your **Fate**?<br><br>\n***We strongly recommend*** you play at least one game of single-session _Arcs_ before the campaign. All players should be comfy with the base game. Otherwise, expect a long, tedious first game.",
+   "campaign": true
+  },
+  {
+   "number": "12.2",
+   "anchor": "12.2-acts",
+   "title": "Acts",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "A campaign of Arcs lasts for three games, called **Acts**. Campaign Acts end differently from single-session games.",
+   "campaign": true
+  },
+  {
+   "number": "12.2.1",
+   "anchor": "12.2.1-fixed-length",
+   "title": "Fixed Length",
+   "trail": [
+    "The Campaign",
+    "Acts"
+   ],
+   "text": "Don't end an Act after 5 chapters. Instead, Acts I and II end after ***3 chapters***, and Act III ends after ***4 chapters***. Don't end an Act early if a player gains enough Power. Ignore the thresholds on the Power track.",
+   "campaign": true
+  },
+  {
+   "number": "12.3",
+   "anchor": "12.3-fates",
+   "title": "Fates",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "While setting up Act I, you choose an “A” Fate. You might play this Fate for all three Acts or switch to a new one. If you switch Fate after Act I, you'll choose a **“B” Fate**, and if you switch Fate after Act II, you'll choose a **“C” Fate**.",
+   "campaign": true
+  },
+  {
+   "number": "12.4",
+   "anchor": "12.4-determining-a-winner",
+   "title": "Determining a Winner",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "At the end of Act III, the winner is the player with the most Power ***accumulated over all three Acts***. You can also win by completing a final objective (`rule-relative:The Campaign$Final Objective`).",
+   "campaign": true
+  },
+  {
+   "number": "12.4.1",
+   "anchor": "12.4.1-tiebreakers",
+   "title": "Tiebreakers",
+   "trail": [
+    "The Campaign",
+    "Determining a Winner"
+   ],
+   "text": "Break a Power tie in favor of “A” Fates over “B” Fates, and “B” Fates over “C” Fates. Break a further tie in turn order.",
+   "campaign": true
+  },
+  {
+   "number": "12.5",
+   "anchor": "12.5-objective",
+   "title": "Objective",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "In Acts I and II, your Fate gives you an **objective**. During setup, place your **objective marker** on the **starting space** on the Power track shown at the top of your objective card. Sometimes, the starting space changes based on the number of players, shown by the `symbol:player` symbols.",
+   "campaign": true
+  },
+  {
+   "number": "12.5.1",
+   "anchor": "12.5.1-completion",
+   "title": "Completion",
+   "trail": [
+    "The Campaign",
+    "Objective"
+   ],
+   "text": "Your objective card gives you ways to **advance** your objective marker, moving it down the Power track toward 0 Power. When it reaches 0 Power, you complete your objective.",
+   "campaign": true
+  },
+  {
+   "number": "12.5.2",
+   "anchor": "12.5.2-winning-ambitions",
+   "title": "Winning Ambitions",
+   "trail": [
+    "The Campaign",
+    "Objective"
+   ],
+   "text": "Some objectives want you to **win** an ambition—this means you get first place, so you're ***not tied***.",
+   "campaign": true
+  },
+  {
+   "number": "12.6",
+   "anchor": "12.6-intermission",
+   "title": "Intermission",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "After Acts I and II, there is an **Intermission**. In it, you gain a bonus for completing your objective, you might choose a new Fate, and most damaged pieces are destroyed. If you failed your objective, you lose Power equal to the space of your objective marker on the Power track.",
+   "campaign": true
+  },
+  {
+   "number": "12.7",
+   "anchor": "12.7-grand-ambitions",
+   "title": "Grand Ambitions",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "In Act III, “A” or “B” Fates give two **grand ambitions**, shown by gold crosshairs. These give you more ways to gain Power and do not use the objective marker.",
+   "campaign": true
+  },
+  {
+   "number": "12.7.1",
+   "anchor": "12.7.1-timing",
+   "title": "Timing",
+   "trail": [
+    "The Campaign",
+    "Grand Ambitions"
+   ],
+   "text": "At the end of a chapter, grand ambitions are scored at the same time as declared ambitions.",
+   "campaign": true
+  },
+  {
+   "number": "12.7.2",
+   "anchor": "12.7.2-amount",
+   "title": "Amount",
+   "trail": [
+    "The Campaign",
+    "Grand Ambitions"
+   ],
+   "text": "If you fulfilled one grand ambition, gain the lower amount of Power shown under the current chapter on the Chapter track. If you fulfilled both, gain the higher amount.",
+   "campaign": true
+  },
+  {
+   "number": "12.7.3",
+   "anchor": "12.7.3-personal",
+   "title": "Personal",
+   "trail": [
+    "The Campaign",
+    "Grand Ambitions"
+   ],
+   "text": "Your grand ambitions are always active—you do not need to declare them. Rivals cannot gain Power from them.",
+   "campaign": true
+  },
+  {
+   "number": "12.8",
+   "anchor": "12.8-final-objective",
+   "title": "Final Objective",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "In Act III, “C” Fates have a **final objective**.",
+   "campaign": true
+  },
+  {
+   "number": "12.8.1",
+   "anchor": "12.8.1-outright-victory",
+   "title": "Outright Victory",
+   "trail": [
+    "The Campaign",
+    "Final Objective"
+   ],
+   "text": "At the end of a chapter, after scoring ambitions, ***you win the game*** if your final objective is complete by having your objective marker at “0” ***and you have at least 1 Power.***",
+   "campaign": true
+  },
+  {
+   "number": "12.8.2",
+   "anchor": "12.8.2-tiebreakers",
+   "title": "Tiebreakers",
+   "trail": [
+    "The Campaign",
+    "Final Objective"
+   ],
+   "text": "Winning by completing a final objective supersedes winning by having the most Power. If multiple players would win the game by completing their final objective, the winner is the player among them with the most Power.",
+   "campaign": true
+  },
+  {
+   "number": "12.8.3",
+   "anchor": "12.8.3-power-victory",
+   "title": "Power Victory",
+   "trail": [
+    "The Campaign",
+    "Final Objective"
+   ],
+   "text": "If you have a final objective, you can still win at the end of Chapter 4 by simply having the most Power.",
+   "campaign": true
+  },
+  {
+   "number": "12.9",
+   "anchor": "12.9-rules-booklet",
+   "title": "Rules Booklet",
+   "trail": [
+    "The Campaign"
+   ],
+   "text": "As you play, your Fate will add many cards to the **rules booklet**. The booklet is double-sided. You can use one side for Edict cards and the other side for Law and Summit cards. In rare cases where you run out of space on one side for a specific card type, you can use the other side. As you add cards to this booklet, make sure to explain them aloud, since these rules affect everyone.",
+   "campaign": true
+  },
+  {
+   "number": "13",
+   "anchor": "13-campaign-rules-terms",
+   "title": "Campaign Rules & Terms",
+   "trail": [],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "13.1",
+   "anchor": "13.1-protected-guild-cards",
+   "title": "Protected Guild Cards",
+   "trail": [
+    "Campaign Rules & Terms"
+   ],
+   "text": "Some Guild cards in the campaign are **protected**, shown by an “X” icon in place of their raid cost.",
+   "campaign": true
+  },
+  {
+   "number": "13.1.1",
+   "anchor": "13.1.1-cannot-remove",
+   "title": "Cannot Remove",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Protected Guild Cards"
+   ],
+   "text": "Protected Guild cards cannot be removed from the holder's play area ***unless the holder Provokes Outrage*** of its suit or if the Guild card is referenced explicitly by name.",
+   "campaign": true
+  },
+  {
+   "number": "13.2",
+   "anchor": "13.2-attaching-cards",
+   "title": "Attaching Cards",
+   "trail": [
+    "Campaign Rules & Terms"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "13.2.1",
+   "anchor": "13.2.1-one-each",
+   "title": "One Each",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Attaching Cards"
+   ],
+   "text": "If you are prompted to **attach** a card, place above a card in the Court that does not have an attached card.",
+   "campaign": true
+  },
+  {
+   "number": "13.2.2",
+   "anchor": "13.2.2-securing",
+   "title": "Securing",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Attaching Cards"
+   ],
+   "text": "When you **secure** a card, also secure its attached card. If both have When Secured actions, resolve them in either order.",
+   "campaign": true
+  },
+  {
+   "number": "13.2.3",
+   "anchor": "13.2.3-forced-attach",
+   "title": "Forced Attach",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Attaching Cards"
+   ],
+   "text": "If you are forced to attach a card but you cannot fulfill all of the requirements to attach it, you still attach it, ignoring the fewest requirements to attach it.",
+   "campaign": true
+  },
+  {
+   "number": "13.2.4",
+   "anchor": "13.2.4-removal-from-court",
+   "title": "Removal from Court",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Attaching Cards"
+   ],
+   "text": "If a card is removed from the Court in any way and it has an attached card, refill the Court by sliding down the attached card. Place all agents from the removed card onto the previously attached card. If an ***attached card*** is removed, nothing happens to the card it was attached to.",
+   "campaign": true
+  },
+  {
+   "number": "13.3",
+   "anchor": "13.3-resources",
+   "title": "Resources",
+   "trail": [
+    "Campaign Rules & Terms"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "13.3.1",
+   "anchor": "13.3.1-frozen",
+   "title": "Frozen",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Resources"
+   ],
+   "text": "Some resources are frozen. The player holding the frozen resources cannot remove them from the freezing piece except with scrap or in ways stated by the freezing piece or other pieces that reference it. _(For example, Govern the Imperial Reach can let the First Regent give Weapons from the Imperial Trust.)_",
+   "campaign": true
+  },
+  {
+   "number": "13.3.2",
+   "anchor": "13.3.2-counting",
+   "title": "Counting",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Resources"
+   ],
+   "text": "When you are prompted to count how many resources you have, count ***everything in your play area***, including on cards and on tiles such as the First Regent tile.",
+   "campaign": true
+  },
+  {
+   "number": "13.4",
+   "anchor": "13.4-harm",
+   "title": "Harm",
+   "trail": [
+    "Campaign Rules & Terms"
+   ],
+   "text": "Some rules refer to **harm**—this means choosing as defender in battle, damaging, destroying, or hitting, except against yourself.",
+   "campaign": true
+  },
+  {
+   "number": "13.5",
+   "anchor": "13.5-tokens",
+   "title": "Tokens",
+   "trail": [
+    "Campaign Rules & Terms"
+   ],
+   "text": "Many Fates add new punchboard **tokens**.",
+   "campaign": true
+  },
+  {
+   "number": "13.5.1",
+   "anchor": "13.5.1-cannot-harm",
+   "title": "Cannot Harm",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Tokens"
+   ],
+   "text": "These tokens cannot be **harmed** unless they say otherwise.",
+   "campaign": true
+  },
+  {
+   "number": "13.5.2",
+   "anchor": "13.5.2-not-loyal",
+   "title": "Not Loyal",
+   "trail": [
+    "Campaign Rules & Terms",
+    "Tokens"
+   ],
+   "text": "By default, tokens added by Fates are not **Loyal**. However, some do say they are Loyal—you treat them as being your player color, and Rivals treat them as Rival pieces. You can **build** buildings at Loyal tokens, you can **repair** damaged Loyal tokens, and they fulfill the need for Loyal pieces found in rules such as the Empire's Presence Law (`rule-relative:The Empire$Control & Command$Presence Law.`).",
+   "campaign": true
+  },
+  {
+   "number": "14",
+   "anchor": "14-the-empire",
+   "title": "The Empire",
+   "trail": [],
+   "text": "Everyone starts as a **Regent** of a crumbling galactic **Empire**, shown by their Regent title card tucked into their Fate card.<br><br>\nOne Regent is the **First Regent**, who governs the Empire (`rule-relative:The Empire`) and holds the **Imperial Trust** (`rule-relative:Edicts$Collect Imperial Demand$Resources.`), resources they collect from Regents as tribute for the distant Emperor.<br><br>\nA Regent can become an **Outlaw** by calling a Summit (`rule-relative:Summits`). Outlaws can be attacked by the Empire, but they can battle Regents freely and don't pay into the Imperial Trust.",
+   "campaign": true
+  },
+  {
+   "number": "14.1",
+   "anchor": "14.1-control-command",
+   "title": "Control & Command",
+   "trail": [
+    "The Empire"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "14.1.1",
+   "anchor": "14.1.1-imperial-sovereignty",
+   "title": "Imperial Sovereignty",
+   "trail": [
+    "The Empire",
+    "Control & Command"
+   ],
+   "text": "The Empire controls all systems that have ***any number of fresh Imperial ships***, ignoring all players' Loyal ships.",
+   "campaign": true
+  },
+  {
+   "number": "14.1.2",
+   "anchor": "14.1.2-presence-law",
+   "title": "Presence Law",
+   "trail": [
+    "The Empire",
+    "Control & Command"
+   ],
+   "text": "On a Regent's turn, they **Command the Imperial Fleet** following the **Presence Law:** In systems ***with Loyal pieces***, they control the system if it is Empire-controlled and can take actions with Imperial ships there—**move** and **repair** them, **battle** with them, **build** at them, and **tax** cities they control.",
+   "campaign": true
+  },
+  {
+   "number": "14.1.2.1",
+   "anchor": "14.1.2.1-ignoring-the-presence-law",
+   "title": "Ignoring the Presence Law",
+   "trail": [
+    "The Empire",
+    "Control & Command",
+    "Presence Law"
+   ],
+   "text": "If a rule lets you ignore the Presence Law, you Command the Imperial Fleet in all systems, even those with no Loyal pieces.",
+   "campaign": true
+  },
+  {
+   "number": "14.1.3",
+   "anchor": "14.1.3-first-regents-privilege",
+   "title": "First Regent's Privilege",
+   "trail": [
+    "The Empire",
+    "Control & Command"
+   ],
+   "text": "The First Regent controls all Empire-controlled systems for the purpose of ambitions, objectives, and events (`rule-relative:Events & the Imperial Council`).",
+   "campaign": true
+  },
+  {
+   "number": "14.2",
+   "anchor": "14.2-movement",
+   "title": "Movement",
+   "trail": [
+    "The Empire"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "14.2.1",
+   "anchor": "14.2.1-movement-law",
+   "title": "Movement Law",
+   "trail": [
+    "The Empire",
+    "Movement"
+   ],
+   "text": "Regents follow the **Movement Law:** Regents can only **move** 1 Imperial ship for each Loyal ship they are moving along with them at the same time to the same system.",
+   "campaign": true
+  },
+  {
+   "number": "14.2.2",
+   "anchor": "14.2.2-catapult-move",
+   "title": "Catapult Move",
+   "trail": [
+    "The Empire",
+    "Movement"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "14.2.2.1",
+   "anchor": "14.2.2.1-empire-control",
+   "title": "Empire Control",
+   "trail": [
+    "The Empire",
+    "Movement",
+    "Catapult Move"
+   ],
+   "text": "Empire control of gates ends the Catapult moves of Outlaw pieces, but not Regent or Imperial pieces.",
+   "campaign": true
+  },
+  {
+   "number": "14.2.2.2",
+   "anchor": "14.2.2.2-regent-control",
+   "title": "Regent Control",
+   "trail": [
+    "The Empire",
+    "Movement",
+    "Catapult Move"
+   ],
+   "text": "Regent control of gates ends the Catapult moves of Outlaw pieces and Rival Regent pieces alone, but not Imperial pieces or mixed Regent and Imperial pieces.",
+   "campaign": true
+  },
+  {
+   "number": "14.2.2.3",
+   "anchor": "14.2.2.3-outlaw-control",
+   "title": "Outlaw Control",
+   "trail": [
+    "The Empire",
+    "Movement",
+    "Catapult Move"
+   ],
+   "text": "Outlaw control of gates ends the Catapult moves of Regent and Imperial pieces alike.",
+   "campaign": true
+  },
+  {
+   "number": "14.3",
+   "anchor": "14.3-battle-harm-taxing",
+   "title": "Battle, Harm, & Taxing",
+   "trail": [
+    "The Empire"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "14.3.1",
+   "anchor": "14.3.1-truce-law",
+   "title": "Truce Law",
+   "trail": [
+    "The Empire",
+    "Battle, Harm, & Taxing"
+   ],
+   "text": "Regents follow the **Truce Law:** Regents cannot **harm** Imperial ships except for hits they take as attacking ships in battle, and they cannot **harm** or **tax** Rival Regents in systems with Imperial ships.",
+   "campaign": true
+  },
+  {
+   "number": "14.3.2",
+   "anchor": "14.3.2-empire-may-attack",
+   "title": "Empire May Attack",
+   "trail": [
+    "The Empire",
+    "Battle, Harm, & Taxing"
+   ],
+   "text": "When a Regent ***attacks*** in battle, they ***may*** add Imperial ships in the battle system to their attacking ships.",
+   "campaign": true
+  },
+  {
+   "number": "14.3.3",
+   "anchor": "14.3.3-empire-must-defend",
+   "title": "Empire Must Defend",
+   "trail": [
+    "The Empire",
+    "Battle, Harm, & Taxing"
+   ],
+   "text": "When a Regent ***defends*** in battle, they ***must*** add Imperial ships in the battle system to their defending ships.",
+   "campaign": true
+  },
+  {
+   "number": "14.4",
+   "anchor": "14.4-outlaw-battles",
+   "title": "Outlaw Battles",
+   "trail": [
+    "The Empire"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "14.4.1",
+   "anchor": "14.4.1-battling-the-empire",
+   "title": "Battling the Empire",
+   "trail": [
+    "The Empire",
+    "Outlaw Battles"
+   ],
+   "text": "Outlaws may choose either a Regent or the Empire as defender. If the Empire is defending, the defending pieces are the Imperial ships in the battle system.",
+   "campaign": true
+  },
+  {
+   "number": "14.4.1.1",
+   "anchor": "14.4.1.1-trophies",
+   "title": "Trophies",
+   "trail": [
+    "The Empire",
+    "Outlaw Battles",
+    "Battling the Empire"
+   ],
+   "text": "If the Empire is defending, the First Regent takes any destroyed pieces of the Outlaw as Trophies. If there is no First Regent, they return to the Outlaw.",
+   "campaign": true
+  },
+  {
+   "number": "15",
+   "anchor": "15-blight-the-free-states",
+   "title": "Blight & the Free States",
+   "trail": [],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "15.1",
+   "anchor": "15.1-the-blight",
+   "title": "The Blight",
+   "trail": [
+    "Blight & the Free States"
+   ],
+   "text": "The Blight is a mysterious entity spreading through the Reach. No one knows what it wants or how to communicate with it. In Crises (`rule-relative:Crises`), the Blight hits ships. In the Intermission (`rule-relative:Intermission`), it destroys buildings in systems with no ships.",
+   "campaign": true
+  },
+  {
+   "number": "15.1.1",
+   "anchor": "15.1.1-harming-trophies",
+   "title": "Harming & Trophies",
+   "trail": [
+    "Blight & the Free States",
+    "The Blight"
+   ],
+   "text": "Blight can be **harmed**—battled, hit, damaged, and destroyed. However, it is ***Tough***—it takes 2 hits to damage or destroy. One hit does nothing. Take Blight that you destroy as Trophies.",
+   "campaign": true
+  },
+  {
+   "number": "15.1.2",
+   "anchor": "15.1.2-battling",
+   "title": "Battling",
+   "trail": [
+    "Blight & the Free States",
+    "The Blight"
+   ],
+   "text": "If you choose the Blight as defender in battle, all Blight in the battle system are defending pieces. Blight is hit with `symbol:hit` but not `symbol:buildinghit`. Blight does not intercept.",
+   "campaign": true
+  },
+  {
+   "number": "15.1.3",
+   "anchor": "15.1.3-catapult-movement",
+   "title": "Catapult Movement",
+   "trail": [
+    "Blight & the Free States",
+    "The Blight"
+   ],
+   "text": "Players taking a Catapult **move** must end it if they move into a gate with fresh or damaged Blight, like if a Rival controlled the gate.",
+   "campaign": true
+  },
+  {
+   "number": "15.1.4",
+   "anchor": "15.1.4-empty-supply",
+   "title": "Empty Supply",
+   "trail": [
+    "Blight & the Free States",
+    "The Blight"
+   ],
+   "text": "If you must place Blight but the supply is empty, take it from the player who has the most Blight Trophies.",
+   "campaign": true
+  },
+  {
+   "number": "15.2",
+   "anchor": "15.2-the-free-states",
+   "title": "The Free States",
+   "trail": [
+    "Blight & the Free States"
+   ],
+   "text": "As the Empire crumbles, some people have escaped its grip, declared independence, and formed the **Free States**.",
+   "campaign": true
+  },
+  {
+   "number": "15.2.1",
+   "anchor": "15.2.1-actions",
+   "title": "Actions",
+   "trail": [
+    "Blight & the Free States",
+    "The Free States"
+   ],
+   "text": "You may take actions with Free buildings ***that you control***—**tax** Free cities, **build** ships at Free starports and Catapult **move** from them, and **repair** Free cities and starports.",
+   "campaign": true
+  },
+  {
+   "number": "15.2.2",
+   "anchor": "15.2.2-harming-trophies",
+   "title": "Harming & Trophies",
+   "trail": [
+    "Blight & the Free States",
+    "The Free States"
+   ],
+   "text": "Just like players' buildings, Free buildings can be **harmed**—battled, hit, damaged, and destroyed. Take Free buildings you destroy as Trophies.",
+   "campaign": true
+  },
+  {
+   "number": "15.2.3",
+   "anchor": "15.2.3-battling",
+   "title": "Battling",
+   "trail": [
+    "Blight & the Free States",
+    "The Free States"
+   ],
+   "text": "If you choose the Free States as defender in battle, all Free buildings in the battle system are defending pieces. They take hits from rolled dice like players' buildings.",
+   "campaign": true
+  },
+  {
+   "number": "15.2.4",
+   "anchor": "15.2.4-raiding",
+   "title": "Raiding",
+   "trail": [
+    "Blight & the Free States",
+    "The Free States"
+   ],
+   "text": "You may raid the Free States. You may gain exactly 1 resource matching its planet type by spending `symbol:key`. This counts as stealing. You cannot gain multiple resources from the Free States in the same battle.",
+   "campaign": true
+  },
+  {
+   "number": "15.2.5",
+   "anchor": "15.2.5-empty-supply",
+   "title": "Empty Supply",
+   "trail": [
+    "Blight & the Free States",
+    "The Free States"
+   ],
+   "text": "In the rare event that you must place a Free building but the supply is empty, use a proxy piece.",
+   "campaign": true
+  },
+  {
+   "number": "16",
+   "anchor": "16-events-the-imperial-council",
+   "title": "Events & the Imperial Council",
+   "trail": [],
+   "text": "There are three kinds of events: Summits, Crises, and Edicts.\n\n  - During a **Summit**, players can make deals to exchange pieces and favors in a freeform\n    manner.\n  - During the **Crises**, the Blight attacks ships on the map, and some Guild and Vox cards\n    cause chaos.\n  - During the **Edicts**, the First Regent governs the Empire. Over time, more Edicts are\n    added.\n\nEvents can be triggered by playing an **Event card** or securing the **Imperial Council card** from the Court (`rule-relative:Events & the Imperial Council$Imperial Council`).",
+   "campaign": true
+  },
+  {
+   "number": "16.1",
+   "anchor": "16.1-event-cards",
+   "title": "Event Cards",
+   "trail": [
+    "Events & the Imperial Council"
+   ],
+   "text": "Event cards are a new kind of action card added during setup.",
+   "campaign": true
+  },
+  {
+   "number": "16.1.1",
+   "anchor": "16.1.1-playing-an-event-card",
+   "title": "Playing an Event Card",
+   "trail": [
+    "Events & the Imperial Council",
+    "Event Cards"
+   ],
+   "text": "On your turn, you may play an Event card. ***You cannot Lead it, Copy with it, or discard it to seize the initiative.***",
+   "campaign": true
+  },
+  {
+   "number": "16.1.2",
+   "anchor": "16.1.2-actions-from-an-event-card",
+   "title": "Actions from an Event Card",
+   "trail": [
+    "Events & the Imperial Council",
+    "Event Cards"
+   ],
+   "text": "When you play an Event card, you may take actions exactly like you played the lead card.",
+   "campaign": true
+  },
+  {
+   "number": "16.1.2.1",
+   "anchor": "16.1.2.1-limitations",
+   "title": "Limitations",
+   "trail": [
+    "Events & the Imperial Council",
+    "Event Cards",
+    "Actions from an Event Card"
+   ],
+   "text": "Your Event card gives you no actions if ***another Event card*** was played earlier this round or if the ***Imperial Council*** was secured earlier this round and is currently tucked (`rule-relative:Events & the Imperial Council$Imperial Council`).",
+   "campaign": true
+  },
+  {
+   "number": "16.1.3",
+   "anchor": "16.1.3-cannot-scrap",
+   "title": "Cannot Scrap",
+   "trail": [
+    "Events & the Imperial Council",
+    "Event Cards"
+   ],
+   "text": "Event cards cannot be scrapped.",
+   "campaign": true
+  },
+  {
+   "number": "16.1.4",
+   "anchor": "16.1.4-two-player-mulligans",
+   "title": "Two-Player Mulligans",
+   "trail": [
+    "Events & the Imperial Council",
+    "Event Cards"
+   ],
+   "text": "When you take a mulligan in a two-player game, you must keep any Event cards in your hand and only draw the number of action cards you discarded.",
+   "campaign": true
+  },
+  {
+   "number": "16.2",
+   "anchor": "16.2-resolving-the-event",
+   "title": "Resolving the Event",
+   "trail": [
+    "Events & the Imperial Council"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "16.2.1",
+   "anchor": "16.2.1-resolution",
+   "title": "Resolution",
+   "trail": [
+    "Events & the Imperial Council",
+    "Resolving the Event"
+   ],
+   "text": "At the end of a round where any Event cards were played, do the following just after checking whether initiative changes:",
+   "campaign": true
+  },
+  {
+   "number": "16.2.1.1",
+   "anchor": "16.2.1.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Events & the Imperial Council",
+    "Resolving the Event",
+    "Resolution"
+   ],
+   "text": "The player with initiative may call the Summit (`rule-relative:Summits`).",
+   "campaign": true
+  },
+  {
+   "number": "16.2.1.2",
+   "anchor": "16.2.1.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Events & the Imperial Council",
+    "Resolving the Event",
+    "Resolution"
+   ],
+   "text": "The player with initiative rolls the event and number dice and resolves the event die as follows:<br>\n  \\- If `symbol:crisis` is rolled, resolve **Crises**\n    (`rule-relative:Crises`).<br>\n  \\- If `symbol:edict` is rolled, resolve **Edicts** (`rule-relative:Edicts`).",
+   "campaign": true
+  },
+  {
+   "number": "16.2.2",
+   "anchor": "16.2.2-imperial-council-overrides-events",
+   "title": "Imperial Council Overrides Events",
+   "trail": [
+    "Events & the Imperial Council",
+    "Resolving the Event"
+   ],
+   "text": "If the Imperial Council (`rule-relative:Events & the Imperial Council$Imperial Council`) is secured during the same round as any Event cards are played, resolve the Council and do not resolve the Event card.",
+   "campaign": true
+  },
+  {
+   "number": "16.3",
+   "anchor": "16.3-imperial-council",
+   "title": "Imperial Council",
+   "trail": [
+    "Events & the Imperial Council"
+   ],
+   "text": "The **Imperial Council** is a card in the Court with two sides: In Session and Decided. In each Act, it starts **In Session**. Securing the Imperial Council flips it to its **Decided** side.<br>  It flips back to In Session at the start of an Act (`rule:3.2`), and you can flip it to In Session if you call a Summit and Petition the Council (`rule-relative:Summits$Call to Order$Petition the Council.`).<br> If it flips while tucked under a card, return it to the Court.",
+   "campaign": true
+  },
+  {
+   "number": "16.3.1",
+   "anchor": "16.3.1-in-session",
+   "title": "In Session",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council"
+   ],
+   "text": "While the Imperial Council is In Session, players may influence and secure it.",
+   "campaign": true
+  },
+  {
+   "number": "16.3.2",
+   "anchor": "16.3.2-decided",
+   "title": "Decided",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council"
+   ],
+   "text": "While the Imperial Council is Decided, players cannot influence or secure it.",
+   "campaign": true
+  },
+  {
+   "number": "16.3.3",
+   "anchor": "16.3.3-securing-the-council",
+   "title": "Securing the Council",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council"
+   ],
+   "text": "When you **secure** the Council, flip it to **Decided** and tuck it under your played card as a reminder to resolve it later. At the end of that round, return the Imperial Council card to the Court on its Decided side, then resolve the following:",
+   "campaign": true
+  },
+  {
+   "number": "16.3.3.1",
+   "anchor": "16.3.3.1-step-1-summit",
+   "title": "Step 1: Summit",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council",
+    "Securing the Council"
+   ],
+   "text": "You may call a Summit (`rule-relative:Summits`).",
+   "campaign": true
+  },
+  {
+   "number": "16.3.3.2",
+   "anchor": "16.3.3.2-step-2-become-first-regent",
+   "title": "Step 2: Become First Regent",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council",
+    "Securing the Council"
+   ],
+   "text": "If you're a **Regent**, take the First Regent tile, keeping all resources on the Imperial Trust (`rule-relative:Edicts$Collect Imperial Demand$Resources.`).",
+   "campaign": true
+  },
+  {
+   "number": "16.3.3.3",
+   "anchor": "16.3.3.3-step-3-steal-from-empire",
+   "title": "Step 3: Steal from Empire",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council",
+    "Securing the Council"
+   ],
+   "text": "If you're an **Outlaw**, steal resources from the Imperial Trust on the First Regent tile, up to your number of empty resource slots. The First Regent loses 1 Power for each resource stolen.",
+   "campaign": true
+  },
+  {
+   "number": "16.3.3.4",
+   "anchor": "16.3.3.4-step-4-crises-or-edicts",
+   "title": "Step 4: Crises or Edicts",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council",
+    "Securing the Council"
+   ],
+   "text": "You must choose to resolve either the **Crises** (`rule-relative:Crises`) or the **Edicts** (`rule-relative:Edicts`).",
+   "campaign": true
+  },
+  {
+   "number": "16.3.4",
+   "anchor": "16.3.4-event-cards",
+   "title": "Event Cards",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council"
+   ],
+   "text": "If the Imperial Council is secured in the same round as Event cards (`rule-relative:Events & the Imperial Council$Event Cards`) are played, resolve the Council and ignore the Event cards.",
+   "campaign": true
+  },
+  {
+   "number": "16.3.5",
+   "anchor": "16.3.5-intrigue",
+   "title": "Intrigue",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council"
+   ],
+   "text": "If the Imperial Council flips while tucked under a card, return it to the Court. _(You no longer resolve it at the end of this round!)_",
+   "campaign": true
+  },
+  {
+   "number": "16.3.6",
+   "anchor": "16.3.6-immunity",
+   "title": "Immunity",
+   "trail": [
+    "Events & the Imperial Council",
+    "Imperial Council"
+   ],
+   "text": "The Imperial Council cannot be buried, scrapped, or discarded.",
+   "campaign": true
+  },
+  {
+   "number": "17",
+   "anchor": "17-summits",
+   "title": "Summits",
+   "trail": [],
+   "text": "Event cards and the Imperial Council let players call the Summit. It has two parts: **Call to Order**, then **Negotiations**.<br><br>\nBroadly, in the Call to Order you can return **Favors**—Rival agents you have collected on your Fate card—to your Rivals to force them to take Negotiation actions, and you can interact with Imperial politics.<br><br>\nThen, in Negotiations, everyone can take Negotiation actions in a freeform manner, including giving each other Favors that can be returned in later Summits.",
+   "campaign": true
+  },
+  {
+   "number": "17.1",
+   "anchor": "17.1-call-to-order",
+   "title": "Call to Order",
+   "trail": [
+    "Summits"
+   ],
+   "text": "***The player who called the Summit*** may take any number of Call to Order actions, listed below:",
+   "campaign": true
+  },
+  {
+   "number": "17.1.1",
+   "anchor": "17.1.1-return-favors",
+   "title": "Return Favors",
+   "trail": [
+    "Summits",
+    "Call to Order"
+   ],
+   "text": "Return a Rival's Favors to their supply to force them to take Negotiation actions (`rule-relative:Summits$Negotiations$Negotiation Actions.`) you choose, ***targeting you***, in the way you choose. By default, each Negotiation action you force costs 1 Favor.",
+   "campaign": true
+  },
+  {
+   "number": "17.1.2",
+   "anchor": "17.1.2-petition-the-council",
+   "title": "Petition the Council",
+   "trail": [
+    "Summits",
+    "Call to Order"
+   ],
+   "text": "Flip the Imperial Council card to its In Session side.",
+   "campaign": true
+  },
+  {
+   "number": "17.1.3",
+   "anchor": "17.1.3-leave-the-empire",
+   "title": "Leave the Empire",
+   "trail": [
+    "Summits",
+    "Call to Order"
+   ],
+   "text": "Flip your Regent title card to Outlaw. If you are the First Regent, give the First Regent tile to the Regent with the most Power. Resources stay in the Imperial Trust. ***If there are no Regents***, return all resources from the Imperial Trust to the supply, lose 1 Power per resource returned, and place the First Regent tile in the supply.",
+   "campaign": true
+  },
+  {
+   "number": "17.1.4",
+   "anchor": "17.1.4-revive-the-empire",
+   "title": "Revive the Empire",
+   "trail": [
+    "Summits",
+    "Call to Order"
+   ],
+   "text": "If there are no Regents, flip your Outlaw title card to Regent and take the First Regent tile.",
+   "campaign": true
+  },
+  {
+   "number": "17.2",
+   "anchor": "17.2-negotiations",
+   "title": "Negotiations",
+   "trail": [
+    "Summits"
+   ],
+   "text": "After the Call to Order, ***all players*** may take any number of Negotiation actions listed below in a freeform manner. Each Negotiation action affects a Rival. To take a Negotiation action, you need the consent of the affected Rival.",
+   "campaign": true
+  },
+  {
+   "number": "17.2.1",
+   "anchor": "17.2.1-negotiation-actions",
+   "title": "Negotiation Actions",
+   "trail": [
+    "Summits",
+    "Negotiations"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "17.2.1.1",
+   "anchor": "17.2.1.1-cede-control",
+   "title": "Cede Control",
+   "trail": [
+    "Summits",
+    "Negotiations",
+    "Negotiation Actions"
+   ],
+   "text": "Replace 1 Loyal piece on the map with 1 Rival piece of that type. You can only replace a Loyal building if no Loyal ships are in its system, and you cannot replace your last city, starport, or ship on the map.",
+   "campaign": true
+  },
+  {
+   "number": "17.2.1.2",
+   "anchor": "17.2.1.2-delegate-authority",
+   "title": "Delegate Authority",
+   "trail": [
+    "Summits",
+    "Negotiations",
+    "Negotiation Actions"
+   ],
+   "text": "Replace 1 Loyal agent on a card in the Court with a Rival's agent.",
+   "campaign": true
+  },
+  {
+   "number": "17.2.1.3",
+   "anchor": "17.2.1.3-promise-favor",
+   "title": "Promise Favor",
+   "trail": [
+    "Summits",
+    "Negotiations",
+    "Negotiation Actions"
+   ],
+   "text": "Give 1 Loyal agent from your supply to a Rival, placing it on their Fate card. Rival agents on a Fate card are called **Favors**.",
+   "campaign": true
+  },
+  {
+   "number": "17.2.1.4",
+   "anchor": "17.2.1.4-transfer-asset",
+   "title": "Transfer Asset",
+   "trail": [
+    "Summits",
+    "Negotiations",
+    "Negotiation Actions"
+   ],
+   "text": "Give 1 Captive, Trophy, Favor, or resource you have to a Rival. If it is their Loyal piece, return it to their supply. Forcing you to give a resource with Return Favors (`rule-relative:Summits$Call to Order$Return Favors.`) costs Favors equal to its raid cost.",
+   "campaign": true
+  },
+  {
+   "number": "17.2.1.5",
+   "anchor": "17.2.1.5-invite-to-empire",
+   "title": "Invite to Empire",
+   "trail": [
+    "Summits",
+    "Negotiations",
+    "Negotiation Actions"
+   ],
+   "text": "***If you're the First Regent***, flip an Outlaw's title card to Regent.",
+   "campaign": true
+  },
+  {
+   "number": "17.2.2",
+   "anchor": "17.2.2-multipart-negotiations",
+   "title": "Multipart Negotiations",
+   "trail": [
+    "Summits",
+    "Negotiations"
+   ],
+   "text": "You may agree with any players to simultaneously take any number of Negotiation actions that can be resolved immediately.",
+   "campaign": true
+  },
+  {
+   "number": "17.2.3",
+   "anchor": "17.2.3-ending-negotiations",
+   "title": "Ending Negotiations",
+   "trail": [
+    "Summits",
+    "Negotiations"
+   ],
+   "text": "If no one is negotiating, the player who called the Summit may call for them to start negotiating, wait briefly, and then count down from five seconds. If no one starts negotiating, the Summit ends.",
+   "campaign": true
+  },
+  {
+   "number": "18",
+   "anchor": "18-crises",
+   "title": "Crises",
+   "trail": [],
+   "text": "Event cards and the Imperial Council can trigger the Crises. When the Crises are triggered, resolve the **Blight Crises**, then **Fate Crises**, and finally **Court Crises**.",
+   "campaign": true
+  },
+  {
+   "number": "18.1",
+   "anchor": "18.1-blight-crises",
+   "title": "Blight Crises",
+   "trail": [
+    "Crises"
+   ],
+   "text": "Each system with Blight has a **Blight Crisis**—each fresh Blight there deals 3 hits, and each damaged Blight there deals 1 hit.",
+   "campaign": true
+  },
+  {
+   "number": "18.1.1",
+   "anchor": "18.1.1-hit-priority",
+   "title": "Hit Priority",
+   "trail": [
+    "Crises",
+    "Blight Crises"
+   ],
+   "text": "The Blight deals hits to Imperial ships first. If no Imperial ships remain, it deals each remaining hit to the Loyal ships of ***every player in its system.*** In both cases, fresh ships take hits before damaged ships.",
+   "campaign": true
+  },
+  {
+   "number": "18.2",
+   "anchor": "18.2-fate-crises",
+   "title": "Fate Crises",
+   "trail": [
+    "Crises"
+   ],
+   "text": "Some Fates add cards with **Crisis** text that are held by players. Resolve all of these cards in turn order.",
+   "campaign": true
+  },
+  {
+   "number": "18.3",
+   "anchor": "18.3-court-crises",
+   "title": "Court Crises",
+   "trail": [
+    "Crises"
+   ],
+   "text": "The ***player with initiative*** rolls the event and number dice unless they were just rolled to  resolve an Event card. Resolve the **Crisis** text on each Vox card in the Court from left to right.",
+   "campaign": true
+  },
+  {
+   "number": "18.3.1",
+   "anchor": "18.3.1-attached-cards",
+   "title": "Attached Cards",
+   "trail": [
+    "Crises",
+    "Court Crises"
+   ],
+   "text": "If a Vox card has another Vox card attached to it (`rule-relative:Campaign Rules & Terms$Attaching Cards`), resolve the attached card first.",
+   "campaign": true
+  },
+  {
+   "number": "18.3.2",
+   "anchor": "18.3.2-event-number-dice",
+   "title": "Event & Number Dice",
+   "trail": [
+    "Crises",
+    "Court Crises"
+   ],
+   "text": "Some Crises determine how they resolve using the icon and number on the event and number dice. Here are the key phrases that refer to these dice:",
+   "campaign": true
+  },
+  {
+   "number": "18.3.2.1",
+   "anchor": "18.3.2.1-rolled-cluster",
+   "title": "Rolled Cluster",
+   "trail": [
+    "Crises",
+    "Court Crises",
+    "Event & Number Dice"
+   ],
+   "text": "The cluster rolled on the number die.",
+   "campaign": true
+  },
+  {
+   "number": "18.3.2.2",
+   "anchor": "18.3.2.2-planets-of-the-rolled-symbol",
+   "title": "Planets of the Rolled Symbol",
+   "trail": [
+    "Crises",
+    "Court Crises",
+    "Event & Number Dice"
+   ],
+   "text": "Each planet with the planet ID symbol (`symbol:arrow`/`symbol:hex`/`symbol:moon`) rolled on the event die.",
+   "campaign": true
+  },
+  {
+   "number": "18.3.2.3",
+   "anchor": "18.3.2.3-rolled-planet",
+   "title": "Rolled Planet",
+   "trail": [
+    "Crises",
+    "Court Crises",
+    "Event & Number Dice"
+   ],
+   "text": "The planet in the cluster rolled on the number die and the ID (`symbol:arrow`/`symbol:hex`/`symbol:moon`) rolled on the event die.",
+   "campaign": true
+  },
+  {
+   "number": "18.3.2.4",
+   "anchor": "18.3.2.4-if-symbol-arrow-symbol-hex-symbol-moon-was-rolled",
+   "title": "If `symbol:arrow`/`symbol:hex`/`symbol:moon` Was Rolled",
+   "trail": [
+    "Crises",
+    "Court Crises",
+    "Event & Number Dice"
+   ],
+   "text": "Check whether this symbol was rolled on the event die.",
+   "campaign": true
+  },
+  {
+   "number": "18.3.3",
+   "anchor": "18.3.3-removing-cards",
+   "title": "Removing Cards",
+   "trail": [
+    "Crises",
+    "Court Crises"
+   ],
+   "text": "If a Crisis removes a card from the Court, return all agents on it and draw a card from the Court deck to refill the Court.",
+   "campaign": true
+  },
+  {
+   "number": "19",
+   "anchor": "19-edicts",
+   "title": "Edicts",
+   "trail": [],
+   "text": "Event cards and the Imperial Council can trigger the Edicts. Resolve all Edicts in order from lowest number to highest.<br><br>\nThe game starts with **Govern the Imperial Reach (Edict 03)** and **Guild Envoys Depart (Edict 00)** in two-player games.",
+   "campaign": true
+  },
+  {
+   "number": "19.1",
+   "anchor": "19.1-govern-the-imperial-reach",
+   "title": "Govern the Imperial Reach",
+   "trail": [
+    "Edicts"
+   ],
+   "text": "The First Regent must either enforce or change the Imperial **Policy** shown on this edict card.\n- If they **enforce** it, they collect the listed **Imperial Demand** and then take the\n  listed **Imperial Action**, as described through the rest of this section.\n\n- If they **change** it, they choose a new Govern the Imperial Reach edict card to place on\n  top of the other two cards.",
+   "campaign": true
+  },
+  {
+   "number": "19.2",
+   "anchor": "19.2-collect-imperial-demand",
+   "title": "Collect Imperial Demand",
+   "trail": [
+    "Edicts"
+   ],
+   "text": "The First Regent must take 1 piece from ***each Regent*** as shown by the Demand of the Imperial Policy, as follows:\n\n  - **Peace:** Relics or Psionics\n  - **Escalation:** Material, Fuel, or Weapons\n  - **War:** Trophies or Captives, but ***not Regent*** or Imperial pieces",
+   "campaign": true
+  },
+  {
+   "number": "19.2.1",
+   "anchor": "19.2.1-resources",
+   "title": "Resources",
+   "trail": [
+    "Edicts",
+    "Collect Imperial Demand"
+   ],
+   "text": "Resources go on the First Regent tile, adding to the Imperial Trust. The First Regent ***must also*** add 1 resource shown by the Demand to the Trust, if they have it. _(These resources have no raid cost, so they cannot be stolen in battle. However, cards such as Silver-Tongues can steal them, and Outlaws can steal them by securing the Imperial Council – see `rule-relative:Events & the Imperial Council$Imperial Council`. These resources return to the supply during the Intermission – see `rule-relative:Intermission$C. Clear Pieces$Step 2.`.)_",
+   "campaign": true
+  },
+  {
+   "number": "19.2.1.1",
+   "anchor": "19.2.1.1-frozen",
+   "title": "Frozen",
+   "trail": [
+    "Edicts",
+    "Collect Imperial Demand",
+    "Resources"
+   ],
+   "text": "Resources in the Imperial Trust are **frozen** except for Imperial Actions (`rule-relative:Campaign Rules & Terms$Resources$Frozen.`).",
+   "campaign": true
+  },
+  {
+   "number": "19.2.2",
+   "anchor": "19.2.2-trophies-captives",
+   "title": "Trophies & Captives",
+   "trail": [
+    "Edicts",
+    "Collect Imperial Demand"
+   ],
+   "text": "**Trophies and Captives** go in the First Regent's Trophies and Captives boxes, respectively. The First Regent does not need to take a Trophy or Captive from themself.",
+   "campaign": true
+  },
+  {
+   "number": "19.2.3",
+   "anchor": "19.2.3-shortfall",
+   "title": "Shortfall",
+   "trail": [
+    "Edicts",
+    "Collect Imperial Demand"
+   ],
+   "text": "If a Rival Regent has no pieces shown by the Demand, the First Regent must take 1 agent from the Rival's supply as a **Favor**. If they have ***no agents***, the First Regent may make them an Outlaw.",
+   "campaign": true
+  },
+  {
+   "number": "19.3",
+   "anchor": "19.3-take-imperial-action",
+   "title": "Take Imperial Action",
+   "trail": [
+    "Edicts"
+   ],
+   "text": "After the Imperial Demand, the First Regent must take the **Imperial Action**, as follows:",
+   "campaign": true
+  },
+  {
+   "number": "19.3.1",
+   "anchor": "19.3.1-in-peace-celebrate-regency",
+   "title": "In Peace, Celebrate Regency",
+   "trail": [
+    "Edicts",
+    "Take Imperial Action"
+   ],
+   "text": "Each Regent gains the bonus city Power shown on all uncovered city slots on their player board.",
+   "campaign": true
+  },
+  {
+   "number": "19.3.2",
+   "anchor": "19.3.2-in-escalation-requisition-ships",
+   "title": "In Escalation, Requisition Ships",
+   "trail": [
+    "Edicts",
+    "Take Imperial Action"
+   ],
+   "text": "Place 2 fresh Imperial ships in an Empire-controlled system. If no systems are controlled by the Empire, place them at a Loyal starport instead.",
+   "campaign": true
+  },
+  {
+   "number": "19.3.3",
+   "anchor": "19.3.3-in-war-distribute-arms",
+   "title": "In War, Distribute Arms",
+   "trail": [
+    "Edicts",
+    "Take Imperial Action"
+   ],
+   "text": "Give 1 Weapon to each Regent from the supply. If the supply is empty, give it from the Imperial Trust.",
+   "campaign": true
+  },
+  {
+   "number": "19.4",
+   "anchor": "19.4-guild-envoys-depart",
+   "title": "Guild Envoys Depart",
+   "trail": [
+    "Edicts"
+   ],
+   "text": "***This card is only used in two-player games.***<br><br>\nBury all Guild cards in the Court with no agents on them, then refill the Court.",
+   "campaign": true
+  },
+  {
+   "number": "20",
+   "anchor": "20-flagships",
+   "title": "Flagships",
+   "trail": [],
+   "text": "Some Fates give you a Flagship board, piece, and aid card. When you get a Flagship, you also replace all of your Loyal buildings on the map with Free buildings of the same type.",
+   "campaign": true
+  },
+  {
+   "number": "20.1",
+   "anchor": "20.1-setup",
+   "title": "Setup",
+   "trail": [
+    "Flagships"
+   ],
+   "text": "Flagship setup is described on the back of the Flagship board. It has been reproduced here for convenience.",
+   "campaign": true
+  },
+  {
+   "number": "20.1.1",
+   "anchor": "20.1.1-step-1-place-flagship",
+   "title": "Step 1: Place Flagship",
+   "trail": [
+    "Flagships",
+    "Setup"
+   ],
+   "text": "Place a Loyal Flagship piece in a system with Loyal pieces.",
+   "campaign": true
+  },
+  {
+   "number": "20.1.2",
+   "anchor": "20.1.2-step-2-abandon-buildings",
+   "title": "Step 2: Abandon Buildings",
+   "trail": [
+    "Flagships",
+    "Setup"
+   ],
+   "text": "Replace all Loyal cities and starports on the map with Free cities and starports, respectively.",
+   "campaign": true
+  },
+  {
+   "number": "20.1.3",
+   "anchor": "20.1.3-step-3-take-aid-card",
+   "title": "Step 3: Take Aid Card",
+   "trail": [
+    "Flagships",
+    "Setup"
+   ],
+   "text": "Take a Flagship Upgrades card.",
+   "campaign": true
+  },
+  {
+   "number": "20.1.4",
+   "anchor": "20.1.4-step-4-flip-board",
+   "title": "Step 4: Flip Board",
+   "trail": [
+    "Flagships",
+    "Setup"
+   ],
+   "text": "Flip over the Flagship board and place it below your player board.",
+   "campaign": true
+  },
+  {
+   "number": "20.2",
+   "anchor": "20.2-general-rules",
+   "title": "General Rules",
+   "trail": [
+    "Flagships"
+   ],
+   "text": "Playing a Flagship has some new rules:",
+   "campaign": true
+  },
+  {
+   "number": "20.2.1",
+   "anchor": "20.2.1-fresh-loyal-ship",
+   "title": "Fresh Loyal Ship",
+   "trail": [
+    "Flagships",
+    "General Rules"
+   ],
+   "text": "Your Flagship is a fresh Loyal ship that cannot be removed from the map.",
+   "campaign": true
+  },
+  {
+   "number": "20.2.2",
+   "anchor": "20.2.2-building-buildings",
+   "title": "Building Buildings",
+   "trail": [
+    "Flagships",
+    "General Rules"
+   ],
+   "text": "You cannot **build** Loyal cities or starports on the map. Instead, you can build them on your Flagship board as Upgrades and Armor. (**Upgrades & Armor**, `rule-relative:Flagships$Upgrades & Armor`)",
+   "campaign": true
+  },
+  {
+   "number": "20.2.3",
+   "anchor": "20.2.3-building-ships",
+   "title": "Building Ships",
+   "trail": [
+    "Flagships",
+    "General Rules"
+   ],
+   "text": "You can only **build** up to 1 ship at your Flagship per turn, ignoring the number of starports on your Flagship board.",
+   "campaign": true
+  },
+  {
+   "number": "20.2.4",
+   "anchor": "20.2.4-battle-with-starports",
+   "title": "Battle with Starports",
+   "trail": [
+    "Flagships",
+    "General Rules"
+   ],
+   "text": "In battle, your Flagship collects a variable number of dice, does not deal hits for  intercept by default, and doesn’t protect buildings on planets. (**Defending**, `rule-relative:Flagships$Flagship Battles$Defending.`)",
+   "campaign": true
+  },
+  {
+   "number": "20.3",
+   "anchor": "20.3-upgrades-armor",
+   "title": "Upgrades & Armor",
+   "trail": [
+    "Flagships"
+   ],
+   "text": "Your Flagship board has 6 **Upgrade** slots, each with an **Armor** slot above it, that you can build Loyal buildings in.<br> Upgrades give benefits (`rule-relative:Flagships$Upgrades & Armor$Upgrade Benefits.`). While an Upgrade has Armor, the Upgrade cannot be hit or destroyed.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.1",
+   "anchor": "20.3.1-building",
+   "title": "Building",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor"
+   ],
+   "text": "To **build** an Upgrade or Armor, your Flagship must be at a planet of the type shown on its slot.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.1.1",
+   "anchor": "20.3.1.1-building-armor",
+   "title": "Building Armor",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Building"
+   ],
+   "text": "You can only build Armor if you have its Upgrade and it is fresh.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.2",
+   "anchor": "20.3.2-repairing",
+   "title": "Repairing",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor"
+   ],
+   "text": "When you **repair** your Flagship, repair an Upgrade or Armor.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.3",
+   "anchor": "20.3.3-unlike-map-buildings",
+   "title": "Unlike Map Buildings",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor"
+   ],
+   "text": "Upgrades and Armor ***do not*** work like buildings on the map:",
+   "campaign": true
+  },
+  {
+   "number": "20.3.3.1",
+   "anchor": "20.3.3.1-cannot-be-taxed",
+   "title": "Cannot be Taxed",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Unlike Map Buildings"
+   ],
+   "text": "Players cannot **tax** cities on Flagships.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.3.2",
+   "anchor": "20.3.3.2-cannot-build-or-catapult",
+   "title": "Cannot Build or Catapult",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Unlike Map Buildings"
+   ],
+   "text": "Players cannot use starports on Flagships to **build** ships or Catapult **move**.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.3.3",
+   "anchor": "20.3.3.3-destroying-cities",
+   "title": "Destroying Cities",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Unlike Map Buildings"
+   ],
+   "text": "Destroying cities on Flagships does not **Provoke Outrage** or **Ransack the Court**.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.3.4",
+   "anchor": "20.3.3.4-cannot-be-replaced",
+   "title": "Cannot be Replaced",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Unlike Map Buildings"
+   ],
+   "text": "They cannot be replaced with non-Loyal pieces, such as Free buildings.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.4",
+   "anchor": "20.3.4-upgrade-benefits",
+   "title": "Upgrade Benefits",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor"
+   ],
+   "text": "This section lists the Flagship's Upgrades. The resource types in parentheses are the planet types that your Flagship must be at in order to build the Upgrade and Armor, respectively.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.4.1",
+   "anchor": "20.3.4.1-ship-crane",
+   "title": "Ship Crane",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Upgrade Benefits"
+   ],
+   "text": "You may **build** up to 2 ships per turn in your Flagship's system. Building this upgrade requires your flagship to be at a Material planet, and building this upgrade's armor requires your flagship to be at a Fuel planet.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.4.2",
+   "anchor": "20.3.4.2-defense-array",
+   "title": "Defense Array",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Upgrade Benefits"
+   ],
+   "text": "When your Flagship is defending in **battle**, it deals intercept hits equal to the number of ***fresh starports*** on its Flagship board. Building this upgrade requires your flagship to be at a **Weapon planet**, and building this upgrade's armor requires your flagship to be at a **Psionic planet**.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.4.3",
+   "anchor": "20.3.4.3-slipstream-drive",
+   "title": "Slipstream Drive",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Upgrade Benefits"
+   ],
+   "text": "Once per turn, in your Prelude, you may Catapult move either your Flagship alone ***or*** other ships from your Flagship. Building this upgrade requires your flagship to be at a **Fuel planet**, and building this upgrade's armor requires your flagship to be at a **Relic planet**.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.4.4",
+   "anchor": "20.3.4.4-control-array",
+   "title": "Control Array",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Upgrade Benefits"
+   ],
+   "text": "While your Flagship is in a gate, you may **tax** any cities in its cluster like they are Loyal. Building this upgrade requires your flagship to be at a **Psionic planet**, and building this upgrade's armor requires your flagship to be at a **Material planet**.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.4.5",
+   "anchor": "20.3.4.5-tractor-beam",
+   "title": "Tractor Beam",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Upgrade Benefits"
+   ],
+   "text": "When your Flagship is defending in **battle**, the attacker cannot collect raid dice. Building this upgrade requires your flagship to be at **a Relic planet**, and building this upgrade's armor requires your flagship to be at **a Weapon planet**.",
+   "campaign": true
+  },
+  {
+   "number": "20.3.4.6",
+   "anchor": "20.3.4.6-hull",
+   "title": "Hull",
+   "trail": [
+    "Flagships",
+    "Upgrades & Armor",
+    "Upgrade Benefits"
+   ],
+   "text": "This Upgrade has no unique benefit, but building cities will open resource slots, and building starports will let you collect more dice in battle. You can build this upgrade and its armor when you flagship is at **any planet**.",
+   "campaign": true
+  },
+  {
+   "number": "20.4",
+   "anchor": "20.4-flagship-battles",
+   "title": "Flagship Battles",
+   "trail": [
+    "Flagships"
+   ],
+   "text": "There are a few key rules when battling with Flagships:\n\n  - When attacking with a Flagship, its Armor and Upgrades are hit like ***ships***.\n  - When defending with a Flagship, its Armor and Upgrades are hit like ***buildings***.",
+   "campaign": true
+  },
+  {
+   "number": "20.4.1",
+   "anchor": "20.4.1-hit-armor-first",
+   "title": "Hit Armor First",
+   "trail": [
+    "Flagships",
+    "Flagship Battles"
+   ],
+   "text": "Armor is always hit ***before*** its Upgrade.",
+   "campaign": true
+  },
+  {
+   "number": "20.4.2",
+   "anchor": "20.4.2-attacking",
+   "title": "Attacking",
+   "trail": [
+    "Flagships",
+    "Flagship Battles"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "20.4.2.1",
+   "anchor": "20.4.2.1-collecting-dice",
+   "title": "Collecting Dice",
+   "trail": [
+    "Flagships",
+    "Flagship Battles",
+    "Attacking"
+   ],
+   "text": "When attacking, your Flagship collects dice up to your number of ***fresh starports*** on Upgrades and Armor.",
+   "campaign": true
+  },
+  {
+   "number": "20.4.2.2",
+   "anchor": "20.4.2.2-taking-hits-as-attacker",
+   "title": "Taking Hits as Attacker",
+   "trail": [
+    "Flagships",
+    "Flagship Battles",
+    "Attacking"
+   ],
+   "text": "While attacking, Upgrades and Armor are hit like ***ships***:<br>\n  \\- You must take hits from `symbol:selfhit` and `symbol:intercept` with\n    Upgrades and Armor if no other attacking ships remain.<br>\n  \\- You can choose to take hits with Upgrades and Armor instead of other attacking\n    ships.",
+   "campaign": true
+  },
+  {
+   "number": "20.4.3",
+   "anchor": "20.4.3-defending",
+   "title": "Defending",
+   "trail": [
+    "Flagships",
+    "Flagship Battles"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "20.4.3.1",
+   "anchor": "20.4.3.1-raid-dice-limit",
+   "title": "Raid Dice Limit",
+   "trail": [
+    "Flagships",
+    "Flagship Battles",
+    "Defending"
+   ],
+   "text": "While you have a Flagship, Rivals who battle you have a different Raid Dice Limit: they can only collect raid dice if there are ***defending buildings or a defending Flagship***.",
+   "campaign": true
+  },
+  {
+   "number": "20.4.3.2",
+   "anchor": "20.4.3.2-does-not-intercept",
+   "title": "Does Not Intercept",
+   "trail": [
+    "Flagships",
+    "Flagship Battles",
+    "Defending"
+   ],
+   "text": "If the attacker rolls a `symbol:intercept`, your Flagship ***does not intercept*** unless it has a Defense Array (`rule-relative:Flagships$Upgrades & Armor$Upgrade Benefits.$Defense Array.`).",
+   "campaign": true
+  },
+  {
+   "number": "20.4.3.3",
+   "anchor": "20.4.3.3-taking-hits-as-defender",
+   "title": "Taking Hits as Defender",
+   "trail": [
+    "Flagships",
+    "Flagship Battles",
+    "Defending"
+   ],
+   "text": "While defending, Upgrades and Armor are hit like ***buildings***:<br>\n  \\- The attacker hits your Upgrades and Armor with `symbol:buildinghit`.<br>\n  \\- If the Flagship is the only remaining defending ship, the attacker hits\n    Upgrades and Armor with `symbol:hit`.<br>\n  \\- Defending buildings on a planet can be hit with `symbol:buildinghit` or with\n    `symbol:hit` if the Flagship is the only remaining defending ship.",
+   "campaign": true
+  },
+  {
+   "number": "20.5",
+   "anchor": "20.5-flagships-in-events",
+   "title": "Flagships in Events",
+   "trail": [
+    "Flagships"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "20.5.1",
+   "anchor": "20.5.1-taking-hits",
+   "title": "Taking Hits",
+   "trail": [
+    "Flagships",
+    "Flagships in Events"
+   ],
+   "text": "When taking hits in a Crisis, your Flagship only takes hits if no other fresh Loyal ships remain in the system. Take each hit to your Flagship with your rightmost Armor. If no Armor remains, take the hit with its rightmost Upgrade.",
+   "campaign": true
+  },
+  {
+   "number": "20.5.2",
+   "anchor": "20.5.2-cannot-cede",
+   "title": "Cannot Cede",
+   "trail": [
+    "Flagships",
+    "Flagships in Events"
+   ],
+   "text": "In Summits, you cannot use Cede Control to replace Loyal buildings on your Flagship board with Rival pieces.",
+   "campaign": true
+  },
+  {
+   "number": "20.6",
+   "anchor": "20.6-cards-flagships",
+   "title": "Cards & Flagships",
+   "trail": [
+    "Flagships"
+   ],
+   "text": "Cards work with Flagships as follows:",
+   "campaign": true
+  },
+  {
+   "number": "20.6.1",
+   "anchor": "20.6.1-building-checks",
+   "title": "Building Checks",
+   "trail": [
+    "Flagships",
+    "Cards & Flagships"
+   ],
+   "text": "Cards that check for Loyal buildings in a system—like Force Beams, Gate Ports, and Hidden Harbors—count Upgrades and Armor as in your Flagship's system unless the card says “on the map.”",
+   "campaign": true
+  },
+  {
+   "number": "20.6.2",
+   "anchor": "20.6.2-building-on-the-map",
+   "title": "Building on the Map",
+   "trail": [
+    "Flagships",
+    "Cards & Flagships"
+   ],
+   "text": "Cards that build Loyal buildings outside building slots—like Gate Ports and Cloud Cities—do let you place Loyal buildings on the map again.",
+   "campaign": true
+  },
+  {
+   "number": "20.6.3",
+   "anchor": "20.6.3-ship-improvements",
+   "title": "Ship Improvements",
+   "trail": [
+    "Flagships",
+    "Cards & Flagships"
+   ],
+   "text": "Cards that improve your Loyal ships—like Sprinter Drives and Mirror Plating—do improve your Flagship, since it is a fresh Loyal ship.",
+   "campaign": true
+  },
+  {
+   "number": "20.6.4",
+   "anchor": "20.6.4-dice-collection",
+   "title": "Dice Collection",
+   "trail": [
+    "Flagships",
+    "Cards & Flagships"
+   ],
+   "text": "Cards that collect dice for Loyal ships like in battle—like Galactic Rifles—let your Flagship collect 1 die per fresh starport on your Flagship board.",
+   "campaign": true
+  },
+  {
+   "number": "20.7",
+   "anchor": "20.7-resettling-flagships",
+   "title": "Resettling Flagships",
+   "trail": [
+    "Flagships"
+   ],
+   "text": "The “C” Fates let you **Resettle** if you have a Flagship:",
+   "campaign": true
+  },
+  {
+   "number": "20.7.1",
+   "anchor": "20.7.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Flagships",
+    "Resettling Flagships"
+   ],
+   "text": "Clear your Flagship board and return it to the box. Replace your Loyal Flagship piece with a Loyal ship.",
+   "campaign": true
+  },
+  {
+   "number": "20.7.2",
+   "anchor": "20.7.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Flagships",
+    "Resettling Flagships"
+   ],
+   "text": "Place 1 city and 1 starport in empty building slots on the map. If there are none, replace Free buildings.",
+   "campaign": true
+  },
+  {
+   "number": "20.7.3",
+   "anchor": "20.7.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Flagships",
+    "Resettling Flagships"
+   ],
+   "text": "If you have fewer than 8 Loyal ships on the map, place ships in systems with Loyal pieces until you have 8 Loyal ships on the map.",
+   "campaign": true
+  },
+  {
+   "number": "21",
+   "anchor": "21-intermission",
+   "title": "Intermission",
+   "trail": [],
+   "text": "The Intermission happens at the end of Act I and Act II. Resolve all of the following steps in order.",
+   "campaign": true
+  },
+  {
+   "number": "21.1",
+   "anchor": "21.1-a-resolve-fate",
+   "title": "A. Resolve Fate",
+   "trail": [
+    "Intermission"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "21.1.1",
+   "anchor": "21.1.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Intermission",
+    "A. Resolve Fate"
+   ],
+   "text": "Each player resolves the Resolution card in their Fate Set for the current Act. Based on whether you completed or failed your objective, you'll do things like gain or discard cards, add cards to the Court deck, or add cards to the rules booklet.",
+   "campaign": true
+  },
+  {
+   "number": "21.1.2",
+   "anchor": "21.1.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Intermission",
+    "A. Resolve Fate"
+   ],
+   "text": "Each player who failed their objective ***loses Power*** equal to the space of their objective marker on the Power track.",
+   "campaign": true
+  },
+  {
+   "number": "21.2",
+   "anchor": "21.2-b-clear-court",
+   "title": "B. Clear Court",
+   "trail": [
+    "Intermission"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "21.2.1",
+   "anchor": "21.2.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Intermission",
+    "B. Clear Court"
+   ],
+   "text": "Return all cards in the Court except the Imperial Council to the Court deck.",
+   "campaign": true
+  },
+  {
+   "number": "21.2.2",
+   "anchor": "21.2.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Intermission",
+    "B. Clear Court"
+   ],
+   "text": "Return all agents from the Court to their players.",
+   "campaign": true
+  },
+  {
+   "number": "21.2.3",
+   "anchor": "21.2.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Intermission",
+    "B. Clear Court"
+   ],
+   "text": "Scrap the Court discard pile.",
+   "campaign": true
+  },
+  {
+   "number": "21.3",
+   "anchor": "21.3-c-clear-pieces",
+   "title": "C. Clear Pieces",
+   "trail": [
+    "Intermission"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "21.3.1",
+   "anchor": "21.3.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Intermission",
+    "C. Clear Pieces"
+   ],
+   "text": "Return all Trophies and Captives.",
+   "campaign": true
+  },
+  {
+   "number": "21.3.2",
+   "anchor": "21.3.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Intermission",
+    "C. Clear Pieces"
+   ],
+   "text": "Return all frozen resources (`rule-relative:Campaign Rules & Terms$Resources$Frozen.`), including from the Imperial Trust on the First Regent tile, to the supply.",
+   "campaign": true
+  },
+  {
+   "number": "21.3.3",
+   "anchor": "21.3.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Intermission",
+    "C. Clear Pieces"
+   ],
+   "text": "***2 Players Only:*** Return all resources from ambition boxes to the supply.",
+   "campaign": true
+  },
+  {
+   "number": "21.4",
+   "anchor": "21.4-d-repair-destroy-pieces",
+   "title": "D. Repair & Destroy Pieces",
+   "trail": [
+    "Intermission"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "21.4.1",
+   "anchor": "21.4.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Intermission",
+    "D. Repair & Destroy Pieces"
+   ],
+   "text": "Repair all damaged Blight.",
+   "campaign": true
+  },
+  {
+   "number": "21.4.2",
+   "anchor": "21.4.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Intermission",
+    "D. Repair & Destroy Pieces"
+   ],
+   "text": "Destroy all damaged ships, buildings, and Flagship Upgrades and Armor.",
+   "campaign": true
+  },
+  {
+   "number": "21.4.3",
+   "anchor": "21.4.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Intermission",
+    "D. Repair & Destroy Pieces"
+   ],
+   "text": "Destroy all buildings in systems that have Blight and no ships.",
+   "campaign": true
+  },
+  {
+   "number": "21.5",
+   "anchor": "21.5-e-shift-initiative-power",
+   "title": "E. Shift Initiative & Power",
+   "trail": [
+    "Intermission"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "21.5.1",
+   "anchor": "21.5.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Intermission",
+    "E. Shift Initiative & Power"
+   ],
+   "text": "Give the initiative marker to the player with the ***most Power***.",
+   "campaign": true
+  },
+  {
+   "number": "21.5.2",
+   "anchor": "21.5.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Intermission",
+    "E. Shift Initiative & Power"
+   ],
+   "text": "Each player who has more than 1 Power ***loses half their Power***, rounding to lose less Power.",
+   "campaign": true
+  },
+  {
+   "number": "21.5.2.1",
+   "anchor": "21.5.2.1-conceding",
+   "title": "Conceding",
+   "trail": [
+    "Intermission",
+    "E. Shift Initiative & Power",
+    "Step 2"
+   ],
+   "text": "In games with 2 players, if your Rival has at least ***15 Power*** more than you after halving Power, we recommend that you concede unless you feel confident.",
+   "campaign": true
+  },
+  {
+   "number": "21.6",
+   "anchor": "21.6-f-choose-fate",
+   "title": "F. Choose Fate",
+   "trail": [
+    "Intermission"
+   ],
+   "text": "",
+   "campaign": true
+  },
+  {
+   "number": "21.6.1",
+   "anchor": "21.6.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Intermission",
+    "F. Choose Fate"
+   ],
+   "text": "Each player who completed their objective draws 1 Fate card. Each player who failed it returns their Fate card to the box and draws 2 Fate cards.\n\n  - If you are finishing **Act I**, draw from the **“B” Fates**.\n  - If you are finishing **Act II**, draw from the **“C” Fates**.",
+   "campaign": true
+  },
+  {
+   "number": "21.6.2",
+   "anchor": "21.6.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Intermission",
+    "F. Choose Fate"
+   ],
+   "text": "Each player secretly chooses 1 Fate card from their 2 Fate cards to play in the next Act. Then, everyone reveals their chosen Fate card simultaneously and returns their unchosen Fate card to the box.",
+   "campaign": true
+  },
+  {
+   "number": "21.6.2.1",
+   "anchor": "21.6.2.1-switching-fates",
+   "title": "Switching Fates",
+   "trail": [
+    "Intermission",
+    "F. Choose Fate",
+    "Step 2"
+   ],
+   "text": "If you choose a new Fate card, do the following:<br>\n  \\- Return your current Fate card to the box.<br>\n  \\- Scrap the rest of your Fate Set that is not in play. Don't scrap anything\n    that is in play, including your Flagship if you have one.<br>\n  \\- Return all Favors you have to your Rivals.<br>\n  \\- Take the new Fate Set for your Fate from the box.<br>",
+   "campaign": true
+  },
+  {
+   "number": "21.7",
+   "anchor": "21.7-next-act",
+   "title": "Next Act?",
+   "trail": [
+    "Intermission"
+   ],
+   "text": "At this point, discuss with everyone whether you want to play the next Act or pack up the game so you can play it later.",
+   "campaign": true
+  },
+  {
+   "number": "21.7.1",
+   "anchor": "21.7.1-next-act",
+   "title": "Next Act",
+   "trail": [
+    "Intermission",
+    "Next Act?"
+   ],
+   "text": "If you are playing the next Act, set it up as described in **Act II & III Setup** (`rule:3.2`).",
+   "campaign": true
+  },
+  {
+   "number": "21.7.2",
+   "anchor": "21.7.2-packing-up",
+   "title": "Packing Up",
+   "trail": [
+    "Intermission",
+    "Next Act?"
+   ],
+   "text": "If you are packing up, follow these steps. _(Note that you won't be able to play a single-session game of Arcs until you finish the campaign or choose to abandon it!)_<br><br>\nFor the next Act, preserve ***everything*** on the map, in the general supply, and in everyone's play areas as follows:",
+   "campaign": true
+  },
+  {
+   "number": "21.7.2.1",
+   "anchor": "21.7.2.1-step-1",
+   "title": "Step 1",
+   "trail": [
+    "Intermission",
+    "Next Act?",
+    "Packing Up"
+   ],
+   "text": "Use a ***log sheet*** to record your names, colors, Fates, Power, Outrage, and Flagship Upgrades and Armor. If a Fate has you record more details, use the blank spaces on the back of the log sheet.",
+   "campaign": true
+  },
+  {
+   "number": "21.7.2.2",
+   "anchor": "21.7.2.2-step-2",
+   "title": "Step 2",
+   "trail": [
+    "Intermission",
+    "Next Act?",
+    "Packing Up"
+   ],
+   "text": "Use the ***2 map trays*** to store the pieces on the map. The trays have sections for each planet (marked with its ID symbol) and each gate (marked “G”).",
+   "campaign": true
+  },
+  {
+   "number": "21.7.2.3",
+   "anchor": "21.7.2.3-step-3",
+   "title": "Step 3",
+   "trail": [
+    "Intermission",
+    "Next Act?",
+    "Packing Up"
+   ],
+   "text": "If a system has too many pieces to fit in the tray, put an ***overflow marker*** in its tray section and put pieces from the system in a bag with the matching overflow marker.",
+   "campaign": true
+  },
+  {
+   "number": "21.7.2.4",
+   "anchor": "21.7.2.4-step-4",
+   "title": "Step 4",
+   "trail": [
+    "Intermission",
+    "Next Act?",
+    "Packing Up"
+   ],
+   "text": "Use the ***4 player trays*** to store the players' play areas. In your tray, use the large well to hold cards in play stacked on top of the cards remaining in your Fate Set. Use the small well to hold everything else in your play area except your player board and Flagship board. You don't need to track the order of your resources.",
+   "campaign": true
+  },
+  {
+   "number": "21.7.2.5",
+   "anchor": "21.7.2.5-step-5",
+   "title": "Step 5",
+   "trail": [
+    "Intermission",
+    "Next Act?",
+    "Packing Up"
+   ],
+   "text": "Keep all of the cards in the ***rules booklet***.",
+   "campaign": true
+  },
+  {
+   "number": "22",
+   "anchor": "22-fine-print",
+   "title": "Fine Print",
+   "trail": [],
+   "text": "This section covers some technical parts of play."
+  },
+  {
+   "number": "22.1",
+   "anchor": "22.1-tiebreakers-choice-order",
+   "title": "Tiebreakers & Choice Order",
+   "trail": [
+    "Fine Print"
+   ],
+   "text": ""
+  },
+  {
+   "number": "22.1.1",
+   "anchor": "22.1.1-tiebreakers",
+   "title": "Tiebreakers",
+   "trail": [
+    "Fine Print",
+    "Tiebreakers & Choice Order"
+   ],
+   "text": "If you have a tie and its tiebreaker is not specified, break the tie in turn order. Likewise, if players must make a decision in an unclear order, resolve it in turn order. _(Start with the player with initiative and go clockwise.)_"
+  },
+  {
+   "number": "22.1.2",
+   "anchor": "22.1.2-choice-order",
+   "title": "Choice Order",
+   "trail": [
+    "Fine Print",
+    "Tiebreakers & Choice Order"
+   ],
+   "text": "If multiple things happen at the same time but must be resolved in order, the player taking their turn chooses their order. If no one is taking a turn, the player with initiative chooses."
+  },
+  {
+   "number": "22.2",
+   "anchor": "22.2-elimination-concession",
+   "title": "Elimination & Concession",
+   "trail": [
+    "Fine Print"
+   ],
+   "text": ""
+  },
+  {
+   "number": "22.2.1",
+   "anchor": "22.2.1-elimination",
+   "title": "Elimination",
+   "trail": [
+    "Fine Print",
+    "Elimination & Concession"
+   ],
+   "text": "Rarely, a player will have no starports or ships on the map. If this happens, they place 3 fresh ships in any gate at the end of their turn."
+  },
+  {
+   "number": "22.2.2",
+   "anchor": "22.2.2-concession",
+   "title": "Concession",
+   "trail": [
+    "Fine Print",
+    "Elimination & Concession"
+   ],
+   "text": "Sometimes, usually in games with 2 players, it may become clear that a player has won. Feel free to concede!"
+  },
+  {
+   "number": "22.3",
+   "anchor": "22.3-pieces-piece-limits",
+   "title": "Pieces & Piece Limits",
+   "trail": [
+    "Fine Print"
+   ],
+   "text": ""
+  },
+  {
+   "number": "22.3.1",
+   "anchor": "22.3.1-limits",
+   "title": "Limits",
+   "trail": [
+    "Fine Print",
+    "Pieces & Piece Limits"
+   ],
+   "text": "Pieces are limited by the contents of the box with one exception: if you need an agent to place on an Outrage slot but none are in your supply, use a placeholder piece until an agent enters your supply, then place the agent."
+  },
+  {
+   "number": "22.3.2",
+   "anchor": "22.3.2-loyal-by-default",
+   "title": "Loyal by Default",
+   "trail": [
+    "Fine Print",
+    "Pieces & Piece Limits"
+   ],
+   "text": "If a rule makes you **place** pieces, this refers to fresh Loyal pieces by default."
+  },
+  {
+   "number": "22.3.3",
+   "anchor": "22.3.3-origins",
+   "title": "Origins",
+   "trail": [
+    "Fine Print",
+    "Pieces & Piece Limits"
+   ],
+   "text": "Pieces that you **place** and **return** come from and go to their original supply by default except for cities: cities come from the leftmost filled city slot on their original  player board, and go to the rightmost empty city slot. _(Remember, pieces often go to Trophies and Captives instead of back to supplies.)_"
+  },
+  {
+   "number": "22.3.4",
+   "anchor": "22.3.4-do-as-much-as-possible",
+   "title": "Do as Much as Possible",
+   "trail": [
+    "Fine Print",
+    "Pieces & Piece Limits"
+   ],
+   "text": "If you must **place** or **return** more pieces than possible, do the maximum possible."
+  },
+  {
+   "number": "22.3.5",
+   "anchor": "22.3.5-replace",
+   "title": "Replace",
+   "trail": [
+    "Fine Print",
+    "Pieces & Piece Limits"
+   ],
+   "text": "If you **replace** a piece, return it and place another piece in its place. If the old piece was damaged, the new piece is placed damaged. _(Replacing a piece does not destroy it.)_"
+  },
+  {
+   "number": "22.4",
+   "anchor": "22.4-rules-hierarchy",
+   "title": "Rules Hierarchy",
+   "trail": [
+    "Fine Print"
+   ],
+   "text": ""
+  },
+  {
+   "number": "22.4.1",
+   "anchor": "22.4.1-rulebook",
+   "title": "Rulebook",
+   "trail": [
+    "Fine Print",
+    "Rules Hierarchy"
+   ],
+   "text": "This rulebook supersedes the aid sheets and player boards."
+  },
+  {
+   "number": "22.4.2",
+   "anchor": "22.4.2-cards",
+   "title": "Cards",
+   "trail": [
+    "Fine Print",
+    "Rules Hierarchy"
+   ],
+   "text": "Cards supersede this rulebook, but any rule that uses the term **cannot** is absolute—it cannot be superseded unless explicitly named using the term **ignore**. _(For example, “You ignore Outrage when spending Material for its Prelude action.”)_"
+  },
+  {
+   "number": "22.4.3",
+   "anchor": "22.4.3-clarifications",
+   "title": "Clarifications",
+   "trail": [
+    "Fine Print",
+    "Rules Hierarchy"
+   ],
+   "text": "Sidebars as well as text written in italics and parentheses _(like this)_ are clarifications and reminders, which are superseded by the core rules they reference."
+  },
+  {
+   "number": "22.5",
+   "anchor": "22.5-negotiations",
+   "title": "Negotiations",
+   "trail": [
+    "Fine Print"
+   ],
+   "text": ""
+  },
+  {
+   "number": "22.5.1",
+   "anchor": "22.5.1-agreements",
+   "title": "Agreements",
+   "trail": [
+    "Fine Print",
+    "Negotiations"
+   ],
+   "text": "Players may make deals and promises, but they are not binding."
+  },
+  {
+   "number": "22.5.2",
+   "anchor": "22.5.2-transfer-of-pieces",
+   "title": "Transfer of Pieces",
+   "trail": [
+    "Fine Print",
+    "Negotiations"
+   ],
+   "text": "Players cannot give each other pieces unless a rule allows it."
+  },
+  {
+   "number": "22.6",
+   "anchor": "22.6-private-information",
+   "title": "Private Information",
+   "trail": [
+    "Fine Print"
+   ],
+   "text": ""
+  },
+  {
+   "number": "22.6.1",
+   "anchor": "22.6.1-hands",
+   "title": "Hands",
+   "trail": [
+    "Fine Print",
+    "Private Information"
+   ],
+   "text": "Players cannot show the action cards in their hand to anyone else."
+  },
+  {
+   "number": "22.7",
+   "anchor": "22.7-turn-etiquette",
+   "title": "Turn Etiquette",
+   "trail": [
+    "Fine Print"
+   ],
+   "text": ""
+  },
+  {
+   "number": "22.7.1",
+   "anchor": "22.7.1-sequencing",
+   "title": "Sequencing",
+   "trail": [
+    "Fine Print",
+    "Turn Etiquette"
+   ],
+   "text": "Though declaring an ambition and seizing the initiative happen before any other actions, we usually let people do them during their turn as long as new info hasn't been revealed—such as rolling dice or drawing a card—and any relevant modifiers are followed. Don't get bogged down in technicalities unless it changes the game. _Arcs_ thrives when the game flows!"
+  },
+  {
+   "number": "22.8",
+   "anchor": "22.8-split-discard-piles",
+   "title": "Split Discard Piles",
+   "trail": [
+    "Fine Print"
+   ],
+   "text": "Normally, all action cards are discarded face down, even ones played face up. This speeds up play but it favors players with good memory. If you're running a tournament or want a more strategic but slower game, you can split the action discard into two piles — one for cards played face down, and one for cards played face up."
+  },
+  {
+   "number": "22.8.1",
+   "anchor": "22.8.1-drawing",
+   "title": "Drawing",
+   "trail": [
+    "Fine Print",
+    "Split Discard Piles"
+   ],
+   "text": "If you're prompted to draw from the action discard pile, draw from the facedown pile. In the rare circumstance that it doesn't have enough cards, shuffle the piles together first."
+  },
+  {
+   "number": "23",
+   "anchor": "23-appendix",
+   "title": "Appendix",
+   "trail": [],
+   "text": ""
+  },
+  {
+   "number": "23.1",
+   "anchor": "23.1-glossary",
+   "title": "Glossary",
+   "trail": [
+    "Appendix"
+   ],
+   "text": ""
+  },
+  {
+   "number": "23.1.1",
+   "anchor": "23.1.1-adjacent",
+   "title": "Adjacent",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Shares a thin border (**The Map**, `rule-relative:Core Concepts$The Map$Adjacency.`)."
+  },
+  {
+   "number": "23.1.2",
+   "anchor": "23.1.2-building",
+   "title": "Building",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Cities and starports."
+  },
+  {
+   "number": "23.1.3",
+   "anchor": "23.1.3-bury",
+   "title": "Bury",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Place on the bottom of the Court deck."
+  },
+  {
+   "number": "23.1.4",
+   "anchor": "23.1.4-capture",
+   "title": "Capture",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Place the prompted piece in the Captives box on your player board."
+  },
+  {
+   "number": "23.1.5",
+   "anchor": "23.1.5-chapter",
+   "title": "Chapter",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "The time in which players play rounds until they all run out of action cards."
+  },
+  {
+   "number": "23.1.6",
+   "anchor": "23.1.6-clear",
+   "title": "Clear",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Return all pieces from the prompted area."
+  },
+  {
+   "number": "23.1.7",
+   "anchor": "23.1.7-control",
+   "title": "Control",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "You control a system and its contents if you have more fresh ships there than each Rival. On a tie, no one controls the system."
+  },
+  {
+   "number": "23.1.8",
+   "anchor": "23.1.8-damaged",
+   "title": "Damaged",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Not ***fresh***—a tipped ship or a building on its darker side."
+  },
+  {
+   "number": "23.1.9",
+   "anchor": "23.1.9-destroy",
+   "title": "Destroy",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Return a fresh or damaged piece from the map. _(It often goes to a Trophies box.)_"
+  },
+  {
+   "number": "23.1.10",
+   "anchor": "23.1.10-empty",
+   "title": "Empty",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Has no pieces in or on it."
+  },
+  {
+   "number": "23.1.11",
+   "anchor": "23.1.11-fresh",
+   "title": "Fresh",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Not ***damaged***—an upright ship or a building on its lighter side."
+  },
+  {
+   "number": "23.1.12",
+   "anchor": "23.1.12-gain",
+   "title": "Gain",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Add the specified piece to your play area ***from its supply***. _(You can't gain it if its supply is empty.)_"
+  },
+  {
+   "number": "23.1.13",
+   "anchor": "23.1.13-give",
+   "title": "Give",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Add the specified piece to a Rival play area."
+  },
+  {
+   "number": "23.1.14",
+   "anchor": "23.1.14-hit",
+   "title": "Hit",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Tip over a fresh piece on the map, or remove a damaged piece from the map."
+  },
+  {
+   "number": "23.1.15",
+   "anchor": "23.1.15-loyal",
+   "title": "Loyal",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Of your player color."
+  },
+  {
+   "number": "23.1.16",
+   "anchor": "23.1.16-out-of-play",
+   "title": "Out of Play",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Cannot be interacted with."
+  },
+  {
+   "number": "23.1.17",
+   "anchor": "23.1.17-piece",
+   "title": "Piece",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Any component in the game."
+  },
+  {
+   "number": "23.1.18",
+   "anchor": "23.1.18-place",
+   "title": "Place",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "See **Pieces & Piece Limits** (`rule-relative:Fine Print$Pieces & Piece Limits`)."
+  },
+  {
+   "number": "23.1.19",
+   "anchor": "23.1.19-play-area",
+   "title": "Play Area",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "On and around your player board. _(Most pieces go in specific parts of your play area.)_"
+  },
+  {
+   "number": "23.1.20",
+   "anchor": "23.1.20-prelude",
+   "title": "Prelude",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "See **Prelude Actions** (`rule-relative:Other Actions$Prelude Actions`)."
+  },
+  {
+   "number": "23.1.21",
+   "anchor": "23.1.21-replace-return",
+   "title": "Replace, Return",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "See **Pieces & Piece Limits** (`rule-relative:Fine Print$Pieces & Piece Limits`)."
+  },
+  {
+   "number": "23.1.22",
+   "anchor": "23.1.22-rival",
+   "title": "Rival",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Of another player's color. When used alone, refers to another player."
+  },
+  {
+   "number": "23.1.23",
+   "anchor": "23.1.23-round",
+   "title": "Round",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "The time in which each player takes a turn."
+  },
+  {
+   "number": "23.1.24",
+   "anchor": "23.1.24-scrap",
+   "title": "Scrap",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Make ***out of play*** permanently."
+  },
+  {
+   "number": "23.1.25",
+   "anchor": "23.1.25-seize-the-initiative",
+   "title": "Seize the Initiative",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Take the initiative marker. You cannot do this if you have the initiative marker or if someone has already seized the initiative this round."
+  },
+  {
+   "number": "23.1.26",
+   "anchor": "23.1.26-spend",
+   "title": "Spend",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "When referring to a resource, return the spent resource to its supply."
+  },
+  {
+   "number": "23.1.27",
+   "anchor": "23.1.27-steal",
+   "title": "Steal",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Add the specified piece to your play area ***from a Rival's play area***. _(This is distinct from ***take*** because some rules prevent stealing.)_"
+  },
+  {
+   "number": "23.1.28",
+   "anchor": "23.1.28-supply",
+   "title": "Supply",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "The general supply holds resources and other shared pieces, and players' supplies hold their Loyal ships and agents."
+  },
+  {
+   "number": "23.1.29",
+   "anchor": "23.1.29-swap",
+   "title": "Swap",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Give the prompted piece and take the prompted piece at the same time."
+  },
+  {
+   "number": "23.1.30",
+   "anchor": "23.1.30-take",
+   "title": "Take",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Add the specified piece to your play area."
+  },
+  {
+   "number": "23.1.31",
+   "anchor": "23.1.31-turn",
+   "title": "Turn",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "The time in which a player plays an action card and may take actions."
+  },
+  {
+   "number": "23.1.32",
+   "anchor": "23.1.32-turn-order",
+   "title": "Turn Order",
+   "trail": [
+    "Appendix",
+    "Glossary"
+   ],
+   "text": "Starting with the player with initiative and going clockwise."
+  }
+ ],
+ "errata": [
+  {
+   "number": "3.1.2.6",
+   "text": "Edited to: \"Discard all action cards not in players' hands into a facedown action discard pile on the map, **then shuffle it**.\" <br> *There are a couple situations where discard order matters.*"
+  },
+  {
+   "number": "11.1.6",
+   "text": "This text was added to clarify when leader setup happens."
+  },
+  {
+   "number": "6.2.4",
+   "text": "Edited to: \"Discard all action cards not in players' hands into the action discard pile on the map face down, **then shuffle it**.\" <br> *There are a couple situations where discard order matters.*"
+  },
+  {
+   "number": "9.3.1",
+   "text": "Edited to: \"Some cards say they hold resources. These resources can be spent and add to ambitions, **but they cannot be stolen in battle unless explicitly allowed.** If a card holding resources is stolen, the resources on the card stay on it. If it is buried, discarded, **or scrapped,** the resources on it return to the supply.\" <br> *(NOT YET IN PRINT) This clarifies some card interactions with raiding, Blighted Reach cards, and with cards like Silver-Tongues. Yes, you can steal resources off cards with Silver-Tongues!*"
+  },
+  {
+   "number": "14.2.2.3",
+   "text": "Edited \"Imperial ships\" to \"Imperial **pieces**\" to better support interactions with Fates."
+  },
+  {
+   "number": "20.6",
+   "text": "These rules have been expanded to allow more card types than lore to interact with Flagships in the same way. For example, this allows edicts like [Policy of Escalation](https://cards.buriedgiantstudios.com/card/ARCS-AID05) to interact with Flagships."
+  },
+  {
+   "number": "15.2.4",
+   "text": "Added \"This counts as stealing.\"<br> *This clarifies interactions with cards like [Pirate Hoard](https://cards.buriedgiantstudios.com/card/ARCS-F1202).*"
+  },
+  {
+   "number": "19.2.1.1",
+   "text": "Edited to \"Resources in the Imperial Trust are frozen **except for Imperial Actions**.\"<br> *The Distribute Arms action under Imperial Actions already states that you give the Weapon from the Imperial Trust, but this addition codifies the exception for clarity.*"
+  },
+  {
+   "number": "13.1.1",
+   "text": "This rule now explicitly states, rather than implies, that cards like [Command Chaos](https://cards.buriedgiantstudios.com/card/ARCS-F713) can remove Imperial Officers, even though it’s protected, because it states it by name."
+  },
+  {
+   "number": "13.3.1",
+   "text": "This rule now explicitly states, rather than implies, that **scrap** can target frozen resources."
+  },
+  {
+   "number": "21.7.2",
+   "text": "On page 2 in the first printing, in the Stop box, mentions of \"deep wells\" should say \"lower wells.\"<br> *The deep well is where the removable trays are stored, not the small cards.*"
+  },
+  {
+   "number": "16.1.2.1",
+   "text": "This is now clarified so that the limitation applies regardless of who played or secured something, unless the Council is no longer happening at the end of the round."
+  },
+  {
+   "number": "16.3",
+   "text": "Added \"If it flips while tucked under a card, return it to the Court.\"<br> *After some soul-searching, we have reversed the previous behavior of the Council. This means cards like [Council Intrigue](https://cards.buriedgiantstudios.com/card/ARCS-CC12) can flip the Council while it’s tucked under a card in the card play area, returning it to the Court. This means the Council won't resolve at the end of the round!*"
+  },
+  {
+   "number": "9.2.1",
+   "text": "Edited \"To do this\" to \"At this time\" to clarify that you can always rearrange when you take a resource.<br> *(NOT YET IN PRINT)*"
+  },
+  {
+   "number": "22.3.3",
+   "text": "Fixed this to say that they come from the **leftmost** slot.<br> *(NOT YET IN PRINT)*"
+  },
+  {
+   "number": "20.4.3",
+   "text": "Added last bullet point that clarifies defense rules with buildings on planets.<br> *(NOT YET IN PRINT)*"
+  },
+  {
+   "number": "18.3",
+   "text": "Specified that the player with initiative rolls the dice, to better support interactions like [Empath's Vision](https://cards.buriedgiantstudios.com/card/ARCS-L19).<br> *(NOT YET IN PRINT)*"
+  },
+  {
+   "number": "13.4",
+   "text": "Clarified that hitting yourself doesn't count as harm.<br> *(NOT YET IN PRINT)*"
+  },
+  {
+   "number": "20.3.3.4",
+   "text": "Added this rule to prevent extremely messy interactions.<br> *(NOT YET IN PRINT)*"
+  },
+  {
+   "number": "20.3",
+   "text": "Clarified that Upgrades cannot be hit **or destroyed** while it has Armor.<br> *(NOT YET IN PRINT)*"
+  },
+  {
+   "number": "21.3.1",
+   "text": "Removed \"to their players\" to clarify that Blight Trophies are also returned.<br> *(NOT YET IN PRINT)*"
+  }
+ ]
+}
