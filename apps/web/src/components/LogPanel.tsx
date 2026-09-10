@@ -38,6 +38,7 @@ import type { CardRef, LogItem, LogPart } from '../log-format.js'
 import { colorOf } from '../theme.js'
 import { CardZoom } from './CardZoom.js'
 import { LeaderCardReader } from './LeaderCardReader.js'
+import { SystemName } from './SystemName.js'
 
 interface Props {
   log: readonly string[]
@@ -184,12 +185,11 @@ function Parts({
            * Not a button. The row already carries the pointing, so this is a mark on the text
            * saying *this word is a place* — giving it its own tab stop would put every system in
            * every line of a three-hour game into the tab order for no action.
+           *
+           * Drawn as the board draws it — a numeral and the cluster's symbol — so the name in the
+           * sentence and the tag on the map are the same two marks. See `SystemName`.
            */
-          return (
-            <span key={i} className="log-sys">
-              {part.text}
-            </span>
-          )
+          return <SystemName key={i} id={part.system} className="log-sys" />
         }
         return (
           <button

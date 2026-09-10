@@ -2710,6 +2710,24 @@ button {
 .log-sys {
   color: var(--parchment, #e8dcc0);
   border-bottom: 1px dotted rgba(140, 170, 200, 0.45);
+  /* The numeral and its symbol are one name, so they never break across a wrapped line. */
+  white-space: nowrap;
+}
+/*
+ * The cluster symbol, cut to the height of the digit beside it.
+ *
+ * Sized in `em` and filled with `currentColor`, so it grows with the row and lights blue with the
+ * rest of the mark on hover without a second rule knowing about it. `0.9em` rather than `1em`
+ * because a glyph set solid against a numeral reads as heavier than the numeral even at the same
+ * height — the map prints its symbols a shade smaller than its numbers for the same reason.
+ */
+.sys-glyph {
+  width: 0.9em;
+  height: 0.9em;
+  margin-left: 0.12em;
+  fill: currentColor;
+  /* Baseline-relative rather than `middle`: these sit in a line of prose, not in a cell. */
+  vertical-align: -0.03em;
 }
 /* The row is the target, so the system marks in it light together — including a move's two ends. */
 .log-head:hover .log-sys,

@@ -61,9 +61,11 @@ describe('LogPanel', () => {
 
 describe('LogPanel in turn-feed mode', () => {
   it('shows only the turn in progress', () => {
-    const out = text({ log: LOG, only: 'last-turn' })
-    expect(out).toContain('built a Ship in 1-Hex')
-    expect(out).not.toContain('moved 2 ships')
+    const out = html({ log: LOG, only: 'last-turn' })
+    // The system is drawn rather than spelled, so the name is read off the mark's title.
+    expect(out).toContain('built a Ship in')
+    expect(out).toContain('title="1-Hex"')
+    expect(text({ log: LOG, only: 'last-turn' })).not.toContain('moved 2 ships')
   })
 
   it('renders nothing at all between turns, rather than an empty frame', () => {
@@ -93,6 +95,19 @@ describe('LogPanel names', () => {
     expect(out).toContain('1-Hex')
   })
 
+  /*
+   * The board prints "1" and a hexagon; so does this. The assertion is on the symbol's *name*
+   * rather than on its path data, because the path is art and will be redrawn — what must not
+   * change is that the row still says which symbol it means, in the markup and out loud.
+   */
+  it('draws a system the way the board does — a numeral and its symbol', () => {
+    const out = html({ log: ['red built a Ship in 1-Hex'] })
+    expect(out).toContain('sys-glyph')
+    expect(out).toContain('aria-label="Hex"')
+    // The word is gone from the sentence; the numeral it belonged to is not.
+    expect(text({ log: ['red built a Ship in 1-Hex'] })).toContain('built a Ship in 1')
+  })
+
   it('marks up court, lore and leader names too, not just the ids', () => {
     expect(html({ log: ['red influenced Mining Interest'] })).toContain('log-card')
     expect(html({ log: ['red discarded Mirror Plating'] })).toContain('log-card')
@@ -104,9 +119,12 @@ describe('LogPanel names', () => {
    * reads as a rendering bug long before anyone suspects the parser.
    */
   it('keeps the sentence intact around the names', () => {
-    expect(text({ log: ['red moved 2 ships 1-Gate → 1-Arrow'] })).toContain(
-      'moved 2 ships 1-Gate → 1-Arrow',
-    )
+    const line = 'red moved 2 ships 1-Gate → 1-Arrow'
+    // The prose between the names, including the arrow and both spaces around it.
+    expect(text({ log: [line] })).toContain('moved 2 ships 1 → 1')
+    // And each name in full, on the mark that replaced it.
+    expect(html({ log: [line] })).toContain('title="1-Gate"')
+    expect(html({ log: [line] })).toContain('title="1-Arrow"')
   })
 
   it('leaves a divider as plain text — it names nothing', () => {
