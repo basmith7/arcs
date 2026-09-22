@@ -22,4 +22,6 @@ services:
       - /mnt/cache/appdata/arcs:/data
     restart: unless-stopped
     labels:
+      - "net.unraid.docker.icon=https://raw.githubusercontent.com/basmith7/arcs/main/assets/images/favicon-180.png"
+      - "net.unraid.docker.webui=http://[IP]:[PORT:3070]"
       - "com.centurylinklabs.watchtower.enable=true"
