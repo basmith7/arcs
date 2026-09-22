@@ -57,8 +57,15 @@ describe('actions arriving from another player', () => {
     for (let i = 0; i < 3; i++) store.applyRemote(offered())
     const at = store.turnEvents.map((e) => e.at)
     expect(at).toHaveLength(3)
-    expect(at[1]! - at[0]!).toBeGreaterThanOrEqual(STAGGER_MS)
-    expect(at[2]! - at[1]!).toBeGreaterThanOrEqual(STAGGER_MS)
+    /*
+     * Stated as "at least the stagger past the previous one" rather than as a subtracted gap.
+     * `queueAt` computes `last.at + STAGGER_MS` from a `performance.now()` float, and for some
+     * timestamps `(x + 600) - x` comes back as 599.9999999999999 — so the subtracted form fails
+     * on the arithmetic rather than on the spacing. This compares the same numbers the code
+     * produced, and so cannot round differently than the code did.
+     */
+    expect(at[1]!).toBeGreaterThanOrEqual(at[0]! + STAGGER_MS)
+    expect(at[2]!).toBeGreaterThanOrEqual(at[1]! + STAGGER_MS)
   })
 
   it('bumps the presentation snapshot, since an event never moves the position on its own', () => {

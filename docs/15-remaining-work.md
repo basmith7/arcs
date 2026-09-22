@@ -301,13 +301,15 @@ than each Rival (other player). On a tie, no one controls the system."* Ships on
   well drawn for it, and nothing extra — stated against `slotsOf` rather than a count, so a future
   card granting a slot is covered without touching the test. Mutation-verified: restoring the old
   row fails four of its five cases.
-- **Two ambition-procedure deviations, both known and both left alone.** Found while verifying the
-  chapter-end rules, neither reported from play:
+- **Two ambition-procedure deviations.** Found while verifying the chapter-end rules, neither
+  reported from play. The tie-break is now fixed; the marker flip is deliberately left alone:
   - **Marker flip.** The rulebook returns all markers to the available spaces and flips the lowest
     unflipped marker to its higher face each chapter (6.2.2 steps 2-3). We model the escalation as
     HRF's sliding window in `chapterAmbitionable` — similar curve, different mechanism.
-  - **Win tie-break.** 6.2.3 gives a tie to "the tied player earliest in turn order";
-    `performCheckWin` reduces over `state.factions`, which is seating order, not `initiativeOrder`.
+  - ~~**Win tie-break.**~~ **Fixed.** 6.2.3 gives a tie to "the tied player earliest in turn
+    order"; `performCheckWin` reduced over `state.factions`, which is seating order. It now orders
+    the candidates by `initiativeOrder` before the reduce, which is the whole tie-break — the
+    reduce already keeps the first on equality. Tests in `test/ambitions.test.ts`.
 - **Gate Ports "max 1 per gate"** — provenance divergence recorded in docs/14 and unresolved:
   Cloud Cities counts card-placed cities, Gate Ports uses a per-faction count.
 - **`multiAsk` is a placeholder** — summits will need a real simultaneous-decision UI.
