@@ -683,9 +683,10 @@ and because two of them exist to stop the report lying:
 - **Seats rotate between games.** Seat order matters in Arcs, so a fixed assignment measures the
   seat. A game count that is not a multiple of the seat count is reported as unbalanced rather than
   quietly averaged.
-- **Outright wins are separated from tie-break wins.** `performCheckWin` reduces over
-  `state.factions` keeping the first on equality, so when nobody scores the first seat "wins" every
-  game. Without that split, four bots doing nothing would read as one bot at 100%.
+- **Outright wins are separated from tie-break wins.** `performCheckWin` reduces over the
+  initiative order keeping the first on equality (rulebook 6.2.3), so when nobody scores the game
+  falls to whoever holds the initiative at the end. Without that split, four bots doing nothing
+  would read as one bot at 100%.
 
 ### It found a livelock on its first real run
 

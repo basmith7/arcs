@@ -24,11 +24,12 @@
  * rotate the assignment, and a run whose game count is not a multiple of the seat count is reported
  * as unbalanced rather than quietly averaged.
  *
- * **Ties are broken by faction order.** `performCheckWin` reduces over `state.factions` keeping the
- * first on equality, so when nobody scores — precisely today's case — the first seat "wins" every
- * game. That would read as a 25%-baseline bot at 100%. Outcomes therefore carry `tied`, and the
- * report separates outright wins from tie-break wins. A run whose wins are all tie-break wins is
- * telling you the bots did nothing, not who is better.
+ * **Ties are broken by turn order.** `performCheckWin` reduces over the initiative order keeping
+ * the first on equality (rulebook 6.2.3), so when nobody scores — precisely today's case — the
+ * game is decided by who holds the initiative at the end rather than by play. That would read as a
+ * 25%-baseline bot winning on nothing. Outcomes therefore carry `tied`, and the report separates
+ * outright wins from tie-break wins. A run whose wins are all tie-break wins is telling you the
+ * bots did nothing, not who is better.
  */
 
 import { defaultRegistry, startGame } from '../index.js'

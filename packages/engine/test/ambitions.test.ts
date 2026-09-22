@@ -294,6 +294,40 @@ describe('scoring awards power and ends the game', () => {
     expect(result.continue.reason).toMatch(/power/)
   })
 
+  /*
+   * Rulebook 6.2.3: on a tie for the most power, the win goes to "the tied player earliest in turn
+   * order" — turn order being the initiative order, not the seating order the state happens to list
+   * factions in. Reducing over `state.factions` gave it to whoever sat first, which is a different
+   * player whenever initiative has moved off seat one.
+   */
+  it('breaks a tie for the most power toward the tied player earliest in turn order', () => {
+    const base = startGame({ board: 'Board3MixUp', factions: THREE, seed: 5 }).state
+    // Threshold at three factions is 30. Yellow and blue tie there; blue holds the initiative.
+    const state: GameState = {
+      ...base,
+      power: { red: 5, yellow: 30, blue: 30 },
+      initiativeOrder: ['blue', 'red', 'yellow'],
+    }
+
+    const after = advance(state, { type: 'ambition/check-win' }, registry)
+
+    expect(after.state.isOver).toBe(true)
+    expect(after.state.winners).toEqual(['blue'])
+  })
+
+  it('leaves an outright lead alone, whoever holds the initiative', () => {
+    const base = startGame({ board: 'Board3MixUp', factions: THREE, seed: 5 }).state
+    const state: GameState = {
+      ...base,
+      power: { red: 5, yellow: 31, blue: 30 },
+      initiativeOrder: ['blue', 'red', 'yellow'],
+    }
+
+    const after = advance(state, { type: 'ambition/check-win' }, registry)
+
+    expect(after.state.winners).toEqual(['yellow'])
+  })
+
   it('is deterministic under a fixed seed and policy', () => {
     const a = playToEnd({ board: 'Board3MixUp', factions: THREE, seed: 55 }, declaringPolicy)
     const b = playToEnd({ board: 'Board3MixUp', factions: THREE, seed: 55 }, declaringPolicy)
