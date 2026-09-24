@@ -28,8 +28,9 @@
  *     `leadZeroed` and the Prelude Weapon spend (docs/19 section 9).
  *   - **hard** — the reply search (`search-v4`): every card play searched to the end of the turn it
  *     buys, and the strongest lines re-ranked by what the position looks like after the rivals
- *     reply from sampled hands. 63%-37% over normal at two players against a zero twin floor, and
- *     the only idea in the register that ever cleared its floor by an order of magnitude.
+ *     reply from sampled hands. 63%-37% over normal at two players against a zero twin floor.
+ *     Since 2026-09-24 it also ranks Move destinations by intent (`moveToward`) and sees what a
+ *     seize buys (`seizeReady`) — `HARD_WEIGHTS` below, the two largest gains the register has.
  *
  * ## What was dropped, and why the gaps are where they are
  *
@@ -45,8 +46,8 @@
  * the same shape as section 7 finding that doubling the beam's width bought nothing. For an
  * opponent a human waits on, half the thinking time for the same play is the whole argument.
  *
- * **There is no rung above this one, and that is a measured position rather than a gap in the
- * work.** Every attempt to buy strength with more search effort has measured null — wider beams
+ * **There is no rung above this one, and that was a measured position rather than a gap in the
+ * work** (before §23 found the evaluator's blind spots were worth more than any search axis). Every attempt to buy strength with more search effort has measured null — wider beams
  * (section 7), more determinized deals (section 14) — while everything that ever worked let the
  * evaluator see something it could not see before. A fourth rung needs either that kind of
  * discovery or a rule handicap, and neither is a afternoon's work.
@@ -56,13 +57,27 @@ import { easyBot } from './easy.js'
 import { MOBILE_WEIGHTS, mobileBot } from './mobile.js'
 import { searchBot } from './search.js'
 import type { Bot } from './bot.js'
+import type { Weights } from './value.js'
 
 export const BOT_LEVELS = ['easy', 'normal', 'hard'] as const
 export type BotLevel = (typeof BOT_LEVELS)[number]
 
-// Hard carries the same anti-circling weights: its beam only searches card plays, so every
-// pip-level move is the delegate's one-ply choice — the circling lived there too.
-const HARD = searchBot({ width: 3, depth: 14, replies: { roots: 1, deals: 1 }, weights: MOBILE_WEIGHTS })
+/**
+ * Hard's weights: normal's (the anti-circling penalty included — its beam only searches card
+ * plays, so every pip-level move is the delegate's one-ply choice, and the circling lived there
+ * too), plus the two features that passed their arena gates (docs/19 §23, 2026-09-24):
+ *
+ *   - `moveToward` 0.25 — Move destinations ranked toward what the chapter intent needs. vs the
+ *     previous hard, 4p, 800 games / 200 deals: +25.5 pts win share per side (z 7.8), +4.6 power.
+ *   - `seizeReady` 0.1 — the declaration a held seize makes possible; the previous hard never
+ *     seized. vs the previous hard, 1,600 games: +5.9 pts (z 2.8), +1.1 power. On top of
+ *     `moveToward`: see §23's assembly gate.
+ *
+ * Normal and easy are untouched: this is a separate object, not an edit to `MOBILE_WEIGHTS`.
+ */
+export const HARD_WEIGHTS: Weights = { ...MOBILE_WEIGHTS, moveToward: 0.25, seizeReady: 0.1 }
+
+const HARD = searchBot({ width: 3, depth: 14, replies: { roots: 1, deals: 1 }, weights: HARD_WEIGHTS })
 
 /** The bot a level names. `undefined` — no level chosen — is normal, which keeps old saves intact. */
 export function botForLevel(level: BotLevel | undefined): Bot {

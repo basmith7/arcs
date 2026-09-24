@@ -2962,3 +2962,21 @@ Stopped because reaching z 2.5 at 1,600 games needed ~z 3.3 from the second half
 stop cannot manufacture a pass. `battleChoice` stays at weight 0. Unlike Move destinations, a tied
 battle choice is usually between near-equivalent fights — the tie was real, not blindness.
 
+### Assembly — what `hard` became (2026-09-24)
+
+`asm14` = `hard` + `moveToward` 0.25 + `seizeReady` 0.1, gated against `c1a` (not against the old
+`hard`, which C1a alone beats at z 7.8 — the question was whether seizing still adds on top):
+
+| chunk | games (deals) | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- |
+| 0 | 400 (100) | +1.5 ± 5.0 (z 0.3) | +0.85 ± 0.54 (z 1.6) |
+| 1 | 400 (100) | +5.5 ± 4.8 (z 1.2) | +1.43 ± 0.51 (z 2.8) |
+| 2 | 400 (100) | (pooled 0-2: +5.0 ± 2.8, z 1.8) | (pooled 0-2: +0.98, z 3.2) |
+| 3 | 400 (100) | -1.5 ± 4.6 (z -0.3) | +0.58 ± 0.47 (z 1.3) |
+| **pooled** | **1,600 (400)** | **+3.4 ± 2.4 (z 1.4)** | **+0.88 ± 0.26 (z 3.4)** |
+
+No pass on win share; clearly positive on power. Shipped as `HARD_WEIGHTS` anyway, under a recorded
+ruling: seizing passed on its own against the old `hard` (z 2.83), it is not worse on top of C1a, and
+without it the bot never seizes at all. `normal` and `easy` are byte-identical (20 golden `normal`
+journals unchanged); the six golden `hard` journals were re-recorded.
+
