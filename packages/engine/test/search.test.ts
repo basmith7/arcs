@@ -153,6 +153,12 @@ describe('the reply-ranked search bot (v4)', () => {
     expect(String(tier2.action['label'])).toBe('Pass')
     // The diagnostic panel shows which candidates were reply-checked.
     expect(tier2.considered?.some((c) => c.note?.includes('after replies'))).toBe(true)
+    // ...and keeps its tier-1 value, so a caller can rank every root on one horizon (spec B2).
+    const checkedRoot = tier2.considered!.find((c) => c.note?.includes('after replies'))!
+    const kept = /tier-1 (-?\d+\.\d+)/.exec(checkedRoot.note ?? '')
+    expect(kept).not.toBeNull()
+    const same = tier1.considered!.find((c) => c.action['label'] === checkedRoot.action['label'])!
+    expect(Number(kept![1])).toBeCloseTo(same.score, 3)
   })
 
   it('is deterministic with replies on', () => {
