@@ -2820,3 +2820,46 @@ diffs every journal entry and final power. All 26 identical; the fast suite pins
 the rules engine, which this did not touch. Arena runs, the oracle and every experiment after this
 section are priced from the new numbers.
 
+## 22. What `hard` is offered and never takes — the base-game coverage report
+
+Spec 2026-09-23 rev 3, section 6. `npm run coverage` records, for every bot decision, the action
+types on offer and the one taken (`runBots`' `onDecision` hook; the game is identical without it).
+100 four-player games, `hard` in two seats (the other two were a C1 probe candidate), ~44,000 `hard`
+decisions. A key's take rate is taken / decisions offering it.
+
+### Never or almost never taken, though offered constantly
+
+| option | offered | taken | what it is |
+| --- | --- | --- | --- |
+| `turn/seize` | 3,279 | **0** | discard a card to take the initiative next round |
+| Secure from the pip menu (`take:Secure`) | 699 | **1** | securing a court card you hold the majority on; `hard`'s 106 secures all came through the Relic Prelude |
+| `guild:ships` (Prison Wardens, Skirmishers, Court Enforcers, Loyal Marines) | 319 | **0** | discard the card: 3 ships into a system you rule |
+| `guild:take-played` (the four Unions) | 157 | **0** | discard the card: take a played card of its suit into hand |
+| `guild:farseers` | 7 | 0 | discard: redraw your hand |
+| `guild:cartel` | 101 | 2 | discard: take that resource from a rival |
+| `guild:fill-slots` (Mining/Shipping Interest) | 64 | 4 | discard: fill every open slot |
+| `turn/lattice-seize` | 3 | 0 | seize by burning Lattice Spies instead of a card |
+| `turn/pass` (at the lead) | 1,423 | 110 | — |
+
+Taken normally: every action once chosen, Battle (61% of pip menus offering it), Move (62%), Tax and
+Build (~98%), Repair (24%), declares (46%), surpass/pivot/copy.
+
+### Reading it
+
+- **Seize is invisible, not merely unattractive.** The evaluator has no initiative term, and the one
+  thing seizing buys — leading next round — is realised after the horizon of every search `hard`
+  runs (its reply drive stops at the return of control). A card discarded is a certain loss the
+  evaluator can see; the initiative is a gain it cannot. docs/19 §19 already located one loss in
+  exactly this place (initiative into the next lead).
+- **Guild Prelude abilities discard the card that grants them.** `courtSecured` prices a held card at
+  its suit-and-keys worth (~1.4-2.4 power-equivalent with intent), while most one-shot effects land in
+  terms priced far lower (three ships at `shipsFresh` 0.35 each, a hand card at nothing). So the bot
+  hoards the card. Whether hoarding is right is exactly what the evaluator cannot say — the
+  abilities' value is tempo and hand quality, which it does not see.
+- **Secure via pips is outbid by Influence**, whose court-claim terms reward piling agents; the bot
+  secures only when a Relic makes it free.
+
+None of these is in the pre-registered family (spec rev 3 section A2) — they are recorded here as
+the next round's candidates, in order of how often the option is on the table: seize (initiative has
+no term), Secure-vs-Influence pricing, and the discard-for-effect guild abilities.
+
