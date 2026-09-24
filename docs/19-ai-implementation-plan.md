@@ -2926,3 +2926,18 @@ The rate is steep in the weight: a readiness gain of a few power-equivalent outb
 ~0.15 tempo cost almost every time, so the band is narrow. At 0.1 the bot seizes in a fifth of its
 chances and gets ~25% more chances to declare.
 
+**Gate — PASS.** `hard` + `seizeReady` 0.1 (C4a) vs `hard`, 4p, A,B,B,A seating, seeds 300000+:
+
+| chunk | games (deals) | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- |
+| 0 | 400 (100) | +2.0 ± 4.3 (z 0.5) | +0.90 ± 0.42 (z 2.2) |
+| 1 | 400 (100) | +9.5 ± 3.9 (z 2.5) | +1.41 ± 0.45 (z 3.1) |
+| 2 | 400 (100) | +3.5 ± 4.2 (z 0.8) | +0.33 ± 0.53 (z 0.6) |
+| 3 | 400 (100) | +8.5 ± 4.3 (z 2.0) | +1.72 ± 0.44 (z 3.9) |
+| **pooled** | **1,600 (400)** | **+5.9 ± 2.1 (z 2.83)** | **+1.09 ± 0.23 (z 4.69)** |
+
+A quarter of C1a's effect, and the same shape of fix: `hard` was not undervaluing the initiative,
+it could not see it. Seizing buys the next lead, which is realised after every horizon `hard`
+searches; pricing the declaration that lead makes possible was enough, at a weight low enough
+(0.1) that the bot seizes in a fifth of its chances rather than seven in ten.
+
