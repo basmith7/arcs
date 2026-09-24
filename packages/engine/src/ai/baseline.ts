@@ -58,6 +58,7 @@ export const BASELINE_WEIGHTS: Weights = {
   gatesHeld: 0,
   fleetThreat: 0,
   moveReversal: 0,
+  moveToward: 0,
   courtSecured: 1,
   courtClaimAhead: 0.25,
   courtClaimLevel: 0.12,

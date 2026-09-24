@@ -145,6 +145,7 @@ export const FEATURES = [
   'handPips',
   'handTopCard',
   'undeclaredThreat',
+  'moveToward',
 ] as const
 
 export type Feature = (typeof FEATURES)[number]
@@ -242,6 +243,12 @@ export const WEIGHTS: Weights = {
    * `THREAT_WEIGHTS` in `threat.ts` turns it on.
    */
   undeclaredThreat: 0,
+  /*
+   * Action-level and zero-sum across one Move ask's destinations (`move-target.ts`, spec
+   * 2026-09-23 C1): re-ranks where ships go without making Move itself dearer or cheaper. Always 0
+   * as a state feature; applied in the heuristic loop.
+   */
+  moveToward: 0,
 }
 
 const zero = (): Record<Feature, number> =>
