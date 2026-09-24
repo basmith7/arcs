@@ -27,7 +27,9 @@
     "golden": "vite-node scripts/golden-journals.ts",
     "profile": "vite-node scripts/profile-game.ts",
     "advise": "vite-node scripts/advise.ts",
-    "coverage": "vite-node scripts/coverage.ts"
+    "coverage": "vite-node scripts/coverage.ts",
+    "b2": "vite-node scripts/b2-power.ts",
+    "gate": "vite-node scripts/gate-pool.ts"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
