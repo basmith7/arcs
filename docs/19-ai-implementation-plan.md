@@ -2863,3 +2863,35 @@ None of these is in the pre-registered family (spec rev 3 section A2) — they a
 the next round's candidates, in order of how often the option is on the table: seize (initiative has
 no term), Secure-vs-Influence pricing, and the discard-for-effect guild abilities.
 
+## 23. The pre-registered family (spec 2026-09-23 rev 3) — running record
+
+Gate: 4p, challenger in two seats vs `hard` in two (A,B,B,A so every rotation is a distinct game),
+clustered by seed (a seed is one deal, replayed with every seating), pass at z >= 2.5 on win share
+with power not below z = -2; family of at most 7 tests. A futility-only look at half stops a gate at
+z <= 0. The `hard` vs `hard` twin (200 games) is exactly 0/0 — deterministic identical bots on the
+same deals — so every gate's MDE comes from its own run.
+
+### C1 — `moveToward` (where ships go, zero-sum per Move ask)
+
+Probe, 100 games vs `hard`: Move share of pips 28.2% vs 28.6% (criterion: within 2 points — met);
+unfinished 0; move reversals 2 of 2,403 legs vs 0 (criterion: 0 — **missed**, 0.08% against the
+14% circling the criterion guards; cause: `Probe.undoes` is not flagged across a mid-turn interrupt,
+so the reversal penalty did not apply to those two legs). Catapult continuations rose 16 -> 451.
+**C1a and C1b (weights 0.25 and 1.0) played identically, decision for decision**: the evaluator
+scores Move destinations equal, so the term only breaks ties and any positive weight gives the same
+argmax. They are one experiment. Proceeding to the gate under a recorded ruling.
+
+### C2 — `courtText` (court cards by what they do)
+
+Probe (same positions, 14 games, ~1,900 court decisions each): the table changes `hard`'s
+Influence/Secure choice in **1.1%** (full scale) and **0.7%** (half) of decisions, against the
+pre-registered 5%. **Fails its probe; no arena time.** The table (`court-knowledge.ts`) stays at
+weight 0. Reading: the choices it could move are dominated by the claim terms (`courtClaim*`), and
+the cards it prices are secured too rarely for a holding bonus to matter.
+
+### C4 — `seizeReady` (added from §22 into slots C1b/C2 freed)
+
+`declareReadiness` reads the next lead from `initiativeOrder`, which moves only at round end, so a
+seize — the follower's way to take the next lead — scored as a pure card loss. The feature is the
+readiness a held seize buys. Probe criterion: seize taken in 1-25% of offers, no unfinished games.
+
