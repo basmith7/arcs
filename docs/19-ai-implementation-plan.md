@@ -2895,3 +2895,15 @@ the cards it prices are secured too rarely for a holding bonus to matter.
 seize — the follower's way to take the next lead — scored as a pure card loss. The feature is the
 readiness a held seize buys. Probe criterion: seize taken in 1-25% of offers, no unfinished games.
 
+Probes (100 games vs `hard`; `hard` seizes 0-1 times in ~2,800 offers throughout):
+
+| weight | seize rate | declares offered / taken | verdict |
+| --- | --- | --- | --- |
+| 0.5 | 70.8% | 1,314 / 43.5% | outside 1-25% |
+| **0.1 (C4a)** | **19.1%** | 1,124 / 49.4% (`hard`: 891 / 49.3%) | **passes; to its gate** |
+| 0.2 (C4b) | 45.5% | 1,262 / 44.5% | outside 1-25% |
+
+The rate is steep in the weight: a readiness gain of a few power-equivalent outbids one card's
+~0.15 tempo cost almost every time, so the band is narrow. At 0.1 the bot seizes in a fifth of its
+chances and gets ~25% more chances to declare.
+
