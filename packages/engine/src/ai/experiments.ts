@@ -38,4 +38,7 @@ export const EXPERIMENTS: Readonly<Record<string, () => Bot>> = {
    * against `c1a`, the bot it would join.
    */
   c5: () => hardWith({ ...MOBILE_WEIGHTS, moveToward: 0.25, battleChoice: 0.25 }),
+  /** Assemblies of what passed, gated against `c1a` (docs/19 §23). */
+  asm14: () => hardWith({ ...MOBILE_WEIGHTS, moveToward: 0.25, seizeReady: 0.1 }),
+  asm145: () => hardWith({ ...MOBILE_WEIGHTS, moveToward: 0.25, seizeReady: 0.1, battleChoice: 0.25 }),
 }
