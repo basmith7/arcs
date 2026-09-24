@@ -82,3 +82,24 @@ export function declareReadiness(
   }
   return marker * lead * best
 }
+
+/**
+ * The readiness a seize buys (spec 2026-09-23, C4 — docs/19 §22).
+ *
+ * `declareReadiness` reads "do I lead next?" from `initiativeOrder`, which moves only at round end,
+ * so after a seize it still says no — and the seize scores as a pure card loss. Holding the seize
+ * means leading the next round, so this is the readiness with that lead counted, minus what
+ * `declareReadiness` already credits. Zero unless `self` holds the seize.
+ */
+export function seizeReadiness(observed: ObservedState, self: FactionId, intent: ChapterIntent): number {
+  if (observed.seized !== self || observed.self !== self) return 0
+  const marker = Math.max(0, ...observed.ambitionable.map((m) => m.high))
+  if (marker === 0) return 0
+  let best = 0
+  for (const ambition of AMBITIONS) {
+    if (!holdsCardFor(observed.hand, ambition)) continue
+    best = Math.max(best, intent.pursuing.get(ambition) ?? 0)
+  }
+  return Math.max(0, marker * best - declareReadiness(observed, self, intent))
+}
+

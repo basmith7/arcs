@@ -19,7 +19,7 @@ import { colorsIn, figuresOf } from '../figure-index.js'
 import { LORE_AMBITION, hasLore, loreActive } from '../lore.js'
 import { metric, rivalHoldings } from '../rules/ambitions.js'
 import { canBattle } from '../rules/battle.js'
-import { declareReadiness } from './declare-ready.js'
+import { declareReadiness, seizeReadiness } from './declare-ready.js'
 import { incomeFor } from './income.js'
 import { AMBITIONS } from '../state.js'
 import {
@@ -149,6 +149,7 @@ export const FEATURES = [
   'moveToward',
   'nearWin',
   'courtText',
+  'seizeReady',
 ] as const
 
 export type Feature = (typeof FEATURES)[number]
@@ -262,6 +263,11 @@ export const WEIGHTS: Weights = {
    * Off by default.
    */
   courtText: 0,
+  /*
+   * The declaration a held seize makes possible next round (`declare-ready.ts`, spec 2026-09-23
+   * C4): `declareReady` cannot see a seize, so the bot never took one. Off by default.
+   */
+  seizeReady: 0,
 }
 
 /** Every feature at 0, in `FEATURES` order; copied rather than rebuilt per call (docs/19 §21). */
@@ -633,6 +639,7 @@ export function featuresOfUncached(
    * which is what makes it the first of these additions with no existing proxy.
    */
   x.declareReady = declareReadiness(observed, self, intent)
+  x.seizeReady = seizeReadiness(observed, self, intent)
 
   /*
    * **What declaring costs, which nothing here could previously see.**
