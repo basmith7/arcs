@@ -888,3 +888,76 @@ export function stepBots(
   }
   return { result: current, decisions }
 }
+
+/** Where one rollout ended, as `playoutFrom` reports it. */
+export interface PlayoutResult {
+  /** `winners[0]` — the engine breaks power ties by turn order, so this is who actually won. */
+  readonly winner: FactionId | undefined
+  /** The top power was shared: the win came from the turn-order tie-break. */
+  readonly tied: boolean
+  readonly power: Readonly<Partial<Record<FactionId, number>>>
+  readonly finished: boolean
+  readonly observed: ObservedState
+}
+
+export interface PlayoutOptions {
+  /** Plays every seat, `self` included, after the candidate. */
+  readonly policy: Bot
+  /** `chapter`: stop when the chapter number moves. `game`: play to the end. */
+  readonly horizon: 'chapter' | 'game'
+  /** Picks the imagined world: the deal of hidden cards and every die after it. */
+  readonly salt: number
+  readonly maxSteps?: number
+}
+
+/**
+ * One rollout from a real position: redeal what `self` cannot see, apply `first`, and let `policy`
+ * play every seat to the horizon (spec 2026-09-23 rev 3, section B1).
+ *
+ * **Honest by the same construction as `foresee`.** The hidden cards are redealt with `dealRivals`
+ * before anything is played, so a rival's real hand never reaches the playout — pinned by
+ * `playout-from.test.ts`, which swaps hidden cards and demands an identical result. The generator
+ * is journal-derived (`probeFrom`), offset clear of the salts `foresee` and the settle samples use,
+ * so any machine replays the same world for the same salt.
+ *
+ * `first` undefined plays from the position as it stands. A playout that throws or hits the step
+ * cap is reported where it stopped with `finished: false`, never discarded silently.
+ */
+export function playoutFrom(
+  result: RuleResult,
+  self: FactionId,
+  first: Action | undefined,
+  opts: PlayoutOptions,
+  registry?: RuleRegistry,
+): PlayoutResult {
+  const reg = registry ?? defaultRegistry()
+  const cap = opts.maxSteps ?? 2000
+  let at: RuleResult = {
+    ...result,
+    state: dealRivals(probeFrom(result.state, 8000 + opts.salt), self),
+  }
+  try {
+    if (first !== undefined) at = advance(at.state, first, reg)
+    const chapter = at.state.chapter
+    let asked: AskedThisTurn = NO_ASKS
+    for (let i = 0; i < cap; i++) {
+      const c = at.continue
+      if (c.kind !== 'ask') break
+      if (opts.horizon === 'chapter' && at.state.chapter !== chapter) break
+      const step = stepBot(at, opts.policy, c.faction, reg, asked)
+      at = step.result
+      asked = step.asked
+    }
+  } catch {
+    // Scored where it stopped: `finished` says whether that was the end.
+  }
+  const s = at.state
+  const top = Math.max(...s.factions.map((f) => s.power[f] ?? 0))
+  return {
+    winner: s.isOver ? s.winners[0] : undefined,
+    tied: s.isOver && s.factions.filter((f) => (s.power[f] ?? 0) === top).length > 1,
+    power: s.power,
+    finished: s.isOver,
+    observed: observe(s, self),
+  }
+}
