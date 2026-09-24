@@ -2941,3 +2941,24 @@ it could not see it. Seizing buys the next lead, which is realised after every h
 searches; pricing the declaration that lead makes possible was enough, at a weight low enough
 (0.1) that the bot seizes in a fifth of its chances rather than seven in ten.
 
+### C5 — `battleChoice` (where to battle, whom to hit; from the tie audit)
+
+`scripts/tie-audit.ts` counts, per decision type, how often the best two candidates score exactly
+level — the choice then falls to offer order, as Move destinations did before C1. Two C1a games:
+fleet size 100% tied, pip menu 78%, `battle/system` 78%, `battle/hit` 76%, `battle/target` 81%.
+C5 ranks the battle system (our fresh ships minus theirs, plus half per rival building) and the
+target (a tenth of the rival's projected power — hit the leader — plus half per building), zero-sum
+per ask like C1. Probe vs `c1a`: Battle share of pips 63.9% vs 64.2%, no unfinished games.
+
+**Gate vs `c1a` (the bot it would join) — not detected, stopped for futility at half:**
+
+| chunk | games (deals) | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- |
+| 0 | 400 (100) | +2.0 ± 4.3 (z 0.5) | +0.31 ± 0.46 (z 0.7) |
+| 1 | 400 (100) | -0.5 ± 5.0 (z -0.1) | +0.46 ± 0.44 (z 1.1) |
+| pooled | 800 (200) | +0.75 ± 3.3 (z 0.2) | +0.39 ± 0.32 (z 1.2) |
+
+Stopped because reaching z 2.5 at 1,600 games needed ~z 3.3 from the second half alone; a futility
+stop cannot manufacture a pass. `battleChoice` stays at weight 0. Unlike Move destinations, a tied
+battle choice is usually between near-equivalent fights — the tie was real, not blindness.
+
