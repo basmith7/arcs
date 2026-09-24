@@ -2881,6 +2881,25 @@ so the reversal penalty did not apply to those two legs). Catapult continuations
 scores Move destinations equal, so the term only breaks ties and any positive weight gives the same
 argmax. They are one experiment. Proceeding to the gate under a recorded ruling.
 
+**Gate — PASS.** `hard` + `moveToward` (C1a) vs `hard`, 4p, A,B,B,A seating:
+
+| run | games (deals) | C1a wins / `hard` wins per seat | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- | --- |
+| chunk 0, seeds 200000+ | 400 (100) | 32% / 18% | +27.0 ± 4.4 (z 6.1) | +4.17 ± 0.52 (z 8.0) |
+| chunk 1, seeds 201000+ | 400 (100) | 31% / 19% | +24.0 ± 4.9 (z 4.9) | +4.99 ± 0.52 (z 9.6) |
+| **pooled** | **800 (200)** | | **+25.5 ± 3.3 (z 7.8)** | **+4.58 ± 0.37 (z 12.4)** |
+
+C1a out-wins `hard` from every seat (e.g. blue 53 wins to 12 in chunk 0). The planned 1,600-game
+half was stopped at 800 on an O'Brien-Fleming boundary (2.5/sqrt(0.5) = 3.54), which the pooled
+z clears by more than double.
+
+**The largest measured gain in this register** — larger than the reply search (§8), which took
+`hard` from standard. And it came from the thing §0 kept predicting: not a new search or a fit,
+but letting the bot see something it could not — where its ships are going. The earlier positional
+pull failed for the reason `mobile.ts` records (it made *moving* worth pips); this term only chooses
+*where*, once the bot has already decided to move, and the evaluator had been choosing that by
+offer order.
+
 ### C2 — `courtText` (court cards by what they do)
 
 Probe (same positions, 14 games, ~1,900 court decisions each): the table changes `hard`'s
