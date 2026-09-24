@@ -11,7 +11,7 @@
  */
 
 import { baselineBot, contestBot, declareBot, feasibilityBot, declareCostBot, easyBot, goalBot, handBot, threatBot, standardBot,
-  mobileBot, guardBot, loreBot, heuristicBot, heuristicBotWith, rivalBot, rolloutBot, searchBot, trivialBot, weaponBot } from '@arcs/engine'
+  mobileBot, guardBot, botForLevel, EXPERIMENTS, loreBot, heuristicBot, heuristicBotWith, rivalBot, rolloutBot, searchBot, trivialBot, weaponBot } from '@arcs/engine'
 import type { Bot, Weights } from '@arcs/engine'
 
 import { readFileSync } from 'node:fs'
@@ -31,6 +31,8 @@ export type BotSpec =
   | { readonly kind: 'cost' }
   | { readonly kind: 'standard' }
   | { readonly kind: 'mobile' }
+  | { readonly kind: 'hard' }
+  | { readonly kind: 'exp'; readonly name: string }
   | { readonly kind: 'rival' }
   | { readonly kind: 'weapon' }
   | { readonly kind: 'easy' }
@@ -76,6 +78,13 @@ export function buildBot(spec: BotSpec): Bot {
       return declareCostBot
     case 'standard':
       return standardBot
+    case 'hard':
+      return botForLevel('hard')
+    case 'exp': {
+      const make = EXPERIMENTS[spec.name]
+      if (make === undefined) throw new Error(`no experiment named ${spec.name}`)
+      return make()
+    }
     case 'mobile':
       return mobileBot
     case 'rival':
@@ -132,6 +141,8 @@ export function parseSpec(name: string): BotSpec {
   if (kind === 'cost') return { kind: 'cost' }
   if (kind === 'standard') return { kind: 'standard' }
   if (kind === 'mobile') return { kind: 'mobile' }
+  if (kind === 'hard') return { kind: 'hard' }
+  if (kind === 'exp' && rest[0] !== undefined) return { kind: 'exp', name: rest[0] }
   if (kind === 'rival') return { kind: 'rival' }
   if (kind === 'weapon') return { kind: 'weapon' }
   if (kind === 'easy') return { kind: 'easy' }

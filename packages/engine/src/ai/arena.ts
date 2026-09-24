@@ -273,6 +273,77 @@ export function playGameAt(
   )
 }
 
+/** The pre-registered gate's verdict on one run — see `pairedGate`. */
+export interface GateResult {
+  readonly games: number
+  readonly winDiff: number
+  readonly winSe: number
+  readonly winZ: number
+  readonly powerDiff: number
+  readonly powerSe: number
+  readonly powerZ: number
+  readonly pass: boolean
+}
+
+/**
+ * The gate every strength claim now has to clear (spec 2026-09-23 rev 3, section A2).
+ *
+ * **The game is the unit.** Per finished game: the challenger side's win share minus the control
+ * side's (1, 0 or -1 with two seats each — tie-break wins count, as they do at the table), and the
+ * same difference in mean power per seat. z is the mean over games divided by its standard error.
+ *
+ * **Why not the twin gap.** A realised twin gap is one draw from the same distribution as the
+ * effect being measured, so as a threshold it passes nulls and fails real edges at random. Twins
+ * stay as a sanity check (they must come out |z| < 2); the threshold is a pre-registered z.
+ *
+ * Passing needs `winZ >= zPass` and a power difference not clearly negative (`powerZ >= -2`): a
+ * bot that wins more by scoring less is winning tie-breaks, not playing better.
+ */
+export function pairedGate(
+  outcomes: readonly GameOutcome[],
+  challenger: string,
+  control: string,
+  zPass = 2.5,
+): GateResult {
+  const wins: number[] = []
+  const power: number[] = []
+  for (const o of outcomes) {
+    if (!o.finished) continue
+    const seats = Object.entries(o.seats) as [FactionId, string][]
+    const side = (id: string): FactionId[] => seats.filter(([, b]) => b === id).map(([f]) => f)
+    const c = side(challenger)
+    const k = side(control)
+    if (c.length === 0 || k.length === 0) continue
+    const w = o.winner
+    wins.push((w !== undefined && c.includes(w) ? 1 : 0) - (w !== undefined && k.includes(w) ? 1 : 0))
+    const mean = (fs: readonly FactionId[]): number =>
+      fs.reduce((n, f) => n + (o.power[f] ?? 0), 0) / fs.length
+    power.push(mean(c) - mean(k))
+  }
+  const stat = (xs: readonly number[]): [number, number] => {
+    const n = xs.length
+    if (n < 2) return [0, Number.POSITIVE_INFINITY]
+    const m = xs.reduce((a, b) => a + b, 0) / n
+    const v = xs.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1)
+    return [m, Math.sqrt(v / n)]
+  }
+  const [winDiff, winSe] = stat(wins)
+  const [powerDiff, powerSe] = stat(power)
+  const z = (m: number, se: number): number => (se === 0 || !Number.isFinite(se) ? 0 : m / se)
+  const winZ = z(winDiff, winSe)
+  const powerZ = z(powerDiff, powerSe)
+  return {
+    games: wins.length,
+    winDiff,
+    winSe,
+    winZ,
+    powerDiff,
+    powerSe,
+    powerZ,
+    pass: winZ >= zPass && powerZ >= -2,
+  }
+}
+
 /**
  * Turn a set of played games into the report.
  *

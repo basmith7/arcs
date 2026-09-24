@@ -32,7 +32,10 @@
 import { spawn } from 'node:child_process'
 import { availableParallelism } from 'node:os'
 
-import { defaultRegistry, formatReport, playGameAt, reportFrom } from '@arcs/engine'
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+
+import { defaultRegistry, formatReport, pairedGate, playGameAt, reportFrom } from '@arcs/engine'
 import type { FactionId, GameOutcome } from '@arcs/engine'
 
 import { buildBot, parseSpec } from './bot-spec.js'
@@ -102,8 +105,35 @@ console.log(
 if (noise) console.log('Noise floor: the last two seats are the same bot; their gap is the floor.\n')
 else console.log('')
 
+/*
+ * `--out` keeps every outcome as a JSON line, so a gate can be re-read or pooled later without
+ * replaying; `--gate challenger,control` prints the pre-registered paired verdict (spec 2026-09-23
+ * rev 3, section A2) under the table. Both use the ids as printed in the banner.
+ */
+const out = flag('out')
+const gate = flag('gate')?.split(',')
+
 const report = (outcomes: readonly GameOutcome[], ms: number): void => {
   console.log(`${verbose ? '\n' : ''}${formatReport(reportFrom(outcomes, ids, factions, ms))}`)
+  if (out !== undefined) {
+    mkdirSync(dirname(out), { recursive: true })
+    writeFileSync(out, '')
+    for (const o of outcomes) appendFileSync(out, JSON.stringify(o) + '\n')
+    console.log(`outcomes -> ${out}`)
+  }
+  if (gate !== undefined && gate.length === 2) {
+    const g = pairedGate(outcomes, gate[0]!, gate[1]!)
+    // Games needed for 80% power at z = 2.5 on a +3-point edge per side, from this run's own spread.
+    const sd = g.winSe * Math.sqrt(Math.max(1, g.games))
+    const mde = (d: number): number => Math.ceil(((2.5 + 0.84) * sd / d) ** 2)
+    console.log(
+      `\nGate ${gate[0]} vs ${gate[1]} over ${g.games} games:` +
+        ` win Δ ${(100 * g.winDiff).toFixed(1)} ± ${(100 * g.winSe).toFixed(1)} pts (z ${g.winZ.toFixed(2)})` +
+        ` | power Δ ${g.powerDiff.toFixed(2)} ± ${g.powerSe.toFixed(2)} (z ${g.powerZ.toFixed(2)})` +
+        ` | ${g.pass ? 'PASS' : 'no pass'}` +
+        ` | games for +3/+2 pts at 80%: ${mde(0.06)}/${mde(0.04)}`,
+    )
+  }
 }
 
 const show = (o: GameOutcome, i: number): void => {
