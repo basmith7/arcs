@@ -22,11 +22,13 @@ const outcomes: GameOutcome[] = files.flatMap((f) =>
   readFileSync(f, 'utf8').split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l) as GameOutcome),
 )
 const g = pairedGate(outcomes, challenger, control)
-const sd = g.winSe * Math.sqrt(Math.max(1, g.games))
-const mde = (d: number): number => Math.ceil((((2.5 + 0.84) * sd) / d) ** 2)
+// Per-deal spread, and games needed = deals needed x games per deal.
+const sd = g.winSe * Math.sqrt(Math.max(1, g.units))
+const perDeal = g.games / Math.max(1, g.units)
+const mde = (d: number): number => Math.ceil((((2.5 + 0.84) * sd) / d) ** 2 * perDeal)
 const unfinished = outcomes.filter((o) => !o.finished).length
 console.log(
-  `${challenger} vs ${control}: ${g.games} finished games (${unfinished} unfinished)\n` +
+  `${challenger} vs ${control}: ${g.games} finished games in ${g.units} deals (${unfinished} unfinished)\n` +
     `  win share Δ ${(100 * g.winDiff).toFixed(2)} ± ${(100 * g.winSe).toFixed(2)} pts per side (z ${g.winZ.toFixed(2)})\n` +
     `  power Δ ${g.powerDiff.toFixed(2)} ± ${g.powerSe.toFixed(2)} per seat (z ${g.powerZ.toFixed(2)})\n` +
     `  ${g.pass ? 'PASS' : g.winZ <= 0 ? 'futility: z <= 0' : 'no pass'}; games for 80% power at +3/+2 pts: ${mde(0.06)}/${mde(0.04)}`,

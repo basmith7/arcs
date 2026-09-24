@@ -133,8 +133,9 @@ const report = (outcomes: readonly GameOutcome[], ms: number): void => {
   if (gate !== undefined && gate.length === 2) {
     const g = pairedGate(outcomes, gate[0]!, gate[1]!)
     // Games needed for 80% power at z = 2.5 on a +3-point edge per side, from this run's own spread.
-    const sd = g.winSe * Math.sqrt(Math.max(1, g.games))
-    const mde = (d: number): number => Math.ceil(((2.5 + 0.84) * sd / d) ** 2)
+    const sd = g.winSe * Math.sqrt(Math.max(1, g.units))
+    const perDeal = g.games / Math.max(1, g.units)
+    const mde = (d: number): number => Math.ceil(((2.5 + 0.84) * sd / d) ** 2 * perDeal)
     console.log(
       `\nGate ${gate[0]} vs ${gate[1]} over ${g.games} games:` +
         ` win Δ ${(100 * g.winDiff).toFixed(1)} ± ${(100 * g.winSe).toFixed(1)} pts (z ${g.winZ.toFixed(2)})` +

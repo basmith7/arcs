@@ -282,6 +282,8 @@ export function playGameAt(
 /** The pre-registered gate's verdict on one run — see `pairedGate`. */
 export interface GateResult {
   readonly games: number
+  /** Independent units: distinct seeds (deals). Games sharing a seed are one deal, reseated. */
+  readonly units: number
   readonly winDiff: number
   readonly winSe: number
   readonly winZ: number
@@ -294,7 +296,7 @@ export interface GateResult {
 /**
  * The gate every strength claim now has to clear (spec 2026-09-23 rev 3, section A2).
  *
- * **The game is the unit.** Per finished game: the challenger side's win share minus the control
+ * **The deal is the unit.** Per finished game: the challenger side's win share minus the control
  * side's (1, 0 or -1 with two seats each — tie-break wins count, as they do at the table), and the
  * same difference in mean power per seat. z is the mean over games divided by its standard error.
  *
@@ -311,8 +313,13 @@ export function pairedGate(
   control: string,
   zPass = 2.5,
 ): GateResult {
-  const wins: number[] = []
-  const power: number[] = []
+  /*
+   * Clustered by seed: the arena plays each deal once per seat rotation (`seedForGame`), so games
+   * sharing a seed are the same deal with the sides moved — not independent draws. The deal is the
+   * unit; each contributes the mean of its games' differences.
+   */
+  const byDeal = new Map<number, { wins: number[]; power: number[] }>()
+  let games = 0
   for (const o of outcomes) {
     if (!o.finished) continue
     const seats = Object.entries(o.seats) as [FactionId, string][]
@@ -321,11 +328,17 @@ export function pairedGate(
     const k = side(control)
     if (c.length === 0 || k.length === 0) continue
     const w = o.winner
-    wins.push((w !== undefined && c.includes(w) ? 1 : 0) - (w !== undefined && k.includes(w) ? 1 : 0))
+    let deal = byDeal.get(o.seed)
+    if (deal === undefined) byDeal.set(o.seed, (deal = { wins: [], power: [] }))
+    deal.wins.push((w !== undefined && c.includes(w) ? 1 : 0) - (w !== undefined && k.includes(w) ? 1 : 0))
     const mean = (fs: readonly FactionId[]): number =>
       fs.reduce((n, f) => n + (o.power[f] ?? 0), 0) / fs.length
-    power.push(mean(c) - mean(k))
+    deal.power.push(mean(c) - mean(k))
+    games++
   }
+  const avg = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length
+  const wins = [...byDeal.values()].map((d) => avg(d.wins))
+  const power = [...byDeal.values()].map((d) => avg(d.power))
   const stat = (xs: readonly number[]): [number, number] => {
     const n = xs.length
     if (n < 2) return [0, Number.POSITIVE_INFINITY]
@@ -339,7 +352,8 @@ export function pairedGate(
   const winZ = z(winDiff, winSe)
   const powerZ = z(powerDiff, powerSe)
   return {
-    games: wins.length,
+    games,
+    units: wins.length,
     winDiff,
     winSe,
     winZ,
