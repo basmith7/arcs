@@ -146,6 +146,7 @@ export const FEATURES = [
   'handTopCard',
   'undeclaredThreat',
   'moveToward',
+  'nearWin',
 ] as const
 
 export type Feature = (typeof FEATURES)[number]
@@ -249,6 +250,11 @@ export const WEIGHTS: Weights = {
    * as a state feature; applied in the heuristic loop.
    */
   moveToward: 0,
+  /*
+   * The win line (spec 2026-09-23 C3, docs/19 §18): zero until projected power is within six of
+   * the threshold, then quadratic — for self, minus the same for the best rival. Off by default.
+   */
+  nearWin: 0,
 }
 
 /** Every feature at 0, in `FEATURES` order; copied rather than rebuilt per call (docs/19 §21). */
@@ -256,6 +262,32 @@ const ZERO: Readonly<Record<Feature, number>> = Object.freeze(
   Object.fromEntries(FEATURES.map((f) => [f, 0])) as Record<Feature, number>,
 )
 const zero = (): Record<Feature, number> => ({ ...ZERO })
+
+/**
+ * Power a faction can expect once the declared ambitions pay out at the current standings: its
+ * power, plus each declared marker's high value where it strictly leads, low value where it ties
+ * for the lead or is strictly second. A projection for `nearWin`, not the rulebook's scoring.
+ */
+export function projectedPower(observed: ObservedState, f: FactionId): number {
+  let p = observed.power[f] ?? 0
+  for (const d of observed.declared) {
+    const mine = metric(observed, f, d.ambition)
+    if (mine === 0) continue
+    const others = observed.factions.filter((o) => o !== f).map((o) => metric(observed, o, d.ambition))
+    const above = others.filter((o) => o > mine).length
+    const tied = others.some((o) => o === mine)
+    if (above === 0 && !tied) p += d.marker.high
+    else if (above === 0 || above === 1) p += d.marker.low
+  }
+  return p
+}
+
+/** The `nearWin` ramp for one faction: 0 below `threshold - 6`, then (excess / 6)^2. */
+function winRamp(observed: ObservedState, f: FactionId): number {
+  const threshold = 39 - 3 * observed.factions.length
+  const excess = projectedPower(observed, f) - (threshold - 6)
+  return excess <= 0 ? 0 : (excess / 6) ** 2
+}
 
 /**
  * `gatesHeld` and `fleetThreat` for one faction. They read only the figures, the damaged list and
@@ -543,6 +575,10 @@ export function featuresOfUncached(
    *     than per occupied system, because a per-system sum paid the bot to shatter its fleet
    *     one ship per system and catapult-spam the map (1,172 chains in six probe games).
    */
+  x.nearWin =
+    winRamp(observed, self) -
+    Math.max(0, ...observed.factions.filter((f) => f !== self).map((f) => winRamp(observed, f)))
+
   const positional = positionalOf(observed, self)
   x.gatesHeld = positional.gatesHeld
   x.fleetThreat = positional.fleetThreat

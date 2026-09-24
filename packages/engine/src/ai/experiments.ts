@@ -19,4 +19,7 @@ export const EXPERIMENTS: Readonly<Record<string, () => Bot>> = {
   /** C1a/C1b: where ships go, zero-sum among Move destinations (`move-target.ts`). */
   c1a: () => hardWith({ ...MOBILE_WEIGHTS, moveToward: 0.25 }),
   c1b: () => hardWith({ ...MOBILE_WEIGHTS, moveToward: 1.0 }),
+  /** C3: the win-line ramp (`nearWin`). Arena time only if the B2-corpus pre-gate passes. */
+  c3a: () => hardWith({ ...MOBILE_WEIGHTS, nearWin: 1 }),
+  c3b: () => hardWith({ ...MOBILE_WEIGHTS, nearWin: 2 }),
 }
