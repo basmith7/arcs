@@ -37,6 +37,7 @@ gains came from fixing something the evaluator could not see, never from re-tuni
 | Opponent replies over determinized hands (V4) | **large: +12 points at 3p, 67%-33% at 2p vs a zero floor** — the first idea since the goal layer to clear its own floor in a single run | 8 |
 | The Weapon's battle option as a feature (`battleUnlocked`) | **no measurable strength** — 1 point on a 1-point floor. Large *behavioural* effect: Weapon spending 1% → 26% | 9 |
 | Cross-round foresight (`rounds: 2` reply horizon) | **null** — corrects the section 18 game provably (oracle 12/12 over 0/12), dead level vs hard at 999 games on a zero floor, 4x the cost. The third search axis measured out | 20 |
+| The evaluator made cheap (memo + per-state caches + figure index) | **4.9x on a 4p `normal` game, 2.7x on 2p `hard`, zero decisions changed** (26 golden journals identical). Not a strength idea — it makes every other one cheaper to measure | 21 |
 | The declaration-threat feature (`undeclaredThreat`) | **killed at its gate** — the section 18 game cannot be flipped by any end-of-turn static feature at sane weights; the loss is cross-round (initiative into the next lead), an untested search axis | 19 |
 | The margin-11.5 oracle blunder, investigated | **evaluator blind spot, search exonerated** — a rival's pending declaration (undeclared standing + marker + lead remaining) is priced at zero, and power is linear through the win threshold | 18 |
 | The blunder oracle: rollout win-prob vs the bot's runner-up | **a real leak** — card plays in lost games underperform the bot's own runner-up by ~5% win-prob vs placebo (z≈4.3, game-clustered); the first low-noise training target the register has produced | 17 |
@@ -55,7 +56,8 @@ it and cannot afford a policy good enough to provide it; every fitting route nee
 noise swamps the effect. The same wall, four times.
 
 Supporting numbers worth not re-deriving: the engine runs at **0.049 ms/action**; a full game is
-**~24ms** as one playout; a V1 decision costs **~4ms**; and a choice-labelling pair carries **~9.6
+**~24ms** as one playout; a V1 decision costs **~4ms** — *stale: measured 2026-09-23 at ~100 ms for
+a four-player `normal` decision, ~20 ms after the section 21 speedup*; and a choice-labelling pair carries **~9.6
 power of noise against a ~0.5 power effect**.
 
 The arena's noise floor, measured directly by twinning a bot against itself:
@@ -2776,3 +2778,45 @@ same strength, a quarter of the thinking time. The register's one remaining big 
 the fitting attempts lacked (17), the value it must learn includes exactly the cross-round dynamics
 no static feature can express (19), and search cannot substitute for it on any measured axis
 (7, 14, 20).
+
+## 21. The evaluator was the cost
+
+Spec `docs/superpowers/specs/2026-09-23-stronger-bot-design.md` (rev 3), step A1.
+
+The register's cost figures were years stale in effect: a four-player `normal` game measured
+**105 s / 1,034 decisions (~100 ms a decision)**, not ~4 ms. The CPU profile said where: `featuresOf`
+88% inclusive, `parseFigureId` 44.5% self — the evaluator re-parsing interned figure-id strings for
+every figure in every system, for every faction, at every probe. The rules engine was 12%.
+
+### What changed — behaviour-preserving by construction
+
+| change | where |
+| --- | --- |
+| `parseFigureId` memoised, results frozen | `ids.ts` |
+| `metric` cached per state object and (faction, ambition) | `rules/ambitions.ts` |
+| `slotsOf` cached per state object and faction, frozen | `control.ts` |
+| `featuresOf` cached per (observation, intent, faction), frozen | `ai/value.ts` |
+| a probe's `observed` is its first sample, one object | `ai/play.ts` |
+| each tracker's pieces indexed by owner and kind, in board order; colours per system | `figure-index.ts` |
+| `pieces`, `incomeFor`, `gatesHeld`/`fleetThreat` read the index instead of scanning the board | `ai/value.ts`, `ai/income.ts` |
+
+Every cache is keyed on an immutable object (states, observations, trackers and intents are never
+mutated — every change makes a new object), so a hit cannot be stale. Each has a test against the
+uncached computation (`perf-caches.test.ts`).
+
+**The check is not the suite.** `npm run golden` replays 26 committed games (`normal` and `hard`, 2p
+and 4p, `test/fixtures/golden-journals.json`, recorded before any optimisation took effect) and
+diffs every journal entry and final power. All 26 identical; the fast suite pins three of them.
+
+### Measured (vite-node, one core, seed 201, same machine, before = `main` 4004f41)
+
+| game | before | after | speedup |
+| --- | --- | --- | --- |
+| 4p `normal` | 105.6 s (102 ms/decision) | 21.4 s (20.7 ms) | **4.9x** |
+| 2p `hard` | 18.9 s (48 ms/decision) | 7.0 s (18 ms) | **2.7x** |
+| 4p `hard` (golden h4-0..2) | 430-590 s | 85-110 s | ~5x |
+
+`hard` gains less at two players because its beam and reply drive spend proportionally more in
+the rules engine, which this did not touch. Arena runs, the oracle and every experiment after this
+section are priced from the new numbers.
+
