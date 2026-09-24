@@ -22,4 +22,7 @@ export const EXPERIMENTS: Readonly<Record<string, () => Bot>> = {
   /** C3: the win-line ramp (`nearWin`). Arena time only if the B2-corpus pre-gate passes. */
   c3a: () => hardWith({ ...MOBILE_WEIGHTS, nearWin: 1 }),
   c3b: () => hardWith({ ...MOBILE_WEIGHTS, nearWin: 2 }),
+  /** C2: court cards by what they do (`court-knowledge.ts`), full and half scale. */
+  c2a: () => hardWith({ ...MOBILE_WEIGHTS, courtText: 1 }),
+  c2b: () => hardWith({ ...MOBILE_WEIGHTS, courtText: 0.5 }),
 }

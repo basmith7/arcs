@@ -14,6 +14,7 @@
  * should be treated as suspicious rather than confirmed.
  */
 
+import { courtTextFor } from './court-knowledge.js'
 import { colorsIn, figuresOf } from '../figure-index.js'
 import { LORE_AMBITION, hasLore, loreActive } from '../lore.js'
 import { metric, rivalHoldings } from '../rules/ambitions.js'
@@ -147,6 +148,7 @@ export const FEATURES = [
   'undeclaredThreat',
   'moveToward',
   'nearWin',
+  'courtText',
 ] as const
 
 export type Feature = (typeof FEATURES)[number]
@@ -255,6 +257,11 @@ export const WEIGHTS: Weights = {
    * the threshold, then quadratic — for self, minus the same for the best rival. Off by default.
    */
   nearWin: 0,
+  /*
+   * Court cards by what they do (spec 2026-09-23 C2, `court-knowledge.ts`), net of `courtWorth`.
+   * Off by default.
+   */
+  courtText: 0,
 }
 
 /** Every feature at 0, in `FEATURES` order; copied rather than rebuilt per call (docs/19 §21). */
@@ -590,9 +597,12 @@ export function featuresOfUncached(
    * agents on a card than anyone else, so it is a build-up, and pricing only the finished article
    * left the first Influence worth exactly nothing (docs/19 section 2i).
    */
-  for (const id of contentsOf(observed.courtCards, CourtPile.secured(self))) {
+  const securedIds = contentsOf(observed.courtCards, CourtPile.secured(self))
+  for (const id of securedIds) {
     x.courtSecured += courtWorth(id, intent)
   }
+  // C2: what the held cards' effects give, net of `courtWorth` (`court-knowledge.ts`).
+  x.courtText = courtTextFor(securedIds, intent)
   for (const slot of courtSlots(observed.factions.length)) {
     const id = contentsOf(observed.courtCards, CourtPile.slot(slot))[0]
     if (id === undefined) continue
@@ -605,8 +615,11 @@ export function featuresOfUncached(
     const best = Math.max(0, ...observed.factions.filter((f) => f !== self).map(on))
     const worth = courtWorth(id, intent)
     // `canSecure` is `mine > best`, so the three cases are ahead, level and behind.
-    if (mine > best) x.courtClaimAhead += worth
-    else if (mine === best) x.courtClaimLevel += worth
+    if (mine > best) {
+      x.courtClaimAhead += worth
+      // C2: a quarter of the card's effect for a card this faction can secure (weight 0 by default).
+      x.courtText += 0.25 * courtTextFor([id], intent)
+    } else if (mine === best) x.courtClaimLevel += worth
     else x.courtClaimBehind += worth
   }
 

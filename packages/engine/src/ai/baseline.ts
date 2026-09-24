@@ -60,6 +60,7 @@ export const BASELINE_WEIGHTS: Weights = {
   moveReversal: 0,
   moveToward: 0,
   nearWin: 0,
+  courtText: 0,
   courtSecured: 1,
   courtClaimAhead: 0.25,
   courtClaimLevel: 0.12,
