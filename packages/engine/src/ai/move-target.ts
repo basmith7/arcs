@@ -9,7 +9,8 @@
  * This is an action-level term instead, and a **zero-sum** one. At an ask offering Move
  * destinations, each destination scores the progress it makes toward the targets the chapter
  * intent names, and then the mean over the offered destinations is subtracted. The terms over any
- * ask sum to zero, so they can re-rank destinations but cannot make Move beat Build — the Move
+ * ask sum to zero (or below, when an undoing leg is clamped), so they can re-rank destinations but
+ * cannot make Move beat Build — the Move
  * destination is its own ask, after Move was already chosen at the pip menu.
  *
  * Targets by ambition, from what that ambition scores:
@@ -114,6 +115,12 @@ export function moveTowardTerms(
   self: FactionId,
   intent: ChapterIntent,
   actions: readonly Action[],
+  /**
+   * Legs that exactly undo this faction's own earlier leg this turn (`Probe.undoes`). They get no
+   * positive pull: without this, a strong pull could outbid the reversal penalty and bring back
+   * the circling `mobile.ts` removed (the C1a probe saw 2 reversals where the criterion is 0).
+   */
+  undoes: (a: Action) => boolean = () => false,
 ): ReadonlyMap<Action, number> {
   const moves = actions.filter((a) => a.type === 'action/move-pick')
   const out = new Map<Action, number>()
@@ -131,6 +138,9 @@ export function moveTowardTerms(
     return v
   })
   const mean = raw.reduce((n, v) => n + v, 0) / raw.length
-  moves.forEach((a, i) => out.set(a, raw[i]! - mean))
+  moves.forEach((a, i) => {
+    const t = raw[i]! - mean
+    out.set(a, undoes(a) ? Math.min(0, t) : t)
+  })
   return out
 }

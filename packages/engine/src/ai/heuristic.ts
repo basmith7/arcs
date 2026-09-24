@@ -178,6 +178,7 @@ export function heuristicBotWith(
 
     const considered: Considered[] = []
     const stuck = new Set<Action>()
+    const undoing = new Set<Action>()
     for (const action of choices) {
       const probe = lookahead(action)
       if (probe === undefined) continue
@@ -224,6 +225,7 @@ export function heuristicBotWith(
       const exposure = risk === undefined ? 0 : risk.chance * risk.hits * INTERCEPT_RISK
       // Undoing this turn's own movement leg pays twice for nothing; weighted, zero in the
       // baseline, so the term is inert everywhere it has not been measured on.
+      if (probe.undoes === true) undoing.add(action)
       const undo = probe.undoes === true ? (weights.moveReversal ?? 0) : 0
       const score = gained + probe.actionsAhead * PIP_VALUE - exposure - undo
       /*
@@ -268,7 +270,7 @@ export function heuristicBotWith(
      */
     const toward = weights.moveToward ?? 0
     if (toward !== 0) {
-      const terms = moveTowardTerms(observed, observed.self, intent, choices)
+      const terms = moveTowardTerms(observed, observed.self, intent, choices, (a) => undoing.has(a))
       for (let i = 0; i < considered.length; i++) {
         const c = considered[i]!
         const t = terms.get(c.action)

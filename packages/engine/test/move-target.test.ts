@@ -92,3 +92,18 @@ describe('moveToward in the heuristic loop', () => {
     expect(step.decision.action).toEqual(terms[0]![0])
   })
 })
+
+describe('moveToward never pays for undoing a move', () => {
+  it('gives a reversing leg no positive pull, however far it closes on a target', () => {
+    const r = moveAsk(12)
+    const c = r.continue as { faction: FactionId; actions: readonly Action[] }
+    const view = observe(r.state, c.faction)
+    const intent = intentFor(view, c.faction, feasibility)
+    // Mark the leg the term likes best as the one that undoes a move.
+    const plain = [...moveTowardTerms(view, c.faction, intent, c.actions)].sort((a, b) => b[1] - a[1])
+    const [best, bestTerm] = plain[0]!
+    expect(bestTerm).toBeGreaterThan(0)
+    const terms = moveTowardTerms(view, c.faction, intent, c.actions, (a) => a === best)
+    expect(terms.get(best)!).toBeLessThanOrEqual(0)
+  })
+})
