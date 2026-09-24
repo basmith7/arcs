@@ -1,201 +1,214 @@
-# A stronger Arcs bot, and an advisor — design
+# A stronger Arcs bot, and an advisor — design (rev 3)
 
 Date: 2026-09-23. Branch `feat/stronger-bot`. Base game only (no Leaders & Lore, no campaign).
 
+Revision history: rev 1 → Fable adversarial review, *rethink* (rollouts cannot fit an opponent's
+turn; the displacement rule flipped on noise; §17's evidence is partly selection on outcome).
+Rev 2 → second round, *revise* (B2 could not pass by construction, C1 repeated `mobile.ts`'s failure
+mode, weights shared with `normal`, family miscounted, no MDE). Rev 3 resolves both rounds; round 3 verdict *ship-spec*.
+
 ## 1. Goal and success criteria
 
-Brian wants two things from one piece of work:
+Brian wants a **stronger opponent** for bot seats and an **advisor** ("what should red do?") for a
+seat a human plays in a live game. "Better" is measured with the arena, never argued.
 
-1. **A stronger opponent** — a `brutal` rung above `hard` for bot seats.
-2. **An advisor** — "what should red do?" for a seat a human is playing in a live game, with the
-   alternatives and their odds, allowed to think for a minute or two.
+They are separate products with separate budgets:
 
-"Better" is measured, never argued. The instrument is the existing arena (`npm run arena`) with its
-twin noise floor (`--noise`), per docs/19 section 0.
+- **Opponent:** stays at today's `hard` latency and improves only through what the evaluator can
+  see. Features that clear their gate are folded into `hard` via a new `HARD_WEIGHTS` object; `normal`
+  and `easy` stay byte-identical. No new rung, nothing for the web client or server to accommodate.
+- **Advisor:** may spend minutes on many cores. It uses rollouts only if an offline power test (B2)
+  shows the rollout rule improves on `hard`'s choice; otherwise it is `hard` with its full line and
+  alternatives printed, and it says the rollout check was not detected to help.
 
-- **Ship gate for `brutal`:** beats `hard` in a 4-player arena of ≥ 600 games **and** a 2-player
-  arena of ≥ 600 games, each by more than that run's own twin gap, on both win rate and mean
-  power. 4-player is the primary target because that is the game Brian plays.
-- **Latency gate for `brutal`:** median card-play decision ≤ 3 s and p95 ≤ 10 s on one core of
-  Brian's desktop, measured over a 4-player game; non-card-play decisions no slower than `hard`.
-- **Advisor gate:** on a replayed position it returns within 3 minutes at its default budget, its
-  top pick agrees with itself across two runs (determinism), and its budget is strictly a
-  superset of `brutal`'s (so the advisor is never weaker than the opponent).
-- **Every intermediate idea** (sections 4-6) ships only if it clears its own arena gate; a null is
-  recorded in docs/19 section 0 and the code is left at weight zero / off, the repo's convention.
+"Knowing all parts of the base game": a coverage report of every base-game action type offered vs
+taken (section 6), and one pre-registered attempt at each recorded base-game evaluator blind spot —
+**ship position** (C1) and **court card text** (C2).
 
-"Knowing all parts of the base game" is interpreted as: every base-game decision the engine can ask
-is reachable by the bot's search or rollouts, and the two base-game blind spots in the evaluator
-that docs/19 records as open — **court card text** and **ship position** — each get a measured
-attempt. Coverage is audited in section 7.
+## 2. Measured cost
 
-## 2. What exists, and the fact that reshapes the plan
+`normal` = one-ply search over a hand-weighted linear evaluator with chapter intent; `hard` = a
+whole-turn beam at the card play plus one sampled rival reply (`levels.ts:65`, `roots: 1, deals: 1`,
+weights `MOBILE_WEIGHTS` — the same object `normal` uses, `mobile.ts:43`).
 
-The bots are a hand-weighted linear evaluator (`value.ts`) with chapter intent (`intent.ts`);
-`normal` is a one-ply search over it, `hard` adds a whole-turn beam at the card play plus one
-sampled rival reply (`search.ts`, `levels.ts`). docs/19 section 0 lists ~20 measured attempts to beat
-that; the only large win was the reply search. Section 17 found that **full-game rollouts are a
-better judge of card plays than the evaluator** (the bot's own runner-up was better by ~5% win
-probability per decision in lost games, z ≈ 4.3) but called it unshippable at ~70 s per decision.
+Measured this session: a 4p `normal` game is **105 s / 1,034 decisions (~100 ms/decision; docs/19
+says ~4 ms)**. Profile: `featuresOf` 88% inclusive; `parseFigureId` 44.5% self;
+`metric`/`rivalHoldings` 40%; `slotsOf`/`citiesInReserve` 28%; `Tracker.contentsOf` 16% self.
 
-**New measurement (this session):** a 4-player game between `normal` bots takes **105 s and 1,034
-decisions — ~100 ms a decision, not the ~4 ms docs/19 records.** The CPU profile:
+Evaluator-only work caps at 8.3x (Amdahl, 12% outside `featuresOf`); planning figure **3.5x**:
 
-| inclusive | where |
-| --- | --- |
-| 88% | `featuresOf` — the evaluator, not the rules |
-| 44.5% self | `parseFigureId` — re-parsing interned figure strings |
-| 40% | `metric` / `rivalHoldings` (ambition standings, recomputed per probe) |
-| 28% | `slotsOf` / `citiesInReserve` scans |
-| 16% self | `Tracker.contentsOf` |
+| quantity (4p, one core) | pre-speedup | at 3.5x |
+| --- | --- | --- |
+| one `normal` decision | ~100 ms | ~29 ms |
+| one `normal` playout, mid-game to game end (~500 decisions) | ~50 s | ~14 s |
+| advisor: 4 candidates x 32 playouts | ~107 min | ~30 min; **~2 min on 14 cores** |
 
-The rules engine is cheap; the bot's scoring is where every playout's time goes. That makes speed
-the first lever, and it is a lever the register never pulled: every earlier rollout experiment
-(sections 3a-3e) was forced onto trivial playout policies *because* a real policy was too slow, and
-section 3e's verdict was "short lookahead with a good policy beats long lookahead with a bad one."
-A 10x cheaper evaluator makes a good policy affordable inside a rollout.
+Rollouts inside an opponent's turn are therefore out by two orders of magnitude at 4p.
 
-## 3. Step 1 — make the evaluator cheap (pure engineering)
+## 3. Phase A — foundation (ships regardless)
 
-Behaviour-preserving optimisation of the hot path, in profile order, re-profiling after each:
+### A1. Make the evaluator cheap
 
-1. **Memoise `parseFigureId`** — a module-level `Map<string, Figure>`; figure ids are a small closed
-   set (~300 in a 4p game), the function is pure, results are frozen.
-2. **Per-observation caches** for quantities `featuresOf` recomputes per term: ambition metrics per
-   faction (`metric`, `rivalHoldings`), slot/reserve counts, own pieces by system. Cached on the
-   `ObservedState` object via a `WeakMap`, so nothing about the immutable-state contract changes.
-3. Only then, if still dominant, `Tracker` internals.
+Behaviour-preserving, in profile order, re-profiling after each: (1) memoise `parseFigureId`
+(module-level `Map`, frozen results); (2) per-observation caches for what `featuresOf` recomputes per
+term, in a `WeakMap` keyed by the `ObservedState`; (3) whatever the new profile shows, including
+rules-engine hot spots.
 
-**Correctness gate (hard requirement):** a golden test plays N seeded games (2p and 4p, `normal`
-and `hard`) before and after, and asserts the **identical journal** and final power. Any float
-reassociation that changes a tie-break is a failure, not a rounding note. The existing test suite
-must pass unchanged.
+**Correctness:** `scripts/golden-journals.ts` writes, **before any optimisation**, a committed
+fixture `packages/engine/test/fixtures/golden-journals.json` — 20 `normal` + 6 `hard` games, 2p and
+4p: options, journal, final power. `--check` replays the bots from the same options and requires
+identical journals and power; any diff fails. A fast suite test checks 3 short 2p `normal` games
+from the same fixture. The existing suite passes unchanged.
 
-**Target:** ≥ 5x on a `normal` 4-player game. Recorded in docs/19 alongside the stale 4 ms figure.
+**Target:** ≥ 3x on a 4p `normal` game (stretch 5x). docs/19 section 0's 4 ms figure is corrected.
 
-## 4. Step 2 — the rollout re-rank (`oracle` bot)
+### A2. Measurement protocol (pre-registered)
 
-A new bot, `oracleBot(options)`, in `ai/oracle.ts`:
+- **Design:** challenger vs control, 2 seats each at 4p, same seeds, seats rotated (arena does
+  both). Unit = game. **Only a 4p pass ships**; 2p runs are descriptive.
+- **Statistic:** per game, challenger win share minus control win share (tie-break wins count,
+  reported separately). **Pass: z ≥ 2.5 on win share, and mean-power difference not below z = −2.**
+- **Family (7 tests, one-sided Bonferroni at α = 0.05 ⇒ z ≥ 2.45, rounded to 2.5):** C1a, C1b,
+  C2a, C2b, C3 (only if it passes its pre-gate, else the slot goes unused), assembled `hard`, one
+  re-measure spare. Twin runs are sanity checks (must be |z| < 2), not tests.
+- **First run:** `hard` vs `hard` twin at 4p, which also measures a 4p `hard` game's cost. Every
+  gate is then sized to ≤ 24 h on 14 jobs, and its **minimum detectable effect** (80% power at
+  z = 2.5, per-game sd 0.5 ⇒ n ≈ 3,100 for +3 pts, ≈ 7,000 for +2) is written next to the result. A
+  result below the MDE is reported "not detected", not "null".
 
-- At a **card play** only (`isCardPlay`, the trigger `search.ts` and `rollout.ts` already share),
-  run `hard`'s search to rank the roots. Take the top `k` distinct roots (default 3) plus `Pass`
-  when the engine offers it and it is not already included — the section 18/20 blunders were a
-  missing Pass.
-- For each candidate, play the game forward `m` times (default 8) under a **real policy**
-  (`normal` for every seat, including our own, after the candidate), to one of two horizons:
-  `game` (the end; score = 1 for a win, 0.5 split for a tied win, 0 otherwise, plus a small
-  power-margin term to break ties among lost lines) or `chapter` (chapter end, then score with
-  `valueOf` — cheaper, used by the opponent rung if `game` cannot meet the latency gate).
-- **Hidden information:** each playout redeals the unknown cards — rivals' hands and the deck —
-  consistently with what `self` can see, the same determinisation `foresee` already does for
-  replies. The bot must never read a rival's actual hand; a test pins this by running the bot on
-  two states that differ only in a rival's hidden hand and asserting the same decision.
-- **Common random numbers:** playout `j` uses the same derived seed for every candidate, so the
-  comparison is paired and the variance of the *difference* is what matters.
-- **Determinism:** seeds derive from the game's RNG state and the decision's turn key, never from
-  the clock, so two clients compute the same move (docs/03 section 9a).
-- **Decision rule:** the candidate with the best mean score; ties keep `hard`'s order. With the
-  paired design, a candidate that does not beat `hard`'s own choice by a margin (default: one
-  standard error of the paired difference) does not displace it — this keeps rollout noise from
-  overriding a good evaluator pick.
-- Everything that is not a card play delegates to `hard`.
+## 4. Phase B — the advisor
 
-Budget knobs `k`, `m`, horizon and playout policy are in the options and in the arena `BotSpec`, so
-every configuration is an arena one-liner.
+### B1. Playout capability and oracle harness
 
-**Why this is not a repeat of sections 3a-3e:** those used trivial or `playoutChoice` policies
-from 2 turns to chapter end, forced by cost; this uses the shipped `normal` policy, re-ranks only
-`hard`'s shortlist (so the rollouts adjudicate close calls rather than generate plays), and is
-motivated by section 17's direct evidence that exactly this adjudication finds better moves. If it
-measures null anyway, that is recorded and step 3-4 still stand on their own.
+`play.ts` gains `playoutFrom(result, self, { policy, horizon: 'chapter' | 'game', salt, maxSteps })`:
+redeal hidden cards with the existing `dealRivals` (no-cheat pinned, `foresee.test.ts:117`), seed via
+the journal-derived `probeFrom` convention, play every seat with `policy` (a `Bot`, stepped through
+`stepBot` with `AskedThisTurn` threaded as `foresee` does), return final observed state, `winners[0]`,
+`tied`, and power. Step cap 2,000.
 
-**Gates:** (a) the oracle at advisor budget (`game` horizon, k=3, m=16) beats `hard` in a 2-player
-arena of 300 games past its twin floor — the go/no-go for the idea; (b) a budget meeting the
-latency gate clears the section 1 ship gate. If (a) passes and (b) cannot, the oracle ships as the
-advisor only.
+`scripts/oracle.ts` fans (candidate, salt) jobs over `worker_threads`; workers replay options +
+journal rather than receive a cloned `RuleResult`. Results are identical for any worker count. Every
+evaluated decision is logged as JSONL (position ref, candidates, per-salt outcomes) for any later
+distillation work. This rebuilds the docs/19 §17 oracle, which is not in the repo.
 
-## 5. Step 3 — court cards by what they do
+### B2. Offline power test — the kill switch
 
-`courtWorth` prices a card by suit and keys; no card text is read. Fix it with a **measured
-per-card table** instead of hand-written numbers:
+Tests the rollout rule **as a policy**, since §17's lost-vs-won contrast is partly selection on
+outcome, saw true hands, and used the shipped bots as continuation.
 
-- An offline script, `scripts/card-values.ts`, estimates for each of the 31 base court cards the
-  value of *holding* it: from sampled mid-game positions (drawn from arena games), compare rollouts
-  where `self` secures the card against rollouts where it does not, paired, under the `normal`
-  policy. Output: `ai/court-values.json`, card id → power-equivalent bonus, with its standard error.
-- `value.ts` gains a `courtText` feature: the table's bonus for each secured card (and a discounted
-  share for a card `self` is ahead on influencing), weight 0 in `WEIGHTS`, switched on by a
-  `CARD_WEIGHTS` set — the frozen-baseline convention.
-- Cards whose estimate is inside its own standard error get 0, so noise is not baked in.
+- **Corpus:** ≥ 40 4p `hard` self-play games (post-A1), ≤ 10 card-play decisions each, **contested
+  only** — `hard`'s tier-1 margin between its top two roots in the lower half of its distribution
+  (an estimate-independent conditioner, per §17's trap note). ≥ 400 decisions.
+- **Candidates:** `hard`'s roots ranked by **tier-1 value only** (no mixing with the one
+  reply-checked root, `search.ts:276-309`); top 3, plus `hard`'s actual pick if absent.
+- **Selection:** 32 salts per candidate, all seats `normal`, horizon `game`, primary estimator
+  **win share** (`winners[0] === self`, tie-break wins included). Common salts across candidates.
+  Displace `hard`'s pick with the best challenger if its paired mean difference has **z ≥ 1.0**. The
+  selection rule is deliberately permissive: the held-out stage absorbs false flips.
+- **Evaluation (held out, different continuation):** 32 fresh salts for `hard`'s pick and for the
+  rule's pick, **all seats `hard`**, horizon `game`. This tests whether a pick found under `normal`
+  continuations is still better under the stronger policy (continuation-bias check).
+- **Report:** displacement rate; false-flip rate (flips whose held-out difference < 0); net held-out
+  win-share gain per decision, game-clustered se; the same numbers for the secondary estimators
+  (power margin, chapter-end `valueOf`) as description only.
+- **Pass:** net held-out gain z ≥ 2 (one primary look). **Early stop** after 150 decisions if the gain
+  is < +0.5% with se < 2%. MDE at 400 decisions (net over all contested decisions, so it is displacement rate × gain per flip; a miss is "not detected", not "null"): roughly +3% per decision (held-out paired sd ≈ 0.25
+  per decision after averaging 32 salts); stated in the result.
+- **Compute:** sized after A2's twin run measures `hard`'s playout cost. If the evaluation stage
+  exceeds 48 h on 14 jobs, evaluation salts drop to 16 and the MDE is restated.
 
-**Gate:** `hard`-with-`CARD_WEIGHTS` beats `hard` at 4p past the twin floor. If it passes it is
-folded into `brutal`; either way the table and the method are recorded.
+### B3. The CLI
 
-Jev (TypeSafe) is **not** used: the rollout table measures what each card does in this engine,
-which a language model reading the card text can only guess at, and it keeps the engine free of
-network calls. Noted as an alternative, not pursued.
+`npm run advise -- <gameId | save.json> <faction> [--cores N]`:
 
-## 6. Step 4 — ships that go somewhere
+- Source: a save file, or a live game's options + journal via `ssh tower sqlite3 -readonly`. No
+  writes; no network calls from the engine.
+- Not `faction`'s decision → says whose it is, exits 0.
+- Card play: prints `hard`'s roots with values labelled **tier-1** or **reply-checked**; if B2 passed,
+  runs the B2 selection rule across cores and prints each candidate's rollout win share ± se and
+  whether it displaced `hard`'s pick. If B2 did not pass, it says the rollout check was not detected to help and shows `hard`'s analysis only.
+- Then plays the recommended line through the rest of the turn with `hard`, printing each step's
+  `because`.
+- Deterministic for a fixed journal, regardless of `--cores`.
 
-`gatesHeld`/`fleetThreat` exist at weight 0; a general "pull" toward everything measured worse
-(mobile.ts). The new attempt is **goal-directed and tactical**, as one feature family, off by
-default:
+## 5. Phase C — the opponent: what the evaluator can see
 
-- `targetDistance`: for each ambition `intent` pursues, the gate-distance from `self`'s nearest
-  fleet to the nearest system that would advance it — an unruled planet of a needed resource
-  (Tycoon/Keeper/Empath), a rival city or starport to raid for captives/trophies (Tyrant/Warlord).
-  Priced as the negative of distance, weighted by the pursuit strength, capped at 3 gates.
-- `battleEdge`: for each adjacent-or-same system with rival pieces, the expected hits
-  differential of attacking with the ships there at the dice we can roll — only when we hold or
-  can play Aggression, so it is a real option, not a daydream.
+Each attempt is weight 0 in `WEIGHTS` and enabled only in a candidate `HARD_WEIGHTS`; gated in
+`hard` at 4p against today's `hard`. Action-level terms (C1) act on `hard`'s **delegate** asks only —
+the beam scores lines with `valueOf` (`search.ts:200,236`) and cannot see them, exactly as
+`moveReversal` today (`levels.ts:63-64`).
 
-Built behind `SHIP_WEIGHTS`, the move-probe peek that `mobile.ts` records as needed (a Move pick
-does not move ships until the fleet-size step) is reinstated **only inside this feature's probe**,
-so it cannot leak into `battleUnlocked` the way the earlier attempt did.
+### C1. Where ships go — zero-sum among Move destinations
 
-**Gate:** `normal`-with-`SHIP_WEIGHTS` beats `normal` at 4p past the twin floor, no unfinished-game
-regression, and move reversals stay at zero. Then re-measured inside `hard`.
+`mobile.ts:33-36` records why the proximity pull lost: "purposeful-looking movement bought by pips
+that standard spends on the economy." So `moveToward` **cannot change Move-vs-economy**: at an ask
+offering Move destinations, it scores each destination by the reduction in BFS gate-distance (over
+`connected`, `board.ts:117`, precomputed per board) from the moving fleet to its nearest intent
+target, times the pursuit strength, then **subtracts the mean over the offered destinations**, so its
+sum over any Move ask is zero and it only re-ranks destinations. Asks that are not a destination
+choice are untouched.
 
-## 7. Step 5 — assemble `brutal`, coverage audit, and the advisor
+Targets by pursued ambition: an unruled planet of a needed resource (Tycoon: Material/Fuel; Keeper:
+Relic; Empath: Psionic); a rival city/starport (Tyrant, Warlord); with no strong intent, the nearest
+unruled planet of a resource we lack.
 
-**`brutal`** = `oracleBot` over a `hard` that uses whichever of `CARD_WEIGHTS` / `SHIP_WEIGHTS`
-passed, at the largest budget meeting the latency gate. Added to `BOT_LEVELS` only if it clears the
-ship gate. Because the server runs bots on its event loop (`gate.ts` `runBots`), a `brutal` seat
-runs `stepBot` in a `worker_threads` worker there, so a 3 s think does not stall other games; the
-web client already runs bots off the render path via its pacing loop, and a brutal game in the
-browser is acceptable at this latency. If the ship gate fails, `BOT_LEVELS` is untouched.
+Probe-game criteria before arena time (100 4p games vs today): move reversals stay 0; unfinished
+games 0; **Move share of pips unchanged within 2 points**. Two weights, C1a and C1b.
 
-**Coverage audit:** a test walks every `Action['type']` the base game's rule modules can ask
-(enumerated from the modules' `Continue.ask` sites) and asserts each is exercised by at least one
-arena game under `brutal` — a bot that never takes an action type (e.g. never Repairs, never
-battles) is a blind spot made visible. Gaps found are recorded in docs/19, not necessarily fixed.
+### C2. Court cards by what they do — hand-authored, restricted to used abilities
 
-**Advisor** — `scripts/advise.ts`, `npm run advise -- <gameId|save.json> <faction> [--budget]`:
+Rev 1's rollout-measured table hits §3i's label-noise wall and prices cards under a policy that never
+uses them; it is dropped. The Weapon precedent (docs/19 §9) says pricing an asset does not make the
+bot use it. So:
 
-- Source: a save file, or a live game id fetched read-only over `ssh tower sqlite3` (options +
-  journal, `-readonly`). No writes to the prod DB, no network calls from the engine.
-- Replays, checks it is `faction`'s decision, and if it is a card play runs `oracleBot` at advisor
-  budget; otherwise `hard`. Then continues the recommended line through the rest of the turn with
-  the same bot, printing each step.
-- Output: the recommended line; every candidate card play with its oracle win rate ± se and `hard`'s
-  score; the intent summary. Plain text, readable in a terminal.
-- If it is not `faction`'s turn it says whose it is and exits 0.
+1. The section 6 coverage report runs first. For each of the **25 guild cards** (the 6 Vox are never
+   held; `courtWorth` flat-prices them), it counts how often the card's ability was offered to its
+   holder and how often it was taken.
+2. C2 covers only guild cards whose ability the bots take when offered (≥ 50% take rate), or whose
+   effect is passive (applies without a choice).
+3. `court-knowledge.ts` records per such card, from the rules code implementing it: what holding it
+   yields per chapter, in power-equivalent units; which ambition it serves (multiplied by pursuit,
+   as `courtWorth` does for suit); **net of what `courtWorth` already prices** by suit and keys.
+4. Justification against the register's bar: `courtWorth`'s suit-and-keys pricing is a recorded
+   blind spot (docs/19 §0); a probe criterion before arena time is that the bot's Influence/Secure
+   choices change in ≥ 5% of probe decisions (otherwise the feature cannot matter and the slots go
+   unused).
 
-## 8. Out of scope
+Two variants: C2a full table, C2b at half scale.
 
-Leaders & Lore and campaign tuning (the bot must still *run* there — tests keep it working — but
-nothing is measured there); a learned/neural evaluator (docs/19's remaining big idea; the oracle's
-output is logged in a form a later distillation can train on, and that is all); UI for the advisor;
-changing `normal`/`easy`/`hard` behaviour except via a feature that passed its gate.
+### C3. The win threshold — pre-gated
 
-## 9. Risks
+`nearWin`: for self and the best rival, a term rising sharply as projected power (power + standing on
+declared markers) approaches `39 − 3·factions` (`ambitions.ts:694`). docs/19 §19 showed an end-of-turn
+threshold term cancels in the §18 game and cannot flip it, so C3 gets arena time **only if** it
+first flips at least 3 contested B2-corpus decisions toward the rollout-preferred move at a weight
+that leaves the §18 pinned test's outcome unchanged. Otherwise its family slot goes unused.
 
-- **The oracle measures null** like every other rollout. Then the advisor still ships (it is at
-  worst `hard` with a second opinion attached) and steps 3-4 carry `brutal`.
-- **Speedups change behaviour** via float order or iteration order. Mitigated by the golden-journal
-  gate in step 1.
-- **Arena compute.** Oracle games are expensive; 600 4p games at advisor budget may be days.
-  Mitigated by measuring the idea at 2p first (gate 4a) and the opponent budget at 4p, with
-  `--jobs 14` on the 16-core desktop.
-- **Determinism across clients** — rollouts are a new source of hidden state; pinned by tests
-  (same state ⇒ same move; hidden-hand independence).
+### Assembly and the fold into `hard`
+
+Everything that passed goes into `HARD_WEIGHTS = { ...MOBILE_WEIGHTS, … }`, re-measured once against
+today's `hard` (family test 6). On a pass, `levels.ts` points `hard` at it with the measurement in a
+comment; `normal`/`easy` are asserted byte-identical by the golden fixture; pinned `hard` tests (e.g.
+the game-41 oracle pin in `search-rounds.test.ts`) are re-derived and the changes explained. Note in
+the release: the server picks the bot per step (`gate.ts:179`), so in-progress bot games get the new
+`hard` from the deploy on. If nothing passes, `hard` is unchanged and the nulls are recorded.
+
+## 6. Coverage report (script)
+
+`playGame` gains an optional per-ask recorder (offered action types, taken type, faction; off by
+default so arena output is unchanged); `scripts/coverage.ts` runs 200 4p `hard` games with it and
+prints, per base-game action type and per guild-card ability, offered vs taken. Offered-but-never-
+taken types are recorded in docs/19 as blind spots. Report, not gate.
+
+## 7. Out of scope
+
+Leaders & Lore / campaign tuning (bots must still run there; the suite keeps them working); a new
+ladder rung; web/server worker threads; a learned evaluator (B1 logs labels for it); advisor UI.
+
+## 8. Risks
+
+- **B2 null** (plausible): the advisor is `hard`-with-explanation and says so.
+- **All of C null** (plausible): deliverables are the speedup, harness, advisor, coverage report and
+  recorded nulls; `hard` remains the strongest bot, which is itself the answer.
+- **Speedup changes behaviour:** committed golden fixture, any diff fails.
+- **Compute:** every gate sized from the A2 twin run; B2 has an early stop.
