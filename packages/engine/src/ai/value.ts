@@ -150,6 +150,7 @@ export const FEATURES = [
   'nearWin',
   'courtText',
   'seizeReady',
+  'battleChoice',
 ] as const
 
 export type Feature = (typeof FEATURES)[number]
@@ -268,6 +269,11 @@ export const WEIGHTS: Weights = {
    * C4): `declareReady` cannot see a seize, so the bot never took one. Off by default.
    */
   seizeReady: 0,
+  /*
+   * Action-level and zero-sum per ask (`battle-choice.ts`, C5): where to battle and whom to hit.
+   * Always 0 as a state feature. Off by default.
+   */
+  battleChoice: 0,
 }
 
 /** Every feature at 0, in `FEATURES` order; copied rather than rebuilt per call (docs/19 §21). */

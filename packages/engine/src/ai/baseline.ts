@@ -62,6 +62,7 @@ export const BASELINE_WEIGHTS: Weights = {
   nearWin: 0,
   courtText: 0,
   seizeReady: 0,
+  battleChoice: 0,
   courtSecured: 1,
   courtClaimAhead: 0.25,
   courtClaimLevel: 0.12,

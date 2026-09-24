@@ -9,6 +9,7 @@
  * (docs/03 section 9a), and it is why tie-breaking is positional rather than random.
  */
 
+import { battleChoiceTerms } from './battle-choice.js'
 import { moveTowardTerms } from './move-target.js'
 import { interceptionRisk } from '../rules/battle.js'
 import { intentFor, structuralFitness } from './intent.js'
@@ -268,6 +269,18 @@ export function heuristicBotWith(
      * Where ships go: the zero-sum destination ranking (`move-target.ts`). Added after scoring so
      * it only reorders Move picks among themselves; inert at weight 0, which every shipped set has.
      */
+    // Where to fight and whom to hit (`battle-choice.ts`): the same zero-sum shape, weight 0 in
+    // every shipped set.
+    const fight = weights.battleChoice ?? 0
+    if (fight !== 0) {
+      const terms = battleChoiceTerms(observed, observed.self, intent, choices)
+      for (let i = 0; i < considered.length; i++) {
+        const c = considered[i]!
+        const t = terms.get(c.action)
+        if (t !== undefined) considered[i] = { ...c, score: c.score + fight * t }
+      }
+    }
+
     const toward = weights.moveToward ?? 0
     if (toward !== 0) {
       const terms = moveTowardTerms(observed, observed.self, intent, choices, (a) => undoing.has(a))

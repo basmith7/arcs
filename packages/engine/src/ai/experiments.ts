@@ -33,4 +33,9 @@ export const EXPERIMENTS: Readonly<Record<string, () => Bot>> = {
    */
   c4a: () => hardWith({ ...MOBILE_WEIGHTS, seizeReady: 0.1 }),
   c4b: () => hardWith({ ...MOBILE_WEIGHTS, seizeReady: 0.2 }),
+  /**
+   * C5 (from the tie audit, docs/19 §23): where to battle and whom to hit, on top of C1a — gated
+   * against `c1a`, the bot it would join.
+   */
+  c5: () => hardWith({ ...MOBILE_WEIGHTS, moveToward: 0.25, battleChoice: 0.25 }),
 }
