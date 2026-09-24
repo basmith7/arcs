@@ -34,7 +34,7 @@
 
 import { defaultRegistry, startGame } from '../index.js'
 import { botFor, runBots } from './play.js'
-import type { BotSeats } from './play.js'
+import type { BotSeats, DecisionRecorder } from './play.js'
 import type { Bot } from './bot.js'
 import type { FactionId } from '../ids.js'
 import type { NewGameOptions } from '../index.js'
@@ -72,6 +72,8 @@ export interface ArenaGame {
   readonly leadersAndLore?: NewGameOptions['leadersAndLore']
   /** Decisions before the game is called stuck. See `STUCK_AFTER`. */
   readonly stuckAfter?: number
+  /** Observation hook, passed to `runBots` (coverage and probe tallies). */
+  readonly onDecision?: DecisionRecorder
 }
 
 const DEFAULT_BOARD = 'Board4MixUp1'
@@ -120,6 +122,7 @@ export function playGame(game: ArenaGame, registry?: RuleRegistry): GameOutcome 
       game.seats,
       reg,
       game.stuckAfter ?? STUCK_AFTER,
+      game.onDecision,
     )
     const cont = out.result.continue
     const winner = cont.kind === 'gameOver' ? cont.winners[0] : undefined
@@ -176,6 +179,8 @@ export interface ArenaConfig {
   readonly leadersAndLore?: NewGameOptions['leadersAndLore']
   /** Decisions before a game is called stuck; lower it to make a loop fail fast. */
   readonly stuckAfter?: number
+  /** Observation hook for every game (see `ArenaGame.onDecision`). */
+  readonly onDecision?: DecisionRecorder
   /** Called after each game — the CLI prints progress rather than waiting in silence. */
   readonly onGame?: (outcome: GameOutcome, index: number) => void
 }
@@ -268,6 +273,7 @@ export function playGameAt(
       factions,
       ...(config.leadersAndLore === undefined ? {} : { leadersAndLore: config.leadersAndLore }),
       ...(config.stuckAfter === undefined ? {} : { stuckAfter: config.stuckAfter }),
+      ...(config.onDecision === undefined ? {} : { onDecision: config.onDecision }),
     },
     registry,
   )

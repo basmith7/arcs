@@ -53,7 +53,14 @@ const verbose = argv.includes('--verbose')
 const noise = argv.includes('--noise')
 const jobs = Math.max(1, Number(flag('jobs') ?? 1))
 
-const names = (flag('seats') ?? 'heuristic,trivial,trivial,trivial').split(',')
+/*
+ * A seat may be `alias=spec`: the alias becomes the bot's id, so two seats of the same
+ * configuration can form a side (`A=hard,B=hard,A=hard,B=hard` is a 2-vs-2 twin run for the paired
+ * gate, which `--noise`'s single renamed seat cannot express).
+ */
+const seatArgs = (flag('seats') ?? 'heuristic,trivial,trivial,trivial').split(',')
+const aliases = seatArgs.map((a) => (a.includes('=') ? a.slice(0, a.indexOf('=')) : undefined))
+const names = seatArgs.map((a) => (a.includes('=') ? a.slice(a.indexOf('=') + 1) : a))
 const specs: BotSpec[] = names.map(parseSpec)
 /*
  * One default board per seat count. Written as a table rather than a ternary because the ternary
@@ -93,7 +100,9 @@ const bots = specs.map(buildBot)
  * Ids must be distinct for the report to separate the twins, and only the twin is renamed — so the
  * table shows a bot beside a copy of itself and the gap between them is readable directly.
  */
-const ids = bots.map((b, i) => (noise && i === specs.length - 1 ? `${b.id} [twin]` : b.id))
+const ids = bots.map((b, i) =>
+  aliases[i] ?? (noise && i === specs.length - 1 ? `${b.id} [twin]` : b.id),
+)
 const labelled = bots.map((b, i) => ({ ...b, id: ids[i]! }))
 
 console.log(

@@ -837,12 +837,20 @@ export function stepBot(
  * To play a bounded number of actions — a paced UI, a stepping panel — call `stepBot` in your own
  * loop. That is the caller's business, not a mode of this function.
  */
+/** See `runBots`' `onDecision`. */
+export type DecisionRecorder = (faction: FactionId, offered: readonly Action[], taken: Action) => void
+
 export function runBots(
   result: RuleResult,
   bots: readonly FactionId[] | undefined,
   bot: Bot | BotSeats,
   registry?: RuleRegistry,
   stuckAfter = 100_000,
+  /**
+   * Told once per bot decision what was offered and what was taken — the coverage report's feed
+   * (spec 2026-09-23 section 6). Observation only: the game is identical with or without it.
+   */
+  onDecision?: DecisionRecorder,
 ): { result: RuleResult; decisions: readonly BotDecision[] } {
   const decisions: BotDecision[] = []
   let current = result
@@ -850,7 +858,9 @@ export function runBots(
   for (let i = 0; i < stuckAfter; i++) {
     const faction = botToAct(current, bots)
     if (faction === undefined) return { result: current, decisions }
+    const offered = current.continue.kind === 'ask' ? current.continue.actions : []
     const step = stepBot(current, botFor(bot, faction), faction, registry, asked)
+    onDecision?.(faction, offered, step.decision.action)
     current = step.result
     asked = step.asked
     decisions.push(step.decision)
