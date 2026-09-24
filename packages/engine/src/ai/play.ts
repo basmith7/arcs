@@ -786,12 +786,11 @@ export function stepBot(
        * shape of the game — which question comes next, how many pips are left — and neither is
        * affected by how the dice fall.
        */
+      // One object for both, so the evaluator's per-observation caches serve `observed` too.
+      const here = observe(settled.state, faction)
       return {
-        observed: observe(settled.state, faction),
-        samples: [
-          observe(settled.state, faction),
-          ...settledSamples(result.state, action, faction, reg, resolve),
-        ],
+        observed: here,
+        samples: [here, ...settledSamples(result.state, action, faction, reg, resolve)],
         repeats: at !== undefined && at >= depth,
         undoes:
           action.type === 'action/move-pick' &&

@@ -14,6 +14,7 @@
  * should be treated as suspicious rather than confirmed.
  */
 
+import { colorsIn, figuresOf } from '../figure-index.js'
 import { LORE_AMBITION, hasLore, loreActive } from '../lore.js'
 import { metric, rivalHoldings } from '../rules/ambitions.js'
 import { canBattle } from '../rules/battle.js'
@@ -95,14 +96,7 @@ function courtWorth(id: string, intent: ChapterIntent): number {
 }
 
 function pieces(observed: ObservedState, self: FactionId, piece: string): string[] {
-  const out: string[] = []
-  for (const s of observed.board.systems) {
-    for (const id of contentsOf(observed.figures, Location.system(s))) {
-      const f = parseFigureId(id)
-      if (f.color === self && f.piece === piece) out.push(id)
-    }
-  }
-  return out
+  return figuresOf(observed.figures, observed.board.systems, self, piece).map((p) => p.id)
 }
 
 /**
@@ -253,8 +247,32 @@ export const WEIGHTS: Weights = {
 const zero = (): Record<Feature, number> =>
   Object.fromEntries(FEATURES.map((f) => [f, 0])) as Record<Feature, number>
 
+/**
+ * Cached per (observation, faction, intent object). A decision scores each probe for itself and
+ * every rival, and the `because` line re-reads the first probe — the same features computed again
+ * and again (docs/19 §21). Observations and intents are immutable, so a hit can never be stale.
+ */
+const FEATURES_CACHE = new WeakMap<ObservedState, WeakMap<ChapterIntent, Map<FactionId, Features>>>()
+
 /** What a position presents to one faction, unweighted. */
 export function featuresOf(
+  observed: ObservedState,
+  self: FactionId,
+  intent: ChapterIntent,
+): Features {
+  let byIntent = FEATURES_CACHE.get(observed)
+  if (byIntent === undefined) FEATURES_CACHE.set(observed, (byIntent = new WeakMap()))
+  let byFaction = byIntent.get(intent)
+  if (byFaction === undefined) byIntent.set(intent, (byFaction = new Map()))
+  const hit = byFaction.get(self)
+  if (hit !== undefined) return hit
+  const x = Object.freeze(featuresOfUncached(observed, self, intent))
+  byFaction.set(self, x)
+  return x
+}
+
+/** `featuresOf` without the cache — exported so the cache can be tested against it. */
+export function featuresOfUncached(
   observed: ObservedState,
   self: FactionId,
   intent: ChapterIntent,
@@ -453,29 +471,24 @@ export function featuresOf(
    *     than per occupied system, because a per-system sum paid the bot to shatter its fleet
    *     one ship per system and catapult-spam the map (1,172 chains in six probe games).
    */
-  const shipStands = new Set<string>()
-  for (const s of observed.board.systems) {
-    for (const id of contentsOf(observed.figures, Location.system(s))) {
-      const f = parseFigureId(id)
-      if (f.color === self && f.piece === 'Ship' && !observed.damaged.includes(id)) {
-        shipStands.add(s)
-        break
-      }
-    }
-  }
+  // From the shared figure index (docs/19 §21): same sets and sums as a scan of every system.
+  const systems = observed.board.systems
+  const freshShips = figuresOf(observed.figures, systems, self, 'Ship').filter(
+    (p) => !observed.damaged.includes(p.id),
+  )
+  const shipStands = new Set<string>(freshShips.map((p) => p.system))
   x.gatesHeld = [...shipStands].filter((s) => systemInfo(s).isGate).length
+  const built = new Set<string>([
+    ...figuresOf(observed.figures, systems, self, 'City').map((p) => p.system),
+    ...figuresOf(observed.figures, systems, self, 'Starport').map((p) => p.system),
+  ])
 
   // Multi-source BFS from every worthwhile system, to distance 2.
   const dist = new Map<string, number>()
-  for (const s of observed.board.systems) {
-    const here = contentsOf(observed.figures, Location.system(s))
-    const rival = here.some((id) => parseFigureId(id).color !== self)
-    const unexploited =
-      planetResource(observed, s) !== undefined &&
-      !here.some((id) => {
-        const f = parseFigureId(id)
-        return f.color === self && (f.piece === 'City' || f.piece === 'Starport')
-      })
+  for (const s of systems) {
+    const colors = colorsIn(observed.figures, systems, s)
+    const rival = colors.size > (colors.has(self) ? 1 : 0)
+    const unexploited = planetResource(observed, s) !== undefined && !built.has(s)
     if (rival || unexploited) dist.set(s, 0)
   }
   let frontier = [...dist.keys()]
@@ -492,14 +505,7 @@ export function featuresOf(
     frontier = next
   }
   let threat = 0
-  for (const s of observed.board.systems) {
-    const near = 3 - (dist.get(s) ?? 3)
-    if (near === 0) continue
-    for (const id of contentsOf(observed.figures, Location.system(s))) {
-      const f = parseFigureId(id)
-      if (f.color === self && f.piece === 'Ship' && !observed.damaged.includes(id)) threat += near
-    }
-  }
+  for (const p of freshShips) threat += 3 - (dist.get(p.system) ?? 3)
   x.fleetThreat = threat
   // Action-level (see the weight's note): always 0 as a state feature.
   x.moveReversal = 0

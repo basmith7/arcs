@@ -24,7 +24,7 @@
 
 import { planetResource } from '../control.js'
 import { AMBITIONS } from '../state.js'
-import { Location, contentsOf, parseFigureId } from '../index.js'
+import { figuresOf } from '../figure-index.js'
 import type { FactionId } from '../ids.js'
 import type { ObservedState } from '../observe.js'
 import type { Resource } from '../resources.js'
@@ -51,16 +51,13 @@ export function incomeFor(
   self: FactionId,
 ): ReadonlyMap<Ambition, number> {
   const out = new Map<Ambition, number>(AMBITIONS.map((a) => [a, 0]))
-  for (const system of observed.board.systems) {
+  // Own cities from the shared index (docs/19 §21) rather than a scan of every system.
+  for (const { system } of figuresOf(observed.figures, observed.board.systems, self, 'City')) {
     const resource = planetResource(observed, system)
     if (resource === undefined) continue
     const ambition = FEEDS[resource]
     if (ambition === undefined) continue
-    const cities = contentsOf(observed.figures, Location.system(system)).filter((id) => {
-      const f = parseFigureId(id)
-      return f.color === self && f.piece === 'City'
-    }).length
-    if (cities > 0) out.set(ambition, (out.get(ambition) ?? 0) + cities)
+    out.set(ambition, (out.get(ambition) ?? 0) + 1)
   }
   return out
 }

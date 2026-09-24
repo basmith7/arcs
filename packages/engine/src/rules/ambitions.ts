@@ -103,7 +103,26 @@ export interface MetricView extends SlotView {
  *   - **Weapon guilds score nothing**, exactly as Weapon tokens do not: the rulebook says so
  *     outright, and it falls out here because no ambition asks for Weapons.
  */
+/**
+ * Cached per state object and (faction, ambition): the evaluator asks for every faction's standing
+ * on every declared ambition at every probe, and this was 37% of a `normal` game (docs/19 §21).
+ * States are immutable — every change makes a new object — so a result can never go stale.
+ */
+const METRIC = new WeakMap<object, Map<string, number>>()
+
 export function metric(state: MetricView, faction: FactionId, ambition: Ambition): number {
+  let m = METRIC.get(state)
+  if (m === undefined) METRIC.set(state, (m = new Map()))
+  const key = `${faction}|${ambition}`
+  const hit = m.get(key)
+  if (hit !== undefined) return hit
+  const v = metricUncached(state, faction, ambition)
+  m.set(key, v)
+  return v
+}
+
+/** `metric` without the cache — exported so the cache can be tested against it. */
+export function metricUncached(state: MetricView, faction: FactionId, ambition: Ambition): number {
   const slots = slotsOf(state, faction)
   const res = (r: Parameters<typeof countResource>[2]) =>
     countResource(state.resources, slots, r)
