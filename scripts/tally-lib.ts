@@ -13,10 +13,12 @@ export interface Tally {
   taken: Record<string, number>
   /** Move legs that exactly undo the same faction's previous leg within one card play. */
   reversals: number
+  /** Where each reversal happened: decision number within the game, the two legs. */
+  reversalAt: string[]
   decisions: number
 }
 
-export const emptyTally = (): Tally => ({ offered: {}, taken: {}, reversals: 0, decisions: 0 })
+export const emptyTally = (): Tally => ({ offered: {}, taken: {}, reversals: 0, reversalAt: [], decisions: 0 })
 
 const keyOf = (a: Action): string =>
   a.type === 'action/take'
@@ -45,7 +47,10 @@ export function recorder(
     if (taken.type === 'action/move-pick') {
       const leg = { from: String(taken['from']), to: String(taken['to']) }
       const prev = lastLeg.get(faction)
-      if (prev !== undefined && prev.from === leg.to && prev.to === leg.from) t.reversals++
+      if (prev !== undefined && prev.from === leg.to && prev.to === leg.from) {
+        t.reversals++
+        t.reversalAt.push(`${faction}@${t.decisions}: ${prev.from}->${prev.to} then ${leg.from}->${leg.to}`)
+      }
       lastLeg.set(faction, leg)
     }
   }
@@ -55,6 +60,7 @@ export function merge(into: Tally, t: Tally): void {
   for (const [k, v] of Object.entries(t.offered)) into.offered[k] = (into.offered[k] ?? 0) + v
   for (const [k, v] of Object.entries(t.taken)) into.taken[k] = (into.taken[k] ?? 0) + v
   into.reversals += t.reversals
+  into.reversalAt.push(...(t.reversalAt ?? []))
   into.decisions += t.decisions
 }
 

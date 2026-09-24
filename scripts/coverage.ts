@@ -66,6 +66,7 @@ await Promise.all(
 console.log(`\n${games} games on ${board}: ${finished} finished, ${unfinished} unfinished`)
 for (const [id, t] of totals) {
   console.log(`\n== ${id}: ${t.decisions} decisions, move share of pips ${(100 * moveShare(t)).toFixed(1)}%, reversals ${t.reversals}`)
+  for (const at of t.reversalAt) console.log(`  reversal: ${at}`)
   for (const k of Object.keys(t.offered).sort()) {
     const o = t.offered[k]!
     const tk = t.taken[k] ?? 0
