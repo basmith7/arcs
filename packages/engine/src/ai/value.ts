@@ -251,8 +251,73 @@ export const WEIGHTS: Weights = {
   moveToward: 0,
 }
 
-const zero = (): Record<Feature, number> =>
-  Object.fromEntries(FEATURES.map((f) => [f, 0])) as Record<Feature, number>
+/** Every feature at 0, in `FEATURES` order; copied rather than rebuilt per call (docs/19 §21). */
+const ZERO: Readonly<Record<Feature, number>> = Object.freeze(
+  Object.fromEntries(FEATURES.map((f) => [f, 0])) as Record<Feature, number>,
+)
+const zero = (): Record<Feature, number> => ({ ...ZERO })
+
+/**
+ * `gatesHeld` and `fleetThreat` for one faction. They read only the figures, the damaged list and
+ * the planet types, so the result is cached on those three objects (all immutable, and shared
+ * between observations whenever they did not change) — the BFS behind `fleetThreat` was a visible
+ * share of every evaluation even at weight 0 (docs/19 §21).
+ */
+const POSITIONAL = new WeakMap<object, WeakMap<object, WeakMap<object, Map<FactionId, { gatesHeld: number; fleetThreat: number }>>>>()
+
+function positionalOf(observed: ObservedState, self: FactionId): { gatesHeld: number; fleetThreat: number } {
+  let a = POSITIONAL.get(observed.figures)
+  if (a === undefined) POSITIONAL.set(observed.figures, (a = new WeakMap()))
+  let b = a.get(observed.damaged)
+  if (b === undefined) a.set(observed.damaged, (b = new WeakMap()))
+  let c = b.get(observed.planetTypes)
+  if (c === undefined) b.set(observed.planetTypes, (c = new Map()))
+  const hit = c.get(self)
+  if (hit !== undefined) return hit
+  const v = positionalUncached(observed, self)
+  c.set(self, v)
+  return v
+}
+
+/** Exported for the cache test only. */
+export function positionalUncached(observed: ObservedState, self: FactionId): { gatesHeld: number; fleetThreat: number } {
+  // From the shared figure index (docs/19 §21): same sets and sums as a scan of every system.
+  const systems = observed.board.systems
+  const freshShips = figuresOf(observed.figures, systems, self, 'Ship').filter(
+    (p) => !observed.damaged.includes(p.id),
+  )
+  const shipStands = new Set<string>(freshShips.map((p) => p.system))
+  const gatesHeld = [...shipStands].filter((s) => systemInfo(s).isGate).length
+  const built = new Set<string>([
+    ...figuresOf(observed.figures, systems, self, 'City').map((p) => p.system),
+    ...figuresOf(observed.figures, systems, self, 'Starport').map((p) => p.system),
+  ])
+
+  // Multi-source BFS from every worthwhile system, to distance 2.
+  const dist = new Map<string, number>()
+  for (const s of systems) {
+    const colors = colorsIn(observed.figures, systems, s)
+    const rival = colors.size > (colors.has(self) ? 1 : 0)
+    const unexploited = planetResource(observed, s) !== undefined && !built.has(s)
+    if (rival || unexploited) dist.set(s, 0)
+  }
+  let frontier = [...dist.keys()]
+  for (let d = 1; d <= 2; d++) {
+    const next: string[] = []
+    for (const s of frontier) {
+      for (const n of connectedSystems(observed.board, s)) {
+        if (!dist.has(n)) {
+          dist.set(n, d)
+          next.push(n)
+        }
+      }
+    }
+    frontier = next
+  }
+  let threat = 0
+  for (const p of freshShips) threat += 3 - (dist.get(p.system) ?? 3)
+  return { gatesHeld, fleetThreat: threat }
+}
 
 /**
  * Cached per (observation, faction, intent object). A decision scores each probe for itself and
@@ -478,42 +543,9 @@ export function featuresOfUncached(
    *     than per occupied system, because a per-system sum paid the bot to shatter its fleet
    *     one ship per system and catapult-spam the map (1,172 chains in six probe games).
    */
-  // From the shared figure index (docs/19 §21): same sets and sums as a scan of every system.
-  const systems = observed.board.systems
-  const freshShips = figuresOf(observed.figures, systems, self, 'Ship').filter(
-    (p) => !observed.damaged.includes(p.id),
-  )
-  const shipStands = new Set<string>(freshShips.map((p) => p.system))
-  x.gatesHeld = [...shipStands].filter((s) => systemInfo(s).isGate).length
-  const built = new Set<string>([
-    ...figuresOf(observed.figures, systems, self, 'City').map((p) => p.system),
-    ...figuresOf(observed.figures, systems, self, 'Starport').map((p) => p.system),
-  ])
-
-  // Multi-source BFS from every worthwhile system, to distance 2.
-  const dist = new Map<string, number>()
-  for (const s of systems) {
-    const colors = colorsIn(observed.figures, systems, s)
-    const rival = colors.size > (colors.has(self) ? 1 : 0)
-    const unexploited = planetResource(observed, s) !== undefined && !built.has(s)
-    if (rival || unexploited) dist.set(s, 0)
-  }
-  let frontier = [...dist.keys()]
-  for (let d = 1; d <= 2; d++) {
-    const next: string[] = []
-    for (const s of frontier) {
-      for (const n of connectedSystems(observed.board, s)) {
-        if (!dist.has(n)) {
-          dist.set(n, d)
-          next.push(n)
-        }
-      }
-    }
-    frontier = next
-  }
-  let threat = 0
-  for (const p of freshShips) threat += 3 - (dist.get(p.system) ?? 3)
-  x.fleetThreat = threat
+  const positional = positionalOf(observed, self)
+  x.gatesHeld = positional.gatesHeld
+  x.fleetThreat = positional.fleetThreat
   // Action-level (see the weight's note): always 0 as a state feature.
   x.moveReversal = 0
 

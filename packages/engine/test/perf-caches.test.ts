@@ -11,7 +11,7 @@ import { contentsOf } from '../src/tracker.js'
 import { colorsIn, figuresOf } from '../src/figure-index.js'
 import { metric, metricUncached } from '../src/rules/ambitions.js'
 import { slotsOf, slotsOfUncached } from '../src/control.js'
-import { featuresOf, featuresOfUncached } from '../src/ai/value.js'
+import { featuresOf, featuresOfUncached, positionalUncached } from '../src/ai/value.js'
 import { intentFor } from '../src/ai/intent.js'
 import { feasibility } from '../src/ai/feasibility.js'
 import type { FactionId } from '../src/index.js'
@@ -102,5 +102,26 @@ describe('figure index', () => {
       const scan = new Set(contentsOf(r.state.figures, Location.system(system)).map((id) => parseFigureId(id).color))
       expect(colorsIn(r.state.figures, r.state.board.systems, system)).toEqual(scan)
     }
+  })
+})
+
+describe('positional cache', () => {
+  it('gatesHeld and fleetThreat match a fresh computation across a whole game', () => {
+    const F: FactionId[] = ['red', 'yellow']
+    const reg = defaultRegistry()
+    let r = startGame({ board: 'Board2Frontiers', factions: F, seed: 17, bots: F }, reg)
+    let checked = 0
+    for (let i = 0; i < 400 && !r.state.isOver; i += 10) {
+      for (const f of F) {
+        const view = observe(r.state, f)
+        const x = featuresOf(view, f, intentFor(view, f, feasibility))
+        const fresh = positionalUncached(view, f)
+        expect(x.gatesHeld).toBe(fresh.gatesHeld)
+        expect(x.fleetThreat).toBe(fresh.fleetThreat)
+        checked++
+      }
+      r = stepBots(r, F, mobileBot, 10, reg).result
+    }
+    expect(checked).toBeGreaterThan(20)
   })
 })
