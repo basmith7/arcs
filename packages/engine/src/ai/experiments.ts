@@ -27,8 +27,10 @@ export const EXPERIMENTS: Readonly<Record<string, () => Bot>> = {
   c2b: () => hardWith({ ...MOBILE_WEIGHTS, courtText: 0.5 }),
   /**
    * C4 (added from the coverage report, docs/19 §22, into slots C1b/C2 freed): the declaration a
-   * held seize makes possible. `c4a` prices it like `declareReady` (0.5); `c4b` at 1.
+   * held seize makes possible. First registered at 0.5 and 1: at 0.5 `hard` seized in 71% of
+   * offers, far outside the probe's 1-25% band, so the weights were re-picked by probe (as the spec
+   * allows for C1) at 0.1 and 0.2.
    */
-  c4a: () => hardWith({ ...MOBILE_WEIGHTS, seizeReady: 0.5 }),
-  c4b: () => hardWith({ ...MOBILE_WEIGHTS, seizeReady: 1 }),
+  c4a: () => hardWith({ ...MOBILE_WEIGHTS, seizeReady: 0.1 }),
+  c4b: () => hardWith({ ...MOBILE_WEIGHTS, seizeReady: 0.2 }),
 }
