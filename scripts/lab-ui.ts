@@ -10,8 +10,8 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 
-import { b2FromDisk, gateOf } from './lab-data.js'
-import type { B2Stats, IdeaRow } from './lab-data.js'
+import { b2ExampleFromDisk, b2FromDisk, gateOf } from './lab-data.js'
+import type { B2Example, B2Stats, IdeaRow } from './lab-data.js'
 import type { GateResult } from '@arcs/engine'
 
 const HOST = process.env['LAB_UI_HOST'] ?? '100.103.146.22'
@@ -98,7 +98,45 @@ function chart(b2: B2Stats): string {
     ${hover}</svg>`
 }
 
-export function render(b2: B2Stats, rows: readonly IdeaRow[], run: ReturnType<typeof runner>): string {
+/** The "how this works" section: each step of the process, with a worked example. */
+function explainer(ex: B2Example | undefined): string {
+  const live =
+    ex === undefined
+      ? '<p class="muted">A live example from this run appears here once the rollouts overrule a move.</p>'
+      : `<p>A real one from this run (game ${ex.seed}, move ${ex.idx + 1}). The bot had these card plays to choose from; each was played out 32 times to the end of the game:</p>
+<table class="ex"><thead><tr><th>Move</th><th class="num">won</th><th></th></tr></thead><tbody>
+${ex.moves
+  .map((m) => `<tr><td>${esc(m.label)}</td><td class="num">${m.wins} of ${m.games}</td><td>${m.hardPick ? '<span class="muted">hard’s pick</span>' : ''}${m.rulePick ? '<b>rollouts’ pick</b>' : ''}</td></tr>`)
+  .join('')}
+</tbody></table>
+<p>The rollouts’ pick won more often, and by enough (z ${ex.z.toFixed(1)}, needs 1) to overrule hard.
+${
+  ex.check === undefined
+    ? 'It has not been checked yet: that happens after all 150 decisions are tested.'
+    : `The check: ${ex.check.games} fresh games with the strong bot playing every seat — hard’s pick won ${ex.check.hardWins}, the rollouts’ pick won ${ex.check.ruleWins}. ${ex.check.ruleWins > ex.check.hardWins ? 'The overrule was right.' : ex.check.ruleWins < ex.check.hardWins ? 'The overrule was wrong.' : 'A draw — no gain.'}`
+}</p>`
+  return `<h2>How this works</h2>
+<details open><summary>The bot, in one paragraph</summary>
+<p>The bot scores every position with a weighted checklist — power, standing on declared ambitions, cities, resources, court cards — and picks the move that leads to the best score. <b>hard</b> also plans its whole turn ahead and imagines one reply from each rival. It never learns by itself: people improve it by finding things the checklist cannot see, and then <em>proving</em> the fix helps.</p></details>
+
+<details><summary>How an idea gets tested (probe → pre-screen → gate)</summary>
+<p><b>1. Probe</b> — 100 games to check the idea does what it claims and nothing silly. Example: the seizing idea (C4) at full strength made the bot seize 71% of the time — far too often — so it was turned down to a fifth of that before any real test.</p>
+<p><b>2. Pre-screen</b> — 400 cheap two-player games. If the idea isn’t even ahead there, it stops. Example: keeping a garrison home (C6) came out <em>behind</em> (−9.5 points), so it never reached step 3.</p>
+<p><b>3. Gate</b> — up to 1,600 four-player games, the new bot in two seats and the old one in the other two, every game dealt four times so each bot plays every seat. It passes at z ≥ 2.5. Example: ship targeting (C1a) won 31% of seats to the old bot’s 19% over 800 games — z 7.8, far past the bar — and shipped in v0.8.0.</p>
+<p>Every threshold is fixed before the games are played, so a lucky streak can’t talk its way into the bot.</p></details>
+
+<details><summary>Reading the numbers: win share Δ, z, power</summary>
+<p><b>Win share Δ</b> is how much more often the new bot’s seats win than the old bot’s, in points. +25.5 means: out of every 100 games, the new bot’s side wins about 25 more than the old side does (four players, so an even match is 25% a seat).</p>
+<p><b>z</b> is how many standard errors that is from zero — how sure we are it isn’t luck. z 1 is a coin-flip hunch, z 2.5 is the pass bar, z 7.8 is a sure thing. Seizing (C4a) passed at z 2.8: real, but small.</p>
+<p><b>Power Δ</b> is the average score difference per seat at the end of the game. It has to not be clearly negative — a bot that wins more by scoring less is winning tie-breaks, not playing better.</p></details>
+
+<details open><summary>B2: what “rollouts overruled hard” means, with a live example</summary>
+<p>B2 tests an idea for the <em>advisor</em>, not the in-game bot: for a close decision, play each of the top moves out to the end of the game many times with quick bots, and take the one that wins most. If that works, the advisor gets a slow, strong “double-check” mode.</p>
+${live}
+<p>The catch B2 guards against: quick simulated games can fool you. So every overrule is re-checked on <em>different</em> games with the strong bot, and only that second result counts. The final number is the average gain per close decision, with the decisions where the rollouts agreed with hard counted as zero. It passes at z ≥ 2.</p></details>`
+}
+
+export function render(b2: B2Stats, rows: readonly IdeaRow[], run: ReturnType<typeof runner>, example?: B2Example): string {
   const done = b2.selected >= b2.target
   const pctDone = Math.min(100, (100 * b2.selected) / b2.target)
   const eta =
@@ -117,13 +155,17 @@ main{max-width:760px;margin:0 auto;padding:20px 16px 40px}h1{font-size:20px;marg
 .stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:7px 6px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}th{color:var(--ink2);font-weight:500}
 .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.chip{white-space:nowrap}.good{color:var(--good)}.critical{color:var(--critical)}.warning{color:var(--warning)}
+details{border:1px solid var(--rule);border-radius:8px;padding:8px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}details p{margin:8px 0}
+.ex{margin:6px 0 4px}.ex td{padding:4px 6px}
 svg{width:100%;height:auto}
-@media (max-width:600px){thead{display:none}table,tbody,tr,td{display:block}tr{padding:10px 0;border-bottom:1px solid var(--rule)}
-td{border:0;padding:2px 0;text-align:left}td.num{text-align:left;display:inline-block;margin-right:14px}td.num::before{content:attr(data-label) ' ';color:var(--ink2)}
-td.vs::before{content:'vs ';}}.zero{stroke:var(--ink2);stroke-dasharray:3 3}.band{fill:var(--series);opacity:.18}.line{fill:none;stroke:var(--series);stroke-width:2}
+@media (max-width:600px){.ideas thead{display:none}.ideas,.ideas tbody,.ideas tr,.ideas td{display:block}.ideas tr{padding:10px 0;border-bottom:1px solid var(--rule)}
+.ideas td{border:0;padding:2px 0;text-align:left}.ideas td.num{text-align:left;display:inline-block;margin-right:14px}.ideas td.num::before{content:attr(data-label) ' ';color:var(--ink2)}
+.ideas td.vs::before{content:'vs ';}}.zero{stroke:var(--ink2);stroke-dasharray:3 3}.band{fill:var(--series);opacity:.18}.line{fill:none;stroke:var(--series);stroke-width:2}
 .tick{fill:var(--ink2);font-size:11px}.hit{fill:transparent}.hit:hover{fill:var(--series);opacity:.35}
 </style></head><body><main>
 <h1>Arcs bot lab</h1><p class="muted">Refreshes every minute · ${esc(new Date().toLocaleString('en-US', { timeZone: 'America/Phoenix' }))} MST</p>
+
+${explainer(example)}
 
 <h2>B2 — do rollouts make the advisor's picks better?</h2>
 <p class="muted">Runner <span class="${run.alive ? 'good' : 'critical'}">${run.alive ? '● running' : '○ not running'}</span>${esc(eta)}</p>
@@ -139,7 +181,7 @@ ${chart(b2)}
 <p class="muted">Gain is measured on fresh games played by the strong bot, not the games that chose the overrule. Decisions where the rollouts agreed with hard count as zero.</p>
 
 <h2>Every idea tested</h2>
-<table><thead><tr><th>Idea</th><th>vs</th><th class="num">win share Δ</th><th class="num">z</th><th class="num">power Δ</th><th>Verdict</th></tr></thead><tbody>
+<table class="ideas"><thead><tr><th>Idea</th><th>vs</th><th class="num">win share Δ</th><th class="num">z</th><th class="num">power Δ</th><th>Verdict</th></tr></thead><tbody>
 ${rows
   .map((r) => {
     const v = VERDICT[r.verdict]
@@ -162,7 +204,7 @@ export function serve(): void {
         return
       }
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
-      res.end(render(b2FromDisk(), ideas(), runner()))
+      res.end(render(b2FromDisk(), ideas(), runner(), b2ExampleFromDisk()))
     } catch (e) {
       res.writeHead(500, { 'content-type': 'text/plain' })
       res.end(`lab page error: ${(e as Error).message}`)

@@ -41,3 +41,22 @@ describe('lab page', () => {
     expect(html).not.toContain('<script>x</script>')
   })
 })
+
+describe('b2Example', () => {
+  it('picks the most confident overrule and labels the moves readably', async () => {
+    const { b2Example } = await import('./lab-data.js')
+    const row = (seed: number, rule: number, z: number, w: number[][]): string =>
+      JSON.stringify({ key: `${seed}:3`, seed, idx: 3, rule, z, wins: w, candidates: ['turn/lead(card="Mobilization-7",faction="red",suit="Mobilization")', 'turn/pivot(card="Construction-3",faction="red",suit="Construction")'] })
+    const ex = b2Example([row(1, 0, 0, [[1, 0], [0, 0]]), row(2, 1, 2.4, [[0, 0, 1], [1, 1, 1]])], [JSON.stringify({ key: '2:3', seed: 2, hard: [0, 1], rule: [1, 1] })])!
+    expect(ex.seed).toBe(2)
+    expect(ex.moves[0]).toEqual({ label: 'Lead Mobilization 7', wins: 1, games: 3, hardPick: true, rulePick: false })
+    expect(ex.moves[1]!.label).toBe('Pivot with Construction 3')
+    expect(ex.moves[1]!.rulePick).toBe(true)
+    expect(ex.check).toEqual({ hardWins: 1, ruleWins: 2, games: 2 })
+  })
+
+  it('is undefined before any overrule', async () => {
+    const { b2Example } = await import('./lab-data.js')
+    expect(b2Example([], [])).toBeUndefined()
+  })
+})

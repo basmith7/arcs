@@ -100,3 +100,52 @@ export function gateOf(files: readonly string[]): GateResult | undefined {
     .flatMap((f) => parse<GameOutcome>(readFileSync(f, 'utf8').split('\n')))
   return outcomes.length === 0 ? undefined : pairedGate(outcomes, 'B', 'A')
 }
+
+/** A real B2 decision, for the page's worked example. */
+export interface B2Example {
+  readonly seed: number
+  readonly idx: number
+  readonly z: number
+  readonly moves: readonly { label: string; wins: number; games: number; hardPick: boolean; rulePick: boolean }[]
+  /** The held-out check under the strong bot, once it has run. */
+  readonly check?: { hardWins: number; ruleWins: number; games: number }
+}
+
+const VERB: Record<string, string> = { lead: 'Lead', surpass: 'Surpass with', pivot: 'Pivot with', copy: 'Copy with', pass: 'Pass', seize: 'Seize with' }
+
+/** `turn/pivot(card="Construction-3",…)` -> "Pivot with Construction 3". */
+export function moveLabel(encoded: string): string {
+  const m = /^turn\/([a-z-]+)\((.*)\)$/.exec(encoded)
+  if (m === null) return encoded
+  const card = /card="([A-Za-z]+)-(\d)"/.exec(m[2]!)
+  const verb = VERB[m[1]!] ?? m[1]!
+  return card === null ? verb : `${verb} ${card[1]} ${card[2]}`
+}
+
+/** The overrule the rollouts were most sure of (checked ones first). */
+export function b2Example(selectionLines: readonly string[], evaluationLines: readonly string[]): B2Example | undefined {
+  const sel = parse<{ key: string; seed: number; idx: number; rule: number; z: number; wins: number[][]; candidates: string[] }>(selectionLines)
+  const ev = new Map(parse<Evaluated>(evaluationLines).map((e) => [e.key, e]))
+  const flips = sel.filter((s) => s.rule !== 0).sort((a, b) => Number(ev.has(b.key)) - Number(ev.has(a.key)) || b.z - a.z)
+  const s = flips[0]
+  if (s === undefined) return undefined
+  const e = ev.get(s.key)
+  const sum = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0)
+  return {
+    seed: s.seed,
+    idx: s.idx,
+    z: s.z,
+    moves: s.candidates.map((c, i) => ({
+      label: moveLabel(c),
+      wins: sum(s.wins[i] ?? []),
+      games: (s.wins[i] ?? []).length,
+      hardPick: i === 0,
+      rulePick: i === s.rule,
+    })),
+    ...(e === undefined ? {} : { check: { hardWins: sum(e.hard), ruleWins: sum(e.rule), games: e.hard.length } }),
+  }
+}
+
+export function b2ExampleFromDisk(dir = 'runs/b2'): B2Example | undefined {
+  return b2Example(lines(`${dir}/selection.jsonl`), lines(`${dir}/evaluation.jsonl`))
+}
