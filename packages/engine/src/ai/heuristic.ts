@@ -9,6 +9,7 @@
  * (docs/03 section 9a), and it is why tie-breaking is positional rather than random.
  */
 
+import { garrisonTerms, guildUseTerms, takeMoveTerms } from './action-terms.js'
 import { battleChoiceTerms } from './battle-choice.js'
 import { moveTowardTerms } from './move-target.js'
 import { interceptionRisk } from '../rules/battle.js'
@@ -278,6 +279,21 @@ export function heuristicBotWith(
         const c = considered[i]!
         const t = terms.get(c.action)
         if (t !== undefined) considered[i] = { ...c, score: c.score + fight * t }
+      }
+    }
+
+    // The weekend lab's terms (`action-terms.ts`, docs/19 §24): same shape, weight 0 when shipped.
+    for (const [w, termsOf] of [
+      [weights.garrison ?? 0, garrisonTerms],
+      [weights.takeMove ?? 0, takeMoveTerms],
+      [weights.guildUse ?? 0, guildUseTerms],
+    ] as const) {
+      if (w === 0) continue
+      const terms = termsOf(observed, observed.self, intent, choices)
+      for (let i = 0; i < considered.length; i++) {
+        const c = considered[i]!
+        const t = terms.get(c.action)
+        if (t !== undefined) considered[i] = { ...c, score: c.score + w * t }
       }
     }
 
