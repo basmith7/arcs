@@ -11,7 +11,7 @@
  */
 
 import { baselineBot, contestBot, declareBot, feasibilityBot, declareCostBot, easyBot, goalBot, handBot, threatBot, standardBot,
-  mobileBot, guardBot, botForLevel, EXPERIMENTS, loreBot, heuristicBot, heuristicBotWith, rivalBot, rolloutBot, searchBot, trivialBot, weaponBot } from '@arcs/engine'
+  mobileBot, guardBot, botForLevel, EXPERIMENTS, HARD_WEIGHTS, loreBot, heuristicBot, heuristicBotWith, rivalBot, rolloutBot, searchBot, trivialBot, weaponBot } from '@arcs/engine'
 import type { Bot, Weights } from '@arcs/engine'
 
 import { readFileSync } from 'node:fs'
@@ -32,6 +32,7 @@ export type BotSpec =
   | { readonly kind: 'standard' }
   | { readonly kind: 'mobile' }
   | { readonly kind: 'hard' }
+  | { readonly kind: 'hardw'; readonly overlay: Readonly<Record<string, number>> }
   | { readonly kind: 'exp'; readonly name: string }
   | { readonly kind: 'rival' }
   | { readonly kind: 'weapon' }
@@ -80,6 +81,9 @@ export function buildBot(spec: BotSpec): Bot {
       return standardBot
     case 'hard':
       return botForLevel('hard')
+    case 'hardw':
+      // Today's hard with some weights overridden — how the lab names candidates and assemblies.
+      return searchBot({ width: 3, depth: 14, replies: { roots: 1, deals: 1 }, weights: { ...HARD_WEIGHTS, ...spec.overlay } as Weights })
     case 'exp': {
       const make = EXPERIMENTS[spec.name]
       if (make === undefined) throw new Error(`no experiment named ${spec.name}`)
@@ -142,6 +146,16 @@ export function parseSpec(name: string): BotSpec {
   if (kind === 'standard') return { kind: 'standard' }
   if (kind === 'mobile') return { kind: 'mobile' }
   if (kind === 'hard') return { kind: 'hard' }
+  // `hardw:garrison=0.25/guildUse=1` — hard's weights with these overridden.
+  if (kind === 'hardw' && rest[0] !== undefined) {
+    const overlay: Record<string, number> = {}
+    for (const kv of rest[0].split('/')) {
+      const [k, v] = kv.split('=')
+      if (k === undefined || v === undefined || Number.isNaN(Number(v))) throw new Error(`bad hardw weight: ${kv}`)
+      overlay[k] = Number(v)
+    }
+    return { kind: 'hardw', overlay }
+  }
   if (kind === 'exp' && rest[0] !== undefined) return { kind: 'exp', name: rest[0] }
   if (kind === 'rival') return { kind: 'rival' }
   if (kind === 'weapon') return { kind: 'weapon' }

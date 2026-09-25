@@ -7,6 +7,7 @@
  * offered key with its take rate, the Move share of pip choices, and move reversals.
  */
 import { spawn } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
 
 import { parseSpec } from './bot-spec.js'
 import type { ArenaJob } from './bot-spec.js'
@@ -64,6 +65,11 @@ await Promise.all(
 )
 
 console.log(`\n${games} games on ${board}: ${finished} finished, ${unfinished} unfinished`)
+// `--json <file>`: the totals as data, for the lab runner's probe criteria.
+const jsonOut = flag('json')
+if (jsonOut !== undefined) {
+  writeFileSync(jsonOut, JSON.stringify({ games, finished, unfinished, tallies: Object.fromEntries(totals) }))
+}
 for (const [id, t] of totals) {
   console.log(`\n== ${id}: ${t.decisions} decisions, move share of pips ${(100 * moveShare(t)).toFixed(1)}%, reversals ${t.reversals}`)
   for (const at of t.reversalAt) console.log(`  reversal: ${at}`)
