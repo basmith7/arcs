@@ -65,13 +65,14 @@ export type BotLevel = (typeof BOT_LEVELS)[number]
 /**
  * Hard's weights: normal's (the anti-circling penalty included — its beam only searches card
  * plays, so every pip-level move is the delegate's one-ply choice, and the circling lived there
- * too), plus the two features that passed their arena gates (docs/19 §23, 2026-09-24):
+ * too), plus the two features that passed their individual arena gates (docs/19 §23, 2026-09-24):
  *
  *   - `moveToward` 0.25 — Move destinations ranked toward what the chapter intent needs. vs the
  *     previous hard, 4p, 800 games / 200 deals: +25.5 pts win share per side (z 7.8), +4.6 power.
  *   - `seizeReady` 0.1 — the declaration a held seize makes possible; the previous hard never
  *     seized. vs the previous hard, 1,600 games: +5.9 pts (z 2.8), +1.1 power. On top of
- *     `moveToward`: see §23's assembly gate.
+ *     `moveToward` the assembly gate did **not** reach z 2.5 on win share (+3.4 pts, z 1.4) but
+ *     gained +0.88 power (z 3.4); shipped on the C4a-alone pass and that power gain (§23).
  *
  * Normal and easy are untouched: this is a separate object, not an edit to `MOBILE_WEIGHTS`.
  */

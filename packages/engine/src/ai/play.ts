@@ -941,6 +941,14 @@ export function playoutFrom(
 ): PlayoutResult {
   const reg = registry ?? defaultRegistry()
   const cap = opts.maxSteps ?? 2000
+  /*
+   * The pending ask's menu was built from the true state. When it is a rival's, that menu was
+   * enumerated from the rival's real hand, which the redeal below cannot undo — so refuse rather
+   * than leak it. Every caller (the oracle, the advisor) asks from `self`'s own decision.
+   */
+  if (result.continue.kind === 'ask' && result.continue.faction !== self) {
+    throw new Error(`playoutFrom: the ask belongs to a rival (${result.continue.faction}), not ${self}`)
+  }
   let at: RuleResult = {
     ...result,
     state: dealRivals(probeFrom(result.state, 8000 + opts.salt), self),

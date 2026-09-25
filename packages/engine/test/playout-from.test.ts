@@ -120,4 +120,25 @@ describe('playoutFrom', () => {
     expect(r.finished).toBe(true)
     expect(r.winner).toBeDefined()
   })
+  it('refuses a position where a rival is to act — its menu was built from its real hand', () => {
+    let r = base
+    // Step until the ask is not self's.
+    for (let i = 0; i < 50 && r.continue.kind === 'ask' && (r.continue as { faction: FactionId }).faction === self; i++) {
+      r = playoutStep(r)
+    }
+    const c = r.continue as { kind: string; faction?: FactionId }
+    if (c.kind === 'ask' && c.faction !== self) {
+      expect(() => playoutFrom(r, self, undefined, { policy: trivialBot, horizon: 'chapter', salt: 1 }, registry)).toThrow(
+        /rival/,
+      )
+    } else {
+      throw new Error('fixture: never reached a rival ask')
+    }
+  })
 })
+
+function playoutStep(r: RuleResult): RuleResult {
+  const f = botToAct(r, TWO)!
+  return stepBot(r, mobileBot, f, registry).result
+}
+

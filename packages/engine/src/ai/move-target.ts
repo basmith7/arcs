@@ -11,7 +11,11 @@
  * intent names, and then the mean over the offered destinations is subtracted. The terms over any
  * ask sum to zero (or below, when an undoing leg is clamped), so they can re-rank destinations but
  * cannot make Move beat Build — the Move
- * destination is its own ask, after Move was already chosen at the pip menu.
+ * destination is its own ask, after Move was already chosen at the pip menu. One caveat: that ask
+ * also offers `skip` (and guild alternatives), which get no term — so when skipping scores level
+ * with the best leg, the best leg's positive term now wins, and an undoing leg's clamp can tip a
+ * tie toward skip. The C1 probe measured the net effect on Move's share of pips at under half a
+ * point; the gate measured the whole behaviour (docs/19 §23).
  *
  * Targets by ambition, from what that ambition scores:
  *   - Tycoon, Keeper, Empath — a planet producing the resource, where this faction has no building
