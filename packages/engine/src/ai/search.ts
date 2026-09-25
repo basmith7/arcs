@@ -283,6 +283,8 @@ export function searchBot(options: SearchOptions = DEFAULT_SEARCH): Bot {
        * candidate), and no foresee at all degrades to pure tier-1 — the `Lookahead` rule again.
        */
       const checked = new Set<number>()
+      /** Tier-1 values of the checked roots, kept for the `considered` note (B2 reads it). */
+      const tier1 = new Map<number, number>()
       if (foresee !== undefined && options.replies !== undefined) {
         const { roots, deals } = options.replies
         const horizon = options.replies.rounds ?? 1
@@ -295,6 +297,7 @@ export function searchBot(options: SearchOptions = DEFAULT_SEARCH): Bot {
           const landed = foresee(res.line.path, { deals, rounds: horizon })
           if (landed.length === 0) continue
           const value = landed.reduce((n, s) => n + score(s), 0) / landed.length
+          tier1.set(i, res.value)
           results[i] = { line: res.line, value }
           checked.add(i)
         }
@@ -319,7 +322,9 @@ export function searchBot(options: SearchOptions = DEFAULT_SEARCH): Bot {
           score: x.r.value,
           note:
             `best of a ${x.r.line.path.length}-step line` +
-            (checked.has(pool.indexOf(x.action)) ? ', after replies' : ''),
+            (checked.has(pool.indexOf(x.action))
+              ? `, after replies (tier-1 ${tier1.get(pool.indexOf(x.action))!.toFixed(4)})`
+              : ''),
         }))
 
       const chosen = bestTerminal.line

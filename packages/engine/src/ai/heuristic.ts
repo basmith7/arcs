@@ -9,6 +9,8 @@
  * (docs/03 section 9a), and it is why tie-breaking is positional rather than random.
  */
 
+import { battleChoiceTerms } from './battle-choice.js'
+import { moveTowardTerms } from './move-target.js'
 import { interceptionRisk } from '../rules/battle.js'
 import { intentFor, structuralFitness } from './intent.js'
 import type { Fitness } from './intent.js'
@@ -177,6 +179,7 @@ export function heuristicBotWith(
 
     const considered: Considered[] = []
     const stuck = new Set<Action>()
+    const undoing = new Set<Action>()
     for (const action of choices) {
       const probe = lookahead(action)
       if (probe === undefined) continue
@@ -223,6 +226,7 @@ export function heuristicBotWith(
       const exposure = risk === undefined ? 0 : risk.chance * risk.hits * INTERCEPT_RISK
       // Undoing this turn's own movement leg pays twice for nothing; weighted, zero in the
       // baseline, so the term is inert everywhere it has not been measured on.
+      if (probe.undoes === true) undoing.add(action)
       const undo = probe.undoes === true ? (weights.moveReversal ?? 0) : 0
       const score = gained + probe.actionsAhead * PIP_VALUE - exposure - undo
       /*
@@ -259,6 +263,32 @@ export function heuristicBotWith(
     }
     if (considered.length === 0) {
       return { action: first, because: `${intent.summary} — nothing could be evaluated` }
+    }
+
+    /*
+     * Where ships go: the zero-sum destination ranking (`move-target.ts`). Added after scoring so
+     * it only reorders Move picks among themselves; inert at weight 0, which every shipped set has.
+     */
+    // Where to fight and whom to hit (`battle-choice.ts`): the same zero-sum shape, weight 0 in
+    // every shipped set.
+    const fight = weights.battleChoice ?? 0
+    if (fight !== 0) {
+      const terms = battleChoiceTerms(observed, observed.self, intent, choices)
+      for (let i = 0; i < considered.length; i++) {
+        const c = considered[i]!
+        const t = terms.get(c.action)
+        if (t !== undefined) considered[i] = { ...c, score: c.score + fight * t }
+      }
+    }
+
+    const toward = weights.moveToward ?? 0
+    if (toward !== 0) {
+      const terms = moveTowardTerms(observed, observed.self, intent, choices, (a) => undoing.has(a))
+      for (let i = 0; i < considered.length; i++) {
+        const c = considered[i]!
+        const t = terms.get(c.action)
+        if (t !== undefined) considered[i] = { ...c, score: c.score + toward * t }
+      }
     }
 
     /*

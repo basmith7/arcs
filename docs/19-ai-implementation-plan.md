@@ -37,6 +37,7 @@ gains came from fixing something the evaluator could not see, never from re-tuni
 | Opponent replies over determinized hands (V4) | **large: +12 points at 3p, 67%-33% at 2p vs a zero floor** — the first idea since the goal layer to clear its own floor in a single run | 8 |
 | The Weapon's battle option as a feature (`battleUnlocked`) | **no measurable strength** — 1 point on a 1-point floor. Large *behavioural* effect: Weapon spending 1% → 26% | 9 |
 | Cross-round foresight (`rounds: 2` reply horizon) | **null** — corrects the section 18 game provably (oracle 12/12 over 0/12), dead level vs hard at 999 games on a zero floor, 4x the cost. The third search axis measured out | 20 |
+| The evaluator made cheap (memo + per-state caches + figure index) | **4.9x on a 4p `normal` game, 2.7x on 2p `hard`, zero decisions changed** (26 golden journals identical). Not a strength idea — it makes every other one cheaper to measure | 21 |
 | The declaration-threat feature (`undeclaredThreat`) | **killed at its gate** — the section 18 game cannot be flipped by any end-of-turn static feature at sane weights; the loss is cross-round (initiative into the next lead), an untested search axis | 19 |
 | The margin-11.5 oracle blunder, investigated | **evaluator blind spot, search exonerated** — a rival's pending declaration (undeclared standing + marker + lead remaining) is priced at zero, and power is linear through the win threshold | 18 |
 | The blunder oracle: rollout win-prob vs the bot's runner-up | **a real leak** — card plays in lost games underperform the bot's own runner-up by ~5% win-prob vs placebo (z≈4.3, game-clustered); the first low-noise training target the register has produced | 17 |
@@ -55,7 +56,8 @@ it and cannot afford a policy good enough to provide it; every fitting route nee
 noise swamps the effect. The same wall, four times.
 
 Supporting numbers worth not re-deriving: the engine runs at **0.049 ms/action**; a full game is
-**~24ms** as one playout; a V1 decision costs **~4ms**; and a choice-labelling pair carries **~9.6
+**~24ms** as one playout; a V1 decision costs **~4ms** — *stale: measured 2026-09-23 at ~100 ms for
+a four-player `normal` decision, ~20 ms after the section 21 speedup*; and a choice-labelling pair carries **~9.6
 power of noise against a ~0.5 power effect**.
 
 The arena's noise floor, measured directly by twinning a bot against itself:
@@ -2776,3 +2778,205 @@ same strength, a quarter of the thinking time. The register's one remaining big 
 the fitting attempts lacked (17), the value it must learn includes exactly the cross-round dynamics
 no static feature can express (19), and search cannot substitute for it on any measured axis
 (7, 14, 20).
+
+## 21. The evaluator was the cost
+
+Spec `docs/superpowers/specs/2026-09-23-stronger-bot-design.md` (rev 3), step A1.
+
+The register's cost figures were years stale in effect: a four-player `normal` game measured
+**105 s / 1,034 decisions (~100 ms a decision)**, not ~4 ms. The CPU profile said where: `featuresOf`
+88% inclusive, `parseFigureId` 44.5% self — the evaluator re-parsing interned figure-id strings for
+every figure in every system, for every faction, at every probe. The rules engine was 12%.
+
+### What changed — behaviour-preserving by construction
+
+| change | where |
+| --- | --- |
+| `parseFigureId` memoised, results frozen | `ids.ts` |
+| `metric` cached per state object and (faction, ambition) | `rules/ambitions.ts` |
+| `slotsOf` cached per state object and faction, frozen | `control.ts` |
+| `featuresOf` cached per (observation, intent, faction), frozen | `ai/value.ts` |
+| a probe's `observed` is its first sample, one object | `ai/play.ts` |
+| each tracker's pieces indexed by owner and kind, in board order; colours per system | `figure-index.ts` |
+| `pieces`, `incomeFor`, `gatesHeld`/`fleetThreat` read the index instead of scanning the board | `ai/value.ts`, `ai/income.ts` |
+
+Every cache is keyed on an immutable object (states, observations, trackers and intents are never
+mutated — every change makes a new object), so a hit cannot be stale. Each has a test against the
+uncached computation (`perf-caches.test.ts`).
+
+**The check is not the suite.** `npm run golden` replays 26 committed games (`normal` and `hard`, 2p
+and 4p, `test/fixtures/golden-journals.json`, recorded before any optimisation took effect) and
+diffs every journal entry and final power. All 26 identical; the fast suite pins three of them.
+
+### Measured (vite-node, one core, seed 201, same machine, before = `main` 4004f41)
+
+| game | before | after | speedup |
+| --- | --- | --- | --- |
+| 4p `normal` | 105.6 s (102 ms/decision) | 21.4 s (20.7 ms) | **4.9x** |
+| 2p `hard` | 18.9 s (48 ms/decision) | 7.0 s (18 ms) | **2.7x** |
+| 4p `hard` (golden h4-0..2) | 430-590 s | 85-110 s | ~5x |
+
+`hard` gains less at two players because its beam and reply drive spend proportionally more in
+the rules engine, which this did not touch. Arena runs, the oracle and every experiment after this
+section are priced from the new numbers.
+
+## 22. What `hard` is offered and never takes — the base-game coverage report
+
+Spec 2026-09-23 rev 3, section 6. `npm run coverage` records, for every bot decision, the action
+types on offer and the one taken (`runBots`' `onDecision` hook; the game is identical without it).
+100 four-player games, `hard` in two seats (the other two were a C1 probe candidate), ~44,000 `hard`
+decisions. A key's take rate is taken / decisions offering it.
+
+### Never or almost never taken, though offered constantly
+
+| option | offered | taken | what it is |
+| --- | --- | --- | --- |
+| `turn/seize` | 3,279 | **0** | discard a card to take the initiative next round |
+| Secure from the pip menu (`take:Secure`) | 699 | **1** | securing a court card you hold the majority on; `hard`'s 106 secures all came through the Relic Prelude |
+| `guild:ships` (Prison Wardens, Skirmishers, Court Enforcers, Loyal Marines) | 319 | **0** | discard the card: 3 ships into a system you rule |
+| `guild:take-played` (the four Unions) | 157 | **0** | discard the card: take a played card of its suit into hand |
+| `guild:farseers` | 7 | 0 | discard: redraw your hand |
+| `guild:cartel` | 101 | 2 | discard: take that resource from a rival |
+| `guild:fill-slots` (Mining/Shipping Interest) | 64 | 4 | discard: fill every open slot |
+| `turn/lattice-seize` | 3 | 0 | seize by burning Lattice Spies instead of a card |
+| `turn/pass` (at the lead) | 1,423 | 110 | — |
+
+Taken normally: every action once chosen, Battle (61% of pip menus offering it), Move (62%), Tax and
+Build (~98%), Repair (24%), declares (46%), surpass/pivot/copy.
+
+### Reading it
+
+- **Seize is invisible, not merely unattractive.** The evaluator has no initiative term, and the one
+  thing seizing buys — leading next round — is realised after the horizon of every search `hard`
+  runs (its reply drive stops at the return of control). A card discarded is a certain loss the
+  evaluator can see; the initiative is a gain it cannot. docs/19 §19 already located one loss in
+  exactly this place (initiative into the next lead).
+- **Guild Prelude abilities discard the card that grants them.** `courtSecured` prices a held card at
+  its suit-and-keys worth (~1.4-2.4 power-equivalent with intent), while most one-shot effects land in
+  terms priced far lower (three ships at `shipsFresh` 0.35 each, a hand card at nothing). So the bot
+  hoards the card. Whether hoarding is right is exactly what the evaluator cannot say — the
+  abilities' value is tempo and hand quality, which it does not see.
+- **Secure via pips is outbid by Influence**, whose court-claim terms reward piling agents; the bot
+  secures only when a Relic makes it free.
+
+None of these is in the pre-registered family (spec rev 3 section A2) — they are recorded here as
+the next round's candidates, in order of how often the option is on the table: seize (initiative has
+no term), Secure-vs-Influence pricing, and the discard-for-effect guild abilities.
+
+## 23. The pre-registered family (spec 2026-09-23 rev 3) — running record
+
+Gate: 4p, challenger in two seats vs `hard` in two (A,B,B,A so every rotation is a distinct game),
+clustered by seed (a seed is one deal, replayed with every seating), pass at z >= 2.5 on win share
+with power not below z = -2; family of at most 7 tests. A futility-only look at half stops a gate at
+z <= 0. The `hard` vs `hard` twin (200 games) is exactly 0/0 — deterministic identical bots on the
+same deals — so every gate's MDE comes from its own run.
+
+### C1 — `moveToward` (where ships go, zero-sum per Move ask)
+
+Probe, 100 games vs `hard`: Move share of pips 28.2% vs 28.6% (criterion: within 2 points — met);
+unfinished 0; move reversals 2 of 2,403 legs vs 0 (criterion: 0 — **missed**, 0.08% against the
+14% circling the criterion guards; cause: `Probe.undoes` is not flagged across a mid-turn interrupt,
+so the reversal penalty did not apply to those two legs). Catapult continuations rose 16 -> 451.
+**C1a and C1b (weights 0.25 and 1.0) played identically, decision for decision**: the evaluator
+scores Move destinations equal, so the term only breaks ties and any positive weight gives the same
+argmax. They are one experiment. Proceeding to the gate under a recorded ruling.
+
+**Gate — PASS.** `hard` + `moveToward` (C1a) vs `hard`, 4p, A,B,B,A seating:
+
+| run | games (deals) | C1a wins / `hard` wins per seat | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- | --- |
+| chunk 0, seeds 200000+ | 400 (100) | 32% / 18% | +27.0 ± 4.4 (z 6.1) | +4.17 ± 0.52 (z 8.0) |
+| chunk 1, seeds 201000+ | 400 (100) | 31% / 19% | +24.0 ± 4.9 (z 4.9) | +4.99 ± 0.52 (z 9.6) |
+| **pooled** | **800 (200)** | | **+25.5 ± 3.3 (z 7.8)** | **+4.58 ± 0.37 (z 12.4)** |
+
+C1a out-wins `hard` from every seat (e.g. blue 53 wins to 12 in chunk 0). The planned 1,600-game
+half was stopped at 800 on an O'Brien-Fleming boundary (2.5/sqrt(0.5) = 3.54), which the pooled
+z clears by more than double.
+
+**The largest measured gain in this register** — larger than the reply search (§8), which took
+`hard` from standard. And it came from the thing §0 kept predicting: not a new search or a fit,
+but letting the bot see something it could not — where its ships are going. The earlier positional
+pull failed for the reason `mobile.ts` records (it made *moving* worth pips); this term only chooses
+*where*, once the bot has already decided to move, and the evaluator had been choosing that by
+offer order.
+
+### C2 — `courtText` (court cards by what they do)
+
+Probe (same positions, 14 games, ~1,900 court decisions each): the table changes `hard`'s
+Influence/Secure choice in **1.1%** (full scale) and **0.7%** (half) of decisions, against the
+pre-registered 5%. **Fails its probe; no arena time.** The table (`court-knowledge.ts`) stays at
+weight 0. Reading: the choices it could move are dominated by the claim terms (`courtClaim*`), and
+the cards it prices are secured too rarely for a holding bonus to matter.
+
+### C4 — `seizeReady` (added from §22 into slots C1b/C2 freed)
+
+`declareReadiness` reads the next lead from `initiativeOrder`, which moves only at round end, so a
+seize — the follower's way to take the next lead — scored as a pure card loss. The feature is the
+readiness a held seize buys. Probe criterion: seize taken in 1-25% of offers, no unfinished games.
+
+Probes (100 games vs `hard`; `hard` seizes 0-1 times in ~2,800 offers throughout):
+
+| weight | seize rate | declares offered / taken | verdict |
+| --- | --- | --- | --- |
+| 0.5 | 70.8% | 1,314 / 43.5% | outside 1-25% |
+| **0.1 (C4a)** | **19.1%** | 1,124 / 49.4% (`hard`: 891 / 49.3%) | **passes; to its gate** |
+| 0.2 (C4b) | 45.5% | 1,262 / 44.5% | outside 1-25% |
+
+The rate is steep in the weight: a readiness gain of a few power-equivalent outbids one card's
+~0.15 tempo cost almost every time, so the band is narrow. At 0.1 the bot seizes in a fifth of its
+chances and gets ~25% more chances to declare.
+
+**Gate — PASS.** `hard` + `seizeReady` 0.1 (C4a) vs `hard`, 4p, A,B,B,A seating, seeds 300000+:
+
+| chunk | games (deals) | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- |
+| 0 | 400 (100) | +2.0 ± 4.3 (z 0.5) | +0.90 ± 0.42 (z 2.2) |
+| 1 | 400 (100) | +9.5 ± 3.9 (z 2.5) | +1.41 ± 0.45 (z 3.1) |
+| 2 | 400 (100) | +3.5 ± 4.2 (z 0.8) | +0.33 ± 0.53 (z 0.6) |
+| 3 | 400 (100) | +8.5 ± 4.3 (z 2.0) | +1.72 ± 0.44 (z 3.9) |
+| **pooled** | **1,600 (400)** | **+5.9 ± 2.1 (z 2.83)** | **+1.09 ± 0.23 (z 4.69)** |
+
+A quarter of C1a's effect, and the same shape of fix: `hard` was not undervaluing the initiative,
+it could not see it. Seizing buys the next lead, which is realised after every horizon `hard`
+searches; pricing the declaration that lead makes possible was enough, at a weight low enough
+(0.1) that the bot seizes in a fifth of its chances rather than seven in ten.
+
+### C5 — `battleChoice` (where to battle, whom to hit; from the tie audit)
+
+`scripts/tie-audit.ts` counts, per decision type, how often the best two candidates score exactly
+level — the choice then falls to offer order, as Move destinations did before C1. Two C1a games:
+fleet size 100% tied, pip menu 78%, `battle/system` 78%, `battle/hit` 76%, `battle/target` 81%.
+C5 ranks the battle system (our fresh ships minus theirs, plus half per rival building) and the
+target (a tenth of the rival's projected power — hit the leader — plus half per building), zero-sum
+per ask like C1. Probe vs `c1a`: Battle share of pips 63.9% vs 64.2%, no unfinished games.
+
+**Gate vs `c1a` (the bot it would join) — not detected, stopped for futility at half:**
+
+| chunk | games (deals) | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- |
+| 0 | 400 (100) | +2.0 ± 4.3 (z 0.5) | +0.31 ± 0.46 (z 0.7) |
+| 1 | 400 (100) | -0.5 ± 5.0 (z -0.1) | +0.46 ± 0.44 (z 1.1) |
+| pooled | 800 (200) | +0.75 ± 3.3 (z 0.2) | +0.39 ± 0.32 (z 1.2) |
+
+Stopped because reaching z 2.5 at 1,600 games needed ~z 3.3 from the second half alone; a futility
+stop cannot manufacture a pass. `battleChoice` stays at weight 0. Unlike Move destinations, a tied
+battle choice is usually between near-equivalent fights — the tie was real, not blindness.
+
+### Assembly — what `hard` became (2026-09-24)
+
+`asm14` = `hard` + `moveToward` 0.25 + `seizeReady` 0.1, gated against `c1a` (not against the old
+`hard`, which C1a alone beats at z 7.8 — the question was whether seizing still adds on top):
+
+| chunk | games (deals) | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- |
+| 0 | 400 (100) | +1.5 ± 5.0 (z 0.3) | +0.85 ± 0.54 (z 1.6) |
+| 1 | 400 (100) | +5.5 ± 4.8 (z 1.2) | +1.43 ± 0.51 (z 2.8) |
+| 2 | 400 (100) | (pooled 0-2: +5.0 ± 2.8, z 1.8) | (pooled 0-2: +0.98, z 3.2) |
+| 3 | 400 (100) | -1.5 ± 4.6 (z -0.3) | +0.58 ± 0.47 (z 1.3) |
+| **pooled** | **1,600 (400)** | **+3.4 ± 2.4 (z 1.4)** | **+0.88 ± 0.26 (z 3.4)** |
+
+No pass on win share; clearly positive on power. Shipped as `HARD_WEIGHTS` anyway, under a recorded
+ruling: seizing passed on its own against the old `hard` (z 2.83), it is not worse on top of C1a, and
+without it the bot never seizes at all. `normal` and `easy` are byte-identical (20 golden `normal`
+journals unchanged); the six golden `hard` journals were re-recorded.
+

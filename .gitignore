@@ -34,3 +34,7 @@ assets/rules/faq/
 # grepping the rules while writing the engine — but they churn on every reprint, and the searchable
 # copy that the app actually ships is `assets/rules/data/rules-text.json`.
 assets/rules/text/
+
+# Arena runs, golden recordings and oracle logs: regenerable, often large.
+runs/
+.superpowers/

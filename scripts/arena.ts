@@ -32,7 +32,10 @@
 import { spawn } from 'node:child_process'
 import { availableParallelism } from 'node:os'
 
-import { defaultRegistry, formatReport, playGameAt, reportFrom } from '@arcs/engine'
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+
+import { defaultRegistry, formatReport, pairedGate, playGameAt, reportFrom } from '@arcs/engine'
 import type { FactionId, GameOutcome } from '@arcs/engine'
 
 import { buildBot, parseSpec } from './bot-spec.js'
@@ -50,7 +53,14 @@ const verbose = argv.includes('--verbose')
 const noise = argv.includes('--noise')
 const jobs = Math.max(1, Number(flag('jobs') ?? 1))
 
-const names = (flag('seats') ?? 'heuristic,trivial,trivial,trivial').split(',')
+/*
+ * A seat may be `alias=spec`: the alias becomes the bot's id, so two seats of the same
+ * configuration can form a side (`A=hard,B=hard,A=hard,B=hard` is a 2-vs-2 twin run for the paired
+ * gate, which `--noise`'s single renamed seat cannot express).
+ */
+const seatArgs = (flag('seats') ?? 'heuristic,trivial,trivial,trivial').split(',')
+const aliases = seatArgs.map((a) => (a.includes('=') ? a.slice(0, a.indexOf('=')) : undefined))
+const names = seatArgs.map((a) => (a.includes('=') ? a.slice(a.indexOf('=') + 1) : a))
 const specs: BotSpec[] = names.map(parseSpec)
 /*
  * One default board per seat count. Written as a table rather than a ternary because the ternary
@@ -90,7 +100,9 @@ const bots = specs.map(buildBot)
  * Ids must be distinct for the report to separate the twins, and only the twin is renamed — so the
  * table shows a bot beside a copy of itself and the gap between them is readable directly.
  */
-const ids = bots.map((b, i) => (noise && i === specs.length - 1 ? `${b.id} [twin]` : b.id))
+const ids = bots.map((b, i) =>
+  aliases[i] ?? (noise && i === specs.length - 1 ? `${b.id} [twin]` : b.id),
+)
 const labelled = bots.map((b, i) => ({ ...b, id: ids[i]! }))
 
 console.log(
@@ -102,8 +114,36 @@ console.log(
 if (noise) console.log('Noise floor: the last two seats are the same bot; their gap is the floor.\n')
 else console.log('')
 
+/*
+ * `--out` keeps every outcome as a JSON line, so a gate can be re-read or pooled later without
+ * replaying; `--gate challenger,control` prints the pre-registered paired verdict (spec 2026-09-23
+ * rev 3, section A2) under the table. Both use the ids as printed in the banner.
+ */
+const out = flag('out')
+const gate = flag('gate')?.split(',')
+
 const report = (outcomes: readonly GameOutcome[], ms: number): void => {
   console.log(`${verbose ? '\n' : ''}${formatReport(reportFrom(outcomes, ids, factions, ms))}`)
+  if (out !== undefined) {
+    mkdirSync(dirname(out), { recursive: true })
+    writeFileSync(out, '')
+    for (const o of outcomes) appendFileSync(out, JSON.stringify(o) + '\n')
+    console.log(`outcomes -> ${out}`)
+  }
+  if (gate !== undefined && gate.length === 2) {
+    const g = pairedGate(outcomes, gate[0]!, gate[1]!)
+    // Games needed for 80% power at z = 2.5 on a +3-point edge per side, from this run's own spread.
+    const sd = g.winSe * Math.sqrt(Math.max(1, g.units))
+    const perDeal = g.games / Math.max(1, g.units)
+    const mde = (d: number): number => Math.ceil(((2.5 + 0.84) * sd / d) ** 2 * perDeal)
+    console.log(
+      `\nGate ${gate[0]} vs ${gate[1]} over ${g.games} games:` +
+        ` win Δ ${(100 * g.winDiff).toFixed(1)} ± ${(100 * g.winSe).toFixed(1)} pts (z ${g.winZ.toFixed(2)})` +
+        ` | power Δ ${g.powerDiff.toFixed(2)} ± ${g.powerSe.toFixed(2)} (z ${g.powerZ.toFixed(2)})` +
+        ` | ${g.pass ? 'PASS' : 'no pass'}` +
+        ` | games for +3/+2 pts at 80%: ${mde(0.06)}/${mde(0.04)}`,
+    )
+  }
 }
 
 const show = (o: GameOutcome, i: number): void => {

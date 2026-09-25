@@ -5,9 +5,9 @@
 `~/Projects/arcs` (fork of willhaywood/open-arcs) is live at https://arcs.basmith.net — Tower port
 3070, Pangolin resource 20, compose project `arcs`, SQLite at `/mnt/cache/appdata/arcs/arcs.db`.
 Release: tag `vX.Y.Z` → GHCR → Watchtower (or `docker compose -p arcs pull && up -d` on Tower).
-**Current release: v0.7.1.** Keep this line current — it was four releases stale before 09-22.
+**Current release: v0.8.0.** Keep this line current — it was four releases stale before 09-22.
 
-What has shipped since v0.1.0, newest first: **v0.7.1** the rulebook 6.2.3 win tie-break (a tie for
+What has shipped since v0.1.0, newest first: **v0.8.0** a stronger `hard` bot — it sends ships toward what its ambition needs (`moveToward`) and seizes the initiative when that buys a declaration (`seizeReady`); +25 pts win share per side vs the old `hard` at 4p (docs/19 §23), a 6.7x faster evaluator (§21), and `npm run advise -- <gameId> <faction>` (read-only advice for a live seat); **v0.7.1** the rulebook 6.2.3 win tie-break (a tie for
 the most power goes to the tied player earliest in *turn* order, not the earliest seat); **v0.7.0** a
 Search tab in the rules reader (Rules Library text in `assets/rules/data/rules-text.json`, refreshed
 with `node scripts/fetch_rules_text.mjs`); **v0.6.x** the board hushed while you watch someone else's

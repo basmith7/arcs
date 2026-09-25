@@ -131,7 +131,17 @@ export function countResource(
   slots: readonly LocationId[],
   r: Resource,
 ): number {
-  return heldTokens(tracker, slots).filter((id) => parseResourceToken(id).resource === r).length
+  // A loop rather than heldTokens().filter(): this runs for every resource of every faction at
+  // every probe, and the intermediate arrays were a measurable share of a game (docs/19 §21).
+  let n = 0
+  for (const s of slots) {
+    for (const id of contentsOf(tracker, s)) {
+      const hash = id.indexOf('#')
+      if (hash === -1) throw new Error(`not a resource token: ${id}`)
+      if (hash === r.length && id.startsWith(r)) n++
+    }
+  }
+  return n
 }
 
 // --- mutations -------------------------------------------------------------

@@ -200,3 +200,15 @@ describe('the easy bot', () => {
     expect(departures).toBeGreaterThan(0)
   })
 })
+
+describe('hard is the gated assembly (docs/19 §23)', () => {
+  it('plays decision for decision like asm14 — the configuration the arena measured', async () => {
+    const { EXPERIMENTS, botForLevel, defaultRegistry, runBots, startGame } = await import('../src/index.js')
+    const reg = defaultRegistry()
+    const F = ['red', 'yellow'] as const
+    const options = { board: 'Board2Frontiers', factions: [...F], seed: 61, bots: [...F] }
+    const a = runBots(startGame(options, reg), [...F], botForLevel('hard'), reg, 50_000)
+    const b = runBots(startGame(options, reg), [...F], EXPERIMENTS['asm14']!(), reg, 50_000)
+    expect(a.result.state.journal).toEqual(b.result.state.journal)
+  }, 600_000)
+})

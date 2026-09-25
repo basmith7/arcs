@@ -786,12 +786,11 @@ export function stepBot(
        * shape of the game — which question comes next, how many pips are left — and neither is
        * affected by how the dice fall.
        */
+      // One object for both, so the evaluator's per-observation caches serve `observed` too.
+      const here = observe(settled.state, faction)
       return {
-        observed: observe(settled.state, faction),
-        samples: [
-          observe(settled.state, faction),
-          ...settledSamples(result.state, action, faction, reg, resolve),
-        ],
+        observed: here,
+        samples: [here, ...settledSamples(result.state, action, faction, reg, resolve)],
         repeats: at !== undefined && at >= depth,
         undoes:
           action.type === 'action/move-pick' &&
@@ -838,12 +837,20 @@ export function stepBot(
  * To play a bounded number of actions — a paced UI, a stepping panel — call `stepBot` in your own
  * loop. That is the caller's business, not a mode of this function.
  */
+/** See `runBots`' `onDecision`. */
+export type DecisionRecorder = (faction: FactionId, offered: readonly Action[], taken: Action) => void
+
 export function runBots(
   result: RuleResult,
   bots: readonly FactionId[] | undefined,
   bot: Bot | BotSeats,
   registry?: RuleRegistry,
   stuckAfter = 100_000,
+  /**
+   * Told once per bot decision what was offered and what was taken — the coverage report's feed
+   * (spec 2026-09-23 section 6). Observation only: the game is identical with or without it.
+   */
+  onDecision?: DecisionRecorder,
 ): { result: RuleResult; decisions: readonly BotDecision[] } {
   const decisions: BotDecision[] = []
   let current = result
@@ -851,7 +858,9 @@ export function runBots(
   for (let i = 0; i < stuckAfter; i++) {
     const faction = botToAct(current, bots)
     if (faction === undefined) return { result: current, decisions }
+    const offered = current.continue.kind === 'ask' ? current.continue.actions : []
     const step = stepBot(current, botFor(bot, faction), faction, registry, asked)
+    onDecision?.(faction, offered, step.decision.action)
     current = step.result
     asked = step.asked
     decisions.push(step.decision)
@@ -887,4 +896,85 @@ export function stepBots(
     decisions.push(step.decision)
   }
   return { result: current, decisions }
+}
+
+/** Where one rollout ended, as `playoutFrom` reports it. */
+export interface PlayoutResult {
+  /** `winners[0]` — the engine breaks power ties by turn order, so this is who actually won. */
+  readonly winner: FactionId | undefined
+  /** The top power was shared: the win came from the turn-order tie-break. */
+  readonly tied: boolean
+  readonly power: Readonly<Partial<Record<FactionId, number>>>
+  readonly finished: boolean
+  readonly observed: ObservedState
+}
+
+export interface PlayoutOptions {
+  /** Plays every seat, `self` included, after the candidate. */
+  readonly policy: Bot
+  /** `chapter`: stop when the chapter number moves. `game`: play to the end. */
+  readonly horizon: 'chapter' | 'game'
+  /** Picks the imagined world: the deal of hidden cards and every die after it. */
+  readonly salt: number
+  readonly maxSteps?: number
+}
+
+/**
+ * One rollout from a real position: redeal what `self` cannot see, apply `first`, and let `policy`
+ * play every seat to the horizon (spec 2026-09-23 rev 3, section B1).
+ *
+ * **Honest by the same construction as `foresee`.** The hidden cards are redealt with `dealRivals`
+ * before anything is played, so a rival's real hand never reaches the playout — pinned by
+ * `playout-from.test.ts`, which swaps hidden cards and demands an identical result. The generator
+ * is journal-derived (`probeFrom`), offset clear of the salts `foresee` and the settle samples use,
+ * so any machine replays the same world for the same salt.
+ *
+ * `first` undefined plays from the position as it stands. A playout that throws or hits the step
+ * cap is reported where it stopped with `finished: false`, never discarded silently.
+ */
+export function playoutFrom(
+  result: RuleResult,
+  self: FactionId,
+  first: Action | undefined,
+  opts: PlayoutOptions,
+  registry?: RuleRegistry,
+): PlayoutResult {
+  const reg = registry ?? defaultRegistry()
+  const cap = opts.maxSteps ?? 2000
+  /*
+   * The pending ask's menu was built from the true state. When it is a rival's, that menu was
+   * enumerated from the rival's real hand, which the redeal below cannot undo — so refuse rather
+   * than leak it. Every caller (the oracle, the advisor) asks from `self`'s own decision.
+   */
+  if (result.continue.kind === 'ask' && result.continue.faction !== self) {
+    throw new Error(`playoutFrom: the ask belongs to a rival (${result.continue.faction}), not ${self}`)
+  }
+  let at: RuleResult = {
+    ...result,
+    state: dealRivals(probeFrom(result.state, 8000 + opts.salt), self),
+  }
+  try {
+    if (first !== undefined) at = advance(at.state, first, reg)
+    const chapter = at.state.chapter
+    let asked: AskedThisTurn = NO_ASKS
+    for (let i = 0; i < cap; i++) {
+      const c = at.continue
+      if (c.kind !== 'ask') break
+      if (opts.horizon === 'chapter' && at.state.chapter !== chapter) break
+      const step = stepBot(at, opts.policy, c.faction, reg, asked)
+      at = step.result
+      asked = step.asked
+    }
+  } catch {
+    // Scored where it stopped: `finished` says whether that was the end.
+  }
+  const s = at.state
+  const top = Math.max(...s.factions.map((f) => s.power[f] ?? 0))
+  return {
+    winner: s.isOver ? s.winners[0] : undefined,
+    tied: s.isOver && s.factions.filter((f) => (s.power[f] ?? 0) === top).length > 1,
+    power: s.power,
+    finished: s.isOver,
+    observed: observe(s, self),
+  }
 }

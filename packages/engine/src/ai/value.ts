@@ -14,10 +14,12 @@
  * should be treated as suspicious rather than confirmed.
  */
 
+import { courtTextFor } from './court-knowledge.js'
+import { colorsIn, figuresOf } from '../figure-index.js'
 import { LORE_AMBITION, hasLore, loreActive } from '../lore.js'
 import { metric, rivalHoldings } from '../rules/ambitions.js'
 import { canBattle } from '../rules/battle.js'
-import { declareReadiness } from './declare-ready.js'
+import { declareReadiness, seizeReadiness } from './declare-ready.js'
 import { incomeFor } from './income.js'
 import { AMBITIONS } from '../state.js'
 import {
@@ -95,14 +97,7 @@ function courtWorth(id: string, intent: ChapterIntent): number {
 }
 
 function pieces(observed: ObservedState, self: FactionId, piece: string): string[] {
-  const out: string[] = []
-  for (const s of observed.board.systems) {
-    for (const id of contentsOf(observed.figures, Location.system(s))) {
-      const f = parseFigureId(id)
-      if (f.color === self && f.piece === piece) out.push(id)
-    }
-  }
-  return out
+  return figuresOf(observed.figures, observed.board.systems, self, piece).map((p) => p.id)
 }
 
 /**
@@ -151,6 +146,11 @@ export const FEATURES = [
   'handPips',
   'handTopCard',
   'undeclaredThreat',
+  'moveToward',
+  'nearWin',
+  'courtText',
+  'seizeReady',
+  'battleChoice',
 ] as const
 
 export type Feature = (typeof FEATURES)[number]
@@ -248,13 +248,154 @@ export const WEIGHTS: Weights = {
    * `THREAT_WEIGHTS` in `threat.ts` turns it on.
    */
   undeclaredThreat: 0,
+  /*
+   * Action-level and zero-sum across one Move ask's destinations (`move-target.ts`, spec
+   * 2026-09-23 C1): re-ranks where ships go without making Move itself dearer or cheaper. Always 0
+   * as a state feature; applied in the heuristic loop.
+   */
+  moveToward: 0,
+  /*
+   * The win line (spec 2026-09-23 C3, docs/19 §18): zero until projected power is within six of
+   * the threshold, then quadratic — for self, minus the same for the best rival. Off by default.
+   */
+  nearWin: 0,
+  /*
+   * Court cards by what they do (spec 2026-09-23 C2, `court-knowledge.ts`), net of `courtWorth`.
+   * Off by default.
+   */
+  courtText: 0,
+  /*
+   * The declaration a held seize makes possible next round (`declare-ready.ts`, spec 2026-09-23
+   * C4): `declareReady` cannot see a seize, so the bot never took one. Off by default.
+   */
+  seizeReady: 0,
+  /*
+   * Action-level and zero-sum per ask (`battle-choice.ts`, C5): where to battle and whom to hit.
+   * Always 0 as a state feature. Off by default.
+   */
+  battleChoice: 0,
 }
 
-const zero = (): Record<Feature, number> =>
-  Object.fromEntries(FEATURES.map((f) => [f, 0])) as Record<Feature, number>
+/** Every feature at 0, in `FEATURES` order; copied rather than rebuilt per call (docs/19 §21). */
+const ZERO: Readonly<Record<Feature, number>> = Object.freeze(
+  Object.fromEntries(FEATURES.map((f) => [f, 0])) as Record<Feature, number>,
+)
+const zero = (): Record<Feature, number> => ({ ...ZERO })
+
+/**
+ * Power a faction can expect once the declared ambitions pay out at the current standings: its
+ * power, plus each declared marker's high value where it strictly leads, low value where it ties
+ * for the lead or is strictly second. A projection for `nearWin`, not the rulebook's scoring.
+ */
+export function projectedPower(observed: ObservedState, f: FactionId): number {
+  let p = observed.power[f] ?? 0
+  for (const d of observed.declared) {
+    const mine = metric(observed, f, d.ambition)
+    if (mine === 0) continue
+    const others = observed.factions.filter((o) => o !== f).map((o) => metric(observed, o, d.ambition))
+    const above = others.filter((o) => o > mine).length
+    const tied = others.some((o) => o === mine)
+    if (above === 0 && !tied) p += d.marker.high
+    else if (above === 0 || above === 1) p += d.marker.low
+  }
+  return p
+}
+
+/** The `nearWin` ramp for one faction: 0 below `threshold - 6`, then (excess / 6)^2. */
+function winRamp(observed: ObservedState, f: FactionId): number {
+  const threshold = 39 - 3 * observed.factions.length
+  const excess = projectedPower(observed, f) - (threshold - 6)
+  return excess <= 0 ? 0 : (excess / 6) ** 2
+}
+
+/**
+ * `gatesHeld` and `fleetThreat` for one faction. They read only the figures, the damaged list and
+ * the planet types, so the result is cached on those three objects (all immutable, and shared
+ * between observations whenever they did not change) — the BFS behind `fleetThreat` was a visible
+ * share of every evaluation even at weight 0 (docs/19 §21).
+ */
+const POSITIONAL = new WeakMap<object, WeakMap<object, WeakMap<object, Map<FactionId, { gatesHeld: number; fleetThreat: number }>>>>()
+
+function positionalOf(observed: ObservedState, self: FactionId): { gatesHeld: number; fleetThreat: number } {
+  let a = POSITIONAL.get(observed.figures)
+  if (a === undefined) POSITIONAL.set(observed.figures, (a = new WeakMap()))
+  let b = a.get(observed.damaged)
+  if (b === undefined) a.set(observed.damaged, (b = new WeakMap()))
+  let c = b.get(observed.planetTypes)
+  if (c === undefined) b.set(observed.planetTypes, (c = new Map()))
+  const hit = c.get(self)
+  if (hit !== undefined) return hit
+  const v = positionalUncached(observed, self)
+  c.set(self, v)
+  return v
+}
+
+/** Exported for the cache test only. */
+export function positionalUncached(observed: ObservedState, self: FactionId): { gatesHeld: number; fleetThreat: number } {
+  // From the shared figure index (docs/19 §21): same sets and sums as a scan of every system.
+  const systems = observed.board.systems
+  const freshShips = figuresOf(observed.figures, systems, self, 'Ship').filter(
+    (p) => !observed.damaged.includes(p.id),
+  )
+  const shipStands = new Set<string>(freshShips.map((p) => p.system))
+  const gatesHeld = [...shipStands].filter((s) => systemInfo(s).isGate).length
+  const built = new Set<string>([
+    ...figuresOf(observed.figures, systems, self, 'City').map((p) => p.system),
+    ...figuresOf(observed.figures, systems, self, 'Starport').map((p) => p.system),
+  ])
+
+  // Multi-source BFS from every worthwhile system, to distance 2.
+  const dist = new Map<string, number>()
+  for (const s of systems) {
+    const colors = colorsIn(observed.figures, systems, s)
+    const rival = colors.size > (colors.has(self) ? 1 : 0)
+    const unexploited = planetResource(observed, s) !== undefined && !built.has(s)
+    if (rival || unexploited) dist.set(s, 0)
+  }
+  let frontier = [...dist.keys()]
+  for (let d = 1; d <= 2; d++) {
+    const next: string[] = []
+    for (const s of frontier) {
+      for (const n of connectedSystems(observed.board, s)) {
+        if (!dist.has(n)) {
+          dist.set(n, d)
+          next.push(n)
+        }
+      }
+    }
+    frontier = next
+  }
+  let threat = 0
+  for (const p of freshShips) threat += 3 - (dist.get(p.system) ?? 3)
+  return { gatesHeld, fleetThreat: threat }
+}
+
+/**
+ * Cached per (observation, faction, intent object). A decision scores each probe for itself and
+ * every rival, and the `because` line re-reads the first probe — the same features computed again
+ * and again (docs/19 §21). Observations and intents are immutable, so a hit can never be stale.
+ */
+const FEATURES_CACHE = new WeakMap<ObservedState, WeakMap<ChapterIntent, Map<FactionId, Features>>>()
 
 /** What a position presents to one faction, unweighted. */
 export function featuresOf(
+  observed: ObservedState,
+  self: FactionId,
+  intent: ChapterIntent,
+): Features {
+  let byIntent = FEATURES_CACHE.get(observed)
+  if (byIntent === undefined) FEATURES_CACHE.set(observed, (byIntent = new WeakMap()))
+  let byFaction = byIntent.get(intent)
+  if (byFaction === undefined) byIntent.set(intent, (byFaction = new Map()))
+  const hit = byFaction.get(self)
+  if (hit !== undefined) return hit
+  const x = Object.freeze(featuresOfUncached(observed, self, intent))
+  byFaction.set(self, x)
+  return x
+}
+
+/** `featuresOf` without the cache — exported so the cache can be tested against it. */
+export function featuresOfUncached(
   observed: ObservedState,
   self: FactionId,
   intent: ChapterIntent,
@@ -453,54 +594,13 @@ export function featuresOf(
    *     than per occupied system, because a per-system sum paid the bot to shatter its fleet
    *     one ship per system and catapult-spam the map (1,172 chains in six probe games).
    */
-  const shipStands = new Set<string>()
-  for (const s of observed.board.systems) {
-    for (const id of contentsOf(observed.figures, Location.system(s))) {
-      const f = parseFigureId(id)
-      if (f.color === self && f.piece === 'Ship' && !observed.damaged.includes(id)) {
-        shipStands.add(s)
-        break
-      }
-    }
-  }
-  x.gatesHeld = [...shipStands].filter((s) => systemInfo(s).isGate).length
+  x.nearWin =
+    winRamp(observed, self) -
+    Math.max(0, ...observed.factions.filter((f) => f !== self).map((f) => winRamp(observed, f)))
 
-  // Multi-source BFS from every worthwhile system, to distance 2.
-  const dist = new Map<string, number>()
-  for (const s of observed.board.systems) {
-    const here = contentsOf(observed.figures, Location.system(s))
-    const rival = here.some((id) => parseFigureId(id).color !== self)
-    const unexploited =
-      planetResource(observed, s) !== undefined &&
-      !here.some((id) => {
-        const f = parseFigureId(id)
-        return f.color === self && (f.piece === 'City' || f.piece === 'Starport')
-      })
-    if (rival || unexploited) dist.set(s, 0)
-  }
-  let frontier = [...dist.keys()]
-  for (let d = 1; d <= 2; d++) {
-    const next: string[] = []
-    for (const s of frontier) {
-      for (const n of connectedSystems(observed.board, s)) {
-        if (!dist.has(n)) {
-          dist.set(n, d)
-          next.push(n)
-        }
-      }
-    }
-    frontier = next
-  }
-  let threat = 0
-  for (const s of observed.board.systems) {
-    const near = 3 - (dist.get(s) ?? 3)
-    if (near === 0) continue
-    for (const id of contentsOf(observed.figures, Location.system(s))) {
-      const f = parseFigureId(id)
-      if (f.color === self && f.piece === 'Ship' && !observed.damaged.includes(id)) threat += near
-    }
-  }
-  x.fleetThreat = threat
+  const positional = positionalOf(observed, self)
+  x.gatesHeld = positional.gatesHeld
+  x.fleetThreat = positional.fleetThreat
   // Action-level (see the weight's note): always 0 as a state feature.
   x.moveReversal = 0
 
@@ -509,9 +609,12 @@ export function featuresOf(
    * agents on a card than anyone else, so it is a build-up, and pricing only the finished article
    * left the first Influence worth exactly nothing (docs/19 section 2i).
    */
-  for (const id of contentsOf(observed.courtCards, CourtPile.secured(self))) {
+  const securedIds = contentsOf(observed.courtCards, CourtPile.secured(self))
+  for (const id of securedIds) {
     x.courtSecured += courtWorth(id, intent)
   }
+  // C2: what the held cards' effects give, net of `courtWorth` (`court-knowledge.ts`).
+  x.courtText = courtTextFor(securedIds, intent)
   for (const slot of courtSlots(observed.factions.length)) {
     const id = contentsOf(observed.courtCards, CourtPile.slot(slot))[0]
     if (id === undefined) continue
@@ -524,8 +627,11 @@ export function featuresOf(
     const best = Math.max(0, ...observed.factions.filter((f) => f !== self).map(on))
     const worth = courtWorth(id, intent)
     // `canSecure` is `mine > best`, so the three cases are ahead, level and behind.
-    if (mine > best) x.courtClaimAhead += worth
-    else if (mine === best) x.courtClaimLevel += worth
+    if (mine > best) {
+      x.courtClaimAhead += worth
+      // C2: a quarter of the card's effect for a card this faction can secure (weight 0 by default).
+      x.courtText += 0.25 * courtTextFor([id], intent)
+    } else if (mine === best) x.courtClaimLevel += worth
     else x.courtClaimBehind += worth
   }
 
@@ -539,6 +645,7 @@ export function featuresOf(
    * which is what makes it the first of these additions with no existing proxy.
    */
   x.declareReady = declareReadiness(observed, self, intent)
+  x.seizeReady = seizeReadiness(observed, self, intent)
 
   /*
    * **What declaring costs, which nothing here could previously see.**

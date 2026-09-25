@@ -168,7 +168,21 @@ export function gateCityTypes(state: GameState, s: SystemId): readonly Resource[
  * This is the single producer — everything that gains, spends, counts for an ambition or is raided
  * asks here, so the card slot cannot be visible to one of those and invisible to another.
  */
-export function slotsOf(state: SlotView, faction: FactionId): LocationId[] {
+const SLOTS = new WeakMap<object, Map<FactionId, readonly LocationId[]>>()
+
+/** Cached per state object and faction (docs/19 §21); frozen, since the list is shared. */
+export function slotsOf(state: SlotView, faction: FactionId): readonly LocationId[] {
+  let m = SLOTS.get(state)
+  if (m === undefined) SLOTS.set(state, (m = new Map()))
+  const hit = m.get(faction)
+  if (hit !== undefined) return hit
+  const v = Object.freeze(slotsOfUncached(state, faction))
+  m.set(faction, v)
+  return v
+}
+
+/** `slotsOf` without the cache — exported so the cache can be tested against it. */
+export function slotsOfUncached(state: SlotView, faction: FactionId): LocationId[] {
   const slots = usableSlots(faction, slotCapacity(citiesInReserve(state, faction)))
   if (hasLore(state, faction, ANCIENT_HOLDINGS)) {
     slots.push(ResourceSlot.cardSlot(faction, ANCIENT_HOLDINGS))

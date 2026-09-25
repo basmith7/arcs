@@ -23,7 +23,13 @@
     "fit": "vite-node scripts/fit-weights.ts",
     "build:site": "VITE_MULTIPLAYER_URL= npm run build --workspace @arcs/web",
     "serve": "npm run build:site && npm run dev --workspace @arcs/server",
-    "deploy": "npm run build:site && npm run deploy --workspace @arcs/server"
+    "deploy": "npm run build:site && npm run deploy --workspace @arcs/server",
+    "golden": "vite-node scripts/golden-journals.ts",
+    "profile": "vite-node scripts/profile-game.ts",
+    "advise": "vite-node scripts/advise.ts",
+    "coverage": "vite-node scripts/coverage.ts",
+    "b2": "vite-node scripts/b2-power.ts",
+    "gate": "vite-node scripts/gate-pool.ts"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

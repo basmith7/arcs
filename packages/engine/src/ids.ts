@@ -56,13 +56,31 @@ export function figureId(color: ColorId, piece: Piece, index: number): FigureId 
   return `${color}/${piece}/${index}`
 }
 
-export function parseFigureId(id: FigureId): { color: ColorId; piece: Piece; index: number } {
+export type ParsedFigure = Readonly<{ color: ColorId; piece: Piece; index: number }>
+
+/**
+ * Parsed ids, shared. Figure ids are a small closed set (~300 in a four-player game) and parsing
+ * one is pure, yet re-splitting them was 44% of a `normal` game's CPU — the evaluator parses every
+ * figure in every system for every probe (docs/19 section 21). Results are frozen, so one caller
+ * cannot corrupt another's.
+ */
+const PARSED = new Map<FigureId, ParsedFigure>()
+
+export function parseFigureId(id: FigureId): ParsedFigure {
+  const hit = PARSED.get(id)
+  if (hit !== undefined) return hit
   const parts = id.split('/')
   const [color, piece, index] = parts
   if (parts.length !== 3 || color === undefined || piece === undefined || index === undefined) {
     throw new Error(`malformed figure id: ${id}`)
   }
-  return { color: color as ColorId, piece: piece as Piece, index: Number(index) }
+  const parsed: ParsedFigure = Object.freeze({
+    color: color as ColorId,
+    piece: piece as Piece,
+    index: Number(index),
+  })
+  PARSED.set(id, parsed)
+  return parsed
 }
 
 // --- Locations -------------------------------------------------------------
