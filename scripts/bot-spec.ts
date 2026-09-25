@@ -247,9 +247,9 @@ export interface ArenaJob {
    * same seed, and the parallel and serial runs would stop agreeing — the one property that makes
    * `--jobs` safe to trust for a real measurement.
    */
-  readonly leadersAndLore?: { readonly expansion: boolean; readonly lorePerPlayer: number   /** Work-queue mode: game indices arrive on stdin (see `scripts/arena.ts`). */
+  readonly leadersAndLore?: { readonly expansion: boolean; readonly lorePerPlayer: number }
+  /** Work-queue mode: game indices arrive on stdin (see `scripts/arena.ts`). */
   readonly pull?: boolean
-}
   /** Which games this shard plays: indices `shard`, `shard + jobs`, `shard + 2*jobs`, … */
   readonly shard: number
   readonly jobs: number

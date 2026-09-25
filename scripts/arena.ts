@@ -29,7 +29,8 @@
  * noise floor for that run, and any comparison not clearing it is not a result. It costs one seat.
  */
 
-import { spawn } from 'node:child_process'
+import { shardCommand } from './shard-runner.js'
+import { spawn, spawnSync } from 'node:child_process'
 import { availableParallelism } from 'node:os'
 
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -262,17 +263,25 @@ if (jobs === 1) {
     pull: true,
     ...(leadersAndLore === undefined ? {} : { leadersAndLore }),
   }
+  // Built once; the bundle is self-contained (engine included), so remote hosts get just this file.
+  const local = shardCommand('arena-shard')
+  if (local[0] === 'node') {
+    for (const host of new Set(remote.map((r) => r.split(':')[0]!))) {
+      const r = spawnSync('rsync', ['-a', 'dist-lab/arena-shard.mjs', `${host}:${remoteDir}/dist-lab/`], { encoding: 'utf8' })
+      if (r.status !== 0) throw new Error(`could not copy the shard bundle to ${host}: ${r.stderr}`)
+    }
+  }
   const encoded = `b64:${Buffer.from(JSON.stringify(job)).toString('base64')}`
   for (const shard of shards) {
     const child =
       shard.host === undefined
-        ? spawn('npx', ['vite-node', 'scripts/arena-shard.ts', encoded], { stdio: ['pipe', 'pipe', 'inherit'] })
+        ? spawn(local[0], [...local[1], encoded], { stdio: ['pipe', 'pipe', 'inherit'] })
         : spawn(
             'ssh',
             [
               shard.host,
               `docker run --rm -i --cpus 1 --cpu-shares 128 -e NPM_CONFIG_UPDATE_NOTIFIER=false ` +
-                `-v ${remoteDir}:/work -w /work node:22-slim node node_modules/.bin/vite-node scripts/arena-shard.ts ${encoded}`,
+                `-v ${remoteDir}:/work -w /work node:22-slim ${local[0] === 'node' ? 'node dist-lab/arena-shard.mjs' : 'node node_modules/.bin/vite-node scripts/arena-shard.ts'} ${encoded}`,
             ],
             { stdio: ['pipe', 'pipe', 'inherit'] },
           )

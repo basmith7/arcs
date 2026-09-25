@@ -3004,3 +3004,20 @@ harmful, so the probe rejected it before any arena time.
 The pre-screen is two-player; C6 in particular might behave differently at four. That is recorded
 as a limit of the screen, not a finding.
 
+## 25. Faster experiments: compiled shards yes, persistent state maps no (2026-09-25)
+
+Measured as CPU time per process with every other job paused (wall time was unusable: B2 was
+loading the machine, and one game swung 21 s to 45 s between identical runs).
+
+| change | 2 × 4p `normal` games, CPU | verdict |
+| --- | --- | --- |
+| baseline (vite-node) | 43.7-51.1 s | — |
+| `Tracker` on a persistent map (`with()` shares storage instead of copying ~300 entries per move) | 45.5-49.1 s vs 43.7-48.1 s paired | **no gain** — dropped. The profile's `move`/`contentsOf` time was mostly cheap reads, not the copies |
+| shards run as esbuild-bundled JavaScript instead of through vite-node | **38.1-39.0 s vs 50.6-51.1 s** | **~25% less CPU per game** — shipped |
+
+`scripts/shard-runner.ts` bundles each shard (arena, tally, oracle, B2 corpus) on first use from
+the current source, so a stale bundle cannot run old code; `LAB_NO_COMPILE=1` falls back. The
+bundle is self-contained, so remote hosts receive just that one file. Compiled and vite-node runs
+were checked identical: 8 arena games (with 2 of them on Tower), a coverage tally, and an oracle
+evaluation.
+

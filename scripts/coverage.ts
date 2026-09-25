@@ -6,6 +6,7 @@
  * Plays the games across shards (same seating and seeds as the arena) and prints, per bot: every
  * offered key with its take rate, the Move share of pip choices, and move reversals.
  */
+import { shardCommand } from './shard-runner.js'
 import { spawn } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 
@@ -29,6 +30,7 @@ const seed = Number(flag('seed') ?? 90000)
 const factions = (['red', 'yellow', 'blue', 'white'] as FactionId[]).slice(0, specs.length)
 const board = specs.length === 4 ? 'Board4MixUp1' : specs.length === 3 ? 'Board3Frontiers' : 'Board2Frontiers'
 
+const tally = shardCommand('tally-shard')
 const totals = new Map<string, Tally>()
 let finished = 0
 let unfinished = 0
@@ -37,7 +39,7 @@ await Promise.all(
     (shard) =>
       new Promise<void>((resolve, reject) => {
         const job: ArenaJob = { specs, ids, games, seed, board, factions, shard, jobs }
-        const child = spawn('npx', ['vite-node', 'scripts/tally-shard.ts', JSON.stringify(job)], {
+        const child = spawn(tally[0], [...tally[1], JSON.stringify(job)], {
           stdio: ['ignore', 'pipe', 'inherit'],
         })
         let buffer = ''
