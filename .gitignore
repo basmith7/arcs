@@ -41,3 +41,4 @@ runs/
 
 # Compiled shard bundles (scripts/shard-runner.ts) — rebuilt from source on use.
 dist-lab/
+dist-spike/

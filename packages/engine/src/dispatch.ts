@@ -12,6 +12,7 @@ import { encodeAction } from './action.js'
 import type { Continue } from './continue.js'
 import { UNHANDLED, isWaiting } from './continue.js'
 import type { GameState, RuleModuleId } from './state.js'
+import { SPIKE_COUNTS } from './spike-count.js'
 
 export interface RuleResult {
   readonly state: GameState
@@ -56,6 +57,7 @@ export function perform(
   action: Action,
   registry: RuleRegistry,
 ): RuleResult {
+  SPIKE_COUNTS.perform++
   for (const id of state.ruleChain) {
     const result = registry.get(id).perform(state, action)
     if (result.continue.kind !== 'unhandled') return result
@@ -80,6 +82,7 @@ export function advance(
   registry: RuleRegistry,
   options: AdvanceOptions = {},
 ): RuleResult {
+  SPIKE_COUNTS.advance++
   const maxSteps = options.maxSteps ?? 10_000
   let result = perform(state, action, registry)
   let steps = 0

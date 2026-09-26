@@ -22,6 +22,7 @@ import { canBattle } from '../rules/battle.js'
 import { declareReadiness, seizeReadiness } from './declare-ready.js'
 import { incomeFor } from './income.js'
 import { AMBITIONS } from '../state.js'
+import { SPIKE_COUNTS } from '../spike-count.js'
 import {
   CourtPile,
   Location,
@@ -339,6 +340,7 @@ function positionalOf(observed: ObservedState, self: FactionId): { gatesHeld: nu
 
 /** Exported for the cache test only. */
 export function positionalUncached(observed: ObservedState, self: FactionId): { gatesHeld: number; fleetThreat: number } {
+  SPIKE_COUNTS.positionalUncached++
   // From the shared figure index (docs/19 §21): same sets and sums as a scan of every system.
   const systems = observed.board.systems
   const freshShips = figuresOf(observed.figures, systems, self, 'Ship').filter(
@@ -390,6 +392,7 @@ export function featuresOf(
   self: FactionId,
   intent: ChapterIntent,
 ): Features {
+  SPIKE_COUNTS.featuresOf++
   let byIntent = FEATURES_CACHE.get(observed)
   if (byIntent === undefined) FEATURES_CACHE.set(observed, (byIntent = new WeakMap()))
   let byFaction = byIntent.get(intent)
@@ -407,6 +410,7 @@ export function featuresOfUncached(
   self: FactionId,
   intent: ChapterIntent,
 ): Features {
+  SPIKE_COUNTS.featuresOfUncached++
   const x = zero()
 
   // Realised power. The only certain quantity here.

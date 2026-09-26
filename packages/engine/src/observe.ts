@@ -41,6 +41,7 @@ import type {
   RoundPlay,
 } from './state.js'
 import type { Tracker } from './tracker.js'
+import { SPIKE_COUNTS } from './spike-count.js'
 
 declare const observed: unique symbol
 
@@ -111,6 +112,7 @@ export interface ObservedState {
  * zones are introduced — never widen this to pass the full state through.
  */
 export function observe(state: GameState, self: FactionId): ObservedState {
+  SPIKE_COUNTS.observe++
   const handSizes: Partial<Record<FactionId, number>> = {}
   for (const f of state.factions) {
     handSizes[f] = contentsOf(state.cards, CardLocation.hand(f)).length
