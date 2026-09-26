@@ -1,7 +1,10 @@
 /**
  * Engine-speed spike, step 2: the training-data unit cost.
  *
- *   node dist-spike/playout.mjs <2|4> <shard> <shards> [perGame=10]
+ *   node dist-spike/playout.mjs <2|4> <shard> <shards> [perGame=10] [normal|cheap]
+ *
+ * `cheap` swaps the policy for `playoutChoice` (fixed action-type order, no evaluation): what a
+ * playout costs when the policy is nearly free, i.e. the engine's own share.
  *
  * Positions: `perGame` evenly spaced points of each golden `normal` journal at that player count
  * (replayed; the first ask at or after each point). One `playoutFrom(result, self, undefined,
@@ -9,8 +12,8 @@
  * is outside the timed region. One JSON line per position.
  */
 import { readFileSync } from 'node:fs'
-import { botForLevel, decodeAction, defaultRegistry, applyExternal, playoutFrom, startGame } from '@arcs/engine'
-import type { NewGameOptions, RuleResult } from '@arcs/engine'
+import { botForLevel, decodeAction, defaultRegistry, applyExternal, playoutChoice, playoutFrom, startGame } from '@arcs/engine'
+import type { Bot, NewGameOptions, RuleResult } from '@arcs/engine'
 import { SPIKE_COUNTS } from '../../packages/engine/src/spike-count.js'
 
 const players = Number(process.argv[2])
@@ -22,7 +25,9 @@ interface Golden { name: string; options: NewGameOptions; level: string; journal
 const { games } = JSON.parse(readFileSync('packages/engine/test/fixtures/golden-journals.json', 'utf8')) as { games: Golden[] }
 const pick = games.filter((g) => g.level === 'normal' && g.options.factions.length === players)
 const registry = defaultRegistry()
-const policy = botForLevel('normal')
+const policyName = process.argv[6] ?? 'normal'
+const cheap: Bot = { id: 'cheap', decide: (_o, actions) => ({ action: playoutChoice(actions), because: '' }) }
+const policy = policyName === 'cheap' ? cheap : botForLevel('normal')
 
 let item = 0
 for (const g of pick) {
@@ -42,7 +47,7 @@ for (const g of pick) {
         const t = process.cpuUsage(t0)
         console.log(
           JSON.stringify({
-            game: g.name, at: i, of: g.journal.length, chapter: r.state.chapter, self, salt,
+            policy: policyName, game: g.name, at: i, of: g.journal.length, chapter: r.state.chapter, self, salt,
             cpuMs: +((t.user + t.system) / 1000).toFixed(1), finished: out.finished, winner: out.winner,
             advance: SPIKE_COUNTS.advance - c0.advance, featuresOfUncached: SPIKE_COUNTS.featuresOfUncached - c0.featuresOfUncached,
           }),

@@ -51,7 +51,7 @@ const cats = {
   'valueOf': (l, fn) => l.src === 'ai/value.ts' && /^valueOf\d*$/.test(fn),
   'tracker.ts (any)': (l) => l.src === 'tracker.ts',
   'figure-index.ts (any)': (l) => l.src === 'figure-index.ts',
-  'search: explore': (l, fn) => l.src === 'ai/search.ts' && /^explore\d*$/.test(fn),
+  'search: explore (play.ts)': (l, fn) => l.src === 'ai/play.ts' && /^explore\d*$/.test(fn),
   'search: settle (play.ts)': (l, fn) => l.src === 'ai/play.ts' && /^settle\d*$/.test(fn),
   'search: foresee': (l, fn) => /^foresee\d*$/.test(fn),
   'search.ts (any)': (l) => l.src === 'ai/search.ts',
