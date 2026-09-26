@@ -11,7 +11,7 @@
  */
 
 import { baselineBot, contestBot, declareBot, feasibilityBot, declareCostBot, easyBot, goalBot, handBot, threatBot, standardBot,
-  mobileBot, guardBot, botForLevel, EXPERIMENTS, HARD_WEIGHTS, loreBot, heuristicBot, heuristicBotWith, rivalBot, rolloutBot, searchBot, trivialBot, weaponBot } from '@arcs/engine'
+  mobileBot, guardBot, botForLevel, EXPERIMENTS, HARD_WEIGHTS, loreBot, heuristicBot, heuristicBotWith, rivalBot, rolloutBot, searchBot, strategyBot, trivialBot, weaponBot } from '@arcs/engine'
 import type { Bot, Weights } from '@arcs/engine'
 
 import { readFileSync } from 'node:fs'
@@ -34,6 +34,8 @@ export type BotSpec =
   | { readonly kind: 'hard' }
   | { readonly kind: 'hardw'; readonly overlay: Readonly<Record<string, number>> }
   | { readonly kind: 'exp'; readonly name: string }
+  /** A committed strategy (`strategy.ts`): hard's search with a fixed plan holding `commitment` (default 0.85). */
+  | { readonly kind: 'strat'; readonly name: string; readonly commitment?: number }
   | { readonly kind: 'rival' }
   | { readonly kind: 'weapon' }
   | { readonly kind: 'easy' }
@@ -89,6 +91,8 @@ export function buildBot(spec: BotSpec): Bot {
       if (make === undefined) throw new Error(`no experiment named ${spec.name}`)
       return make()
     }
+    case 'strat':
+      return spec.commitment === undefined ? strategyBot(spec.name) : strategyBot(spec.name, spec.commitment)
     case 'mobile':
       return mobileBot
     case 'rival':
@@ -157,6 +161,11 @@ export function parseSpec(name: string): BotSpec {
     return { kind: 'hardw', overlay }
   }
   if (kind === 'exp' && rest[0] !== undefined) return { kind: 'exp', name: rest[0] }
+  // `strat:warlord` or `strat:warlord:0.95` — a committed strategy, optionally holding its plan harder.
+  if (kind === 'strat' && rest[0] !== undefined) {
+    if (rest[1] !== undefined && Number.isNaN(Number(rest[1]))) throw new Error(`bad strat commitment: ${rest[1]}`)
+    return rest[1] === undefined ? { kind: 'strat', name: rest[0] } : { kind: 'strat', name: rest[0], commitment: Number(rest[1]) }
+  }
   if (kind === 'rival') return { kind: 'rival' }
   if (kind === 'weapon') return { kind: 'weapon' }
   if (kind === 'easy') return { kind: 'easy' }

@@ -14,7 +14,7 @@ import { battleChoiceTerms } from './battle-choice.js'
 import { moveTowardTerms } from './move-target.js'
 import { interceptionRisk } from '../rules/battle.js'
 import { intentFor, structuralFitness } from './intent.js'
-import type { Fitness } from './intent.js'
+import type { Fitness, IntentFn } from './intent.js'
 import { WEIGHTS, termsFor, topTerms, valueOf } from './value.js'
 import type { RivalIntent, Weights } from './value.js'
 import type { Action } from '../action.js'
@@ -104,6 +104,8 @@ export interface HeuristicOptions {
    * variant has to be constructible for a test to pin the difference between it and the right one.
    */
   readonly rivalIntent?: boolean | RivalIntent
+  /** Replaces `intentFor(observed, self, fitness)` for this bot's own intent (`strategy.ts`). */
+  readonly intent?: IntentFn
 }
 
 export function heuristicBotWith(
@@ -121,7 +123,7 @@ export function heuristicBotWith(
     const first = actions[0]
     if (first === undefined) throw new Error('heuristicBot: no actions on offer')
 
-    const intent = intentFor(observed, observed.self, fitness)
+    const intent = opts.intent?.(observed, observed.self) ?? intentFor(observed, observed.self, fitness)
     /*
      * Rival intents are computed **once per decision, from the pre-action state**, and held fixed
      * while every candidate is scored. The first version recomputed them on each probed state —

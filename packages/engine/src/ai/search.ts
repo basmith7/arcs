@@ -50,6 +50,7 @@ import type { Action } from '../action.js'
 import type { ObservedState } from '../observe.js'
 import type { Bot, BotDecision, Considered, Explore, Foresee, Lookahead, PathProbe, Rollout } from './bot.js'
 import type { RivalIntent } from './value.js'
+import type { IntentFn } from './intent.js'
 
 export interface SearchOptions {
   /**
@@ -94,6 +95,12 @@ export interface SearchOptions {
    * can put a candidate weight set under the search without a parallel implementation.
    */
   readonly weights?: Weights
+  /**
+   * This bot's own chapter intent, for the delegate and every line score, in place of
+   * `intentFor(observed, self, feasibility)` — which every shipped configuration uses. The committed
+   * strategies (`strategy.ts`) pass a fixed plan.
+   */
+  readonly intent?: IntentFn
 }
 
 export const DEFAULT_SEARCH: SearchOptions = { width: 3, depth: 14 }
@@ -138,6 +145,7 @@ export function searchBot(options: SearchOptions = DEFAULT_SEARCH): Bot {
   const weights = options.weights ?? STANDARD_WEIGHTS
   const delegate = heuristicBotWith(weights, id, feasibility, {
     rivalIntent: useRival,
+    ...(options.intent === undefined ? {} : { intent: options.intent }),
   })
 
   return {
@@ -156,7 +164,7 @@ export function searchBot(options: SearchOptions = DEFAULT_SEARCH): Bot {
       }
 
       const self = observed.self
-      const intent = intentFor(observed, self, feasibility)
+      const intent = options.intent?.(observed, self) ?? intentFor(observed, self, feasibility)
       /*
        * Fixed per decision, from the pre-action state — the same rule `heuristic.ts` settled on
        * after probed-state recomputation let candidates shift a rival's imputed intent and broke
