@@ -25,7 +25,7 @@ G = np.array([r['game'] for r in rows])
 cut = games[int(len(games) * 0.75)]
 tr, te = G < cut, G >= cut
 allk = sum(len(r['y']) for r in rows); fin = sum(len(y) for y in Y)
-print(f"pairs {len(rows)} (of {len(keep) and len(json.loads(open(sys.argv[1]).readline())['y'])}-salt rows kept >=300 finished), games {len(games)}, train/test pairs {tr.sum()}/{te.sum()}")
+print(f"pairs {len(rows)} (kept: >= 300 finished salts), games {len(games)}, train/test pairs {tr.sum()}/{te.sum()}")
 print(f"finished salt-pairs {fin}/{allk} = {fin/allk:.3f}")
 sd1 = np.sqrt(np.mean([y.var(ddof=1) for y in Y]))
 ybar = np.array([y.mean() for y in Y])
@@ -40,7 +40,7 @@ def ridge_fit(X, y, lam):
     mu, sd = X.mean(0), X.std(0); sd[sd == 0] = 1
     Z = (X - mu) / sd; ym = y.mean()
     A = Z.T @ Z + lam * len(y) * np.eye(Z.shape[1])
-    w = np.linalg.solve(A, Z.T @ (y - ym))
+    w = np.linalg.lstsq(A, Z.T @ (y - ym), rcond=None)[0]  # minimum-norm when unpenalised and singular
     return lambda Xn: ((Xn - mu) / sd) @ w + ym
 
 def heldout_r2(X, y, lams=(0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3)):
