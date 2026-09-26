@@ -1,0 +1,616 @@
+/*
+ * The phone layout — docs/superpowers/specs/2026-09-26-phone-layout-design.md.
+ *
+ * On when App.tsx sets `.app.phone` (and `html.phone`): a window under 600px wide, in a game, with
+ * Settings > Phone > Layout on Mobile. Everything here is scoped under one of those two, so the
+ * desktop layout never sees a rule of it. Dialogs and full-screen screens are in phone-modals.css.
+ *
+ *   topbar  — round, whose turn, ☰ (the toolbar, folded into a menu)
+ *   map     — MapZoom: pinch and pan over a map drawn larger than the window
+ *   dock    — the current decision: hand, Prelude, action tray, ask strip
+ *   tabs    — Court / Ambitions / Players / Log, each a sheet over the map
+ */
+
+/* --- settings: the segmented choices (used on every screen, so unscoped) --- */
+.set-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.set-seg button {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.set-seg button.on {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+/* --- frame --- */
+html.phone,
+html.phone body {
+  overscroll-behavior: none;
+}
+/* `dvh`: the phone's own bars come and go, and the tab bar must stay on screen under them. */
+.app.phone {
+  height: 100dvh;
+}
+
+.app.phone .topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 12px;
+  flex-wrap: nowrap;
+  min-height: 44px;
+}
+.app.phone .brand,
+.app.phone .board-name {
+  display: none;
+}
+.app.phone .turn-meta {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+/* Hidden under 900px on the desktop layout; here it is the one thing the bar must say. */
+.app.phone .turn-badge {
+  display: inline-flex;
+  position: static;
+  transform: none;
+  margin-left: auto;
+  font-size: 12px;
+  white-space: nowrap;
+}
+/*
+ * In a joined game the seat badge says whose turn it is from this seat's side ("your turn",
+ * "waiting for yellow"), so it takes the turn badge's place rather than crowding in beside it.
+ */
+.app.phone .topbar:has(.seat-badge) .turn-badge {
+  display: none;
+}
+.app.phone .seat-badge {
+  margin-left: auto;
+  min-width: 0;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.app.phone .seat-badge:not(.seat-watching) .seat-label,
+.app.phone .seat-discord {
+  display: none;
+}
+.app.phone .seat-who {
+  min-width: 0;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app.phone .seat-wait {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app.phone .phone-menu-btn {
+  flex: none;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+.app.phone .toolbar {
+  display: none;
+}
+.app.phone .toolbar.open {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 8px;
+  min-width: 180px;
+  padding: 8px;
+  gap: 6px;
+  background: #0b0d13;
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+}
+.app.phone .toolbar.open .ghost {
+  padding: 11px 14px;
+  font-size: 12px;
+  text-align: left;
+}
+
+/* The board column becomes map over dock; the tabs sit under it, outside the column. */
+.app.phone .layout {
+  display: flex;
+  flex-direction: column;
+}
+.app.phone .board-col {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  background-attachment: scroll, scroll;
+}
+.app.phone .board-cell {
+  flex: 1 1 auto;
+  min-height: 120px;
+}
+
+/* --- map --- */
+.mz {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+/*
+ * Not positioned, on purpose: the board's hint bar is absolutely placed, and resolving it against
+ * `.mz` rather than the scroller is what keeps it on screen while the map pans under it.
+ */
+.mz-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  /* One finger scrolls; two are MapZoom's pinch rather than the page's zoom. */
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.mz-scroll::-webkit-scrollbar {
+  display: none;
+}
+/* `margin: auto` centres a map smaller than the window and does nothing to a larger one. */
+.mz-box {
+  flex: none;
+  margin: auto;
+}
+.app.phone .board {
+  position: static;
+  height: 100%;
+}
+/* Sized to the painted map and centred in `.board`, which is no longer its containing block. */
+.app.phone .map-shadow {
+  display: none;
+}
+.mz-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 6;
+}
+.mz-tools button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--gold);
+  background: rgba(11, 13, 19, 0.82);
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+}
+.mz-tools button:disabled {
+  opacity: 0.35;
+}
+.app.phone .board-hint {
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  width: max-content;
+  white-space: normal;
+  text-align: center;
+  padding: 7px 12px;
+  z-index: 6;
+}
+.app.phone .board-hint .hint-out {
+  min-height: 34px;
+}
+.app.phone .turn-feed {
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  max-width: none;
+  max-height: 40%;
+}
+
+/* --- dock: the hand and the trays that share its band --- */
+.app.phone .hand-row {
+  flex: none;
+  height: auto;
+  clip-path: none;
+  padding: 6px 0 4px;
+  background: linear-gradient(rgba(8, 10, 15, 0.6), rgba(8, 10, 15, 0.92));
+  border-top: 1px solid rgba(201, 169, 97, 0.35);
+}
+.hand.tap {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 4px;
+  pointer-events: auto;
+}
+/* Row: one line of cards, scrolled sideways. */
+.hand-cards {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hand-cards::-webkit-scrollbar {
+  display: none;
+}
+/* Grid: every card in view at once, as many to a line as fit. */
+html.phone-hand-grid .hand-cards {
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow-x: visible;
+}
+html.phone-hand-grid .hand.tap .hand-card {
+  width: 58px;
+  height: 81px;
+}
+.hand.tap .hand-card {
+  position: relative;
+  bottom: auto;
+  flex: none;
+  width: 80px;
+  height: 112px;
+  border-radius: 6px;
+  transform: none;
+  transition: transform 0.12s ease;
+  will-change: auto;
+}
+.hand.tap .hand-card .cardface {
+  border-radius: 6px;
+}
+.hand.tap .hand-card::after {
+  content: none;
+}
+.hand.tap .hand-card:hover {
+  transform: none;
+}
+.hand.tap .hand-card.selected {
+  transform: translateY(-6px);
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 8px 16px rgba(0, 0, 0, 0.6);
+}
+.hand-sel {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 10px 2px;
+}
+.hand-sel .play-btn {
+  position: static;
+  transform: none;
+  min-height: 38px;
+  padding: 8px 18px;
+  font-size: 13px;
+}
+.hand-sel-none {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 38px;
+}
+
+/* --- tabs and sheets --- */
+.phone-tabs {
+  flex: none;
+  display: flex;
+  background: #0b0d13;
+  border-top: 1px solid var(--gold-dim);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.phone-tabs button {
+  position: relative;
+  flex: 1 1 0;
+  height: 50px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.phone-tabs button.on {
+  color: var(--gold);
+  box-shadow: inset 0 2px 0 var(--gold);
+}
+/* A decision is waiting in this panel. */
+.phone-dot {
+  position: absolute;
+  top: 10px;
+  right: calc(50% - 44px);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+}
+/*
+ * Over the map only — `.board-cell` is the containing block — so the dock below, and the decision
+ * in it, is never covered.
+ */
+.phone-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Leaves a band at the map's top for the board's hint bar, which moves up there (below). */
+  max-height: calc(100% - 76px);
+  min-height: min(220px, 100%);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 12, 18, 0.97);
+  border-top: 1px solid var(--gold-dim);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.7);
+}
+.phone-sheet-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 6px 14px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border-bottom: 1px solid rgba(201, 169, 97, 0.2);
+}
+.phone-sheet-head .ghost {
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.phone-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+}
+
+/* --- court sheet: the cards at a size they can be read, three to a row --- */
+.phone-sheet .court-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  height: auto;
+}
+/* The ≤920px layout turns the head sideways for its strip; here it is an ordinary heading. */
+.phone-sheet .court-head {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  writing-mode: horizontal-tb;
+  transform: none;
+  font-size: 11px;
+}
+.phone-sheet .court-draw,
+.phone-sheet .court-slot {
+  flex: none;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 744 / 1039;
+}
+.phone-sheet .court-slot:hover:not(:disabled) {
+  transform: none;
+}
+.phone-sheet .court-art {
+  object-fit: contain;
+}
+.phone-sheet .court-pip {
+  font-size: 12px;
+}
+.phone-sheet .play-rail {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+  gap: 10px;
+}
+.phone-sheet .play-slot,
+.phone-sheet .play-slot.tall {
+  height: auto;
+  min-height: 90px;
+}
+
+/* --- ambitions sheet: the track at its own proportions, not stretched to the phone's width --- */
+/* Pushed right: the Declare flags hang off its left edge (`.amb-flag`, fixed, ~150px wide). */
+.phone-sheet .ambition-track {
+  max-width: 210px;
+  margin: 0 4px 0 auto;
+  overflow: visible;
+}
+
+/* --- players sheet: the boards stacked, yours first --- */
+.phone-sheet .player-boards {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: visible;
+  gap: 8px;
+}
+.phone-sheet .mini-boards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.phone-sheet .player-boards > *,
+.phone-sheet .mini-boards > * {
+  flex: none;
+  max-width: none;
+}
+
+/* --- the round so far, in the map's top-left corner (PhonePlays) --- */
+.phone-plays {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 6;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  background: rgba(11, 13, 19, 0.82);
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+}
+.pp-card {
+  position: relative;
+  width: 40px;
+  height: 56px;
+  border: 2px solid;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.pp-card .cardface {
+  border-radius: 0;
+}
+.pp-card.zeroed::after {
+  content: '0';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 800 20px var(--font-display);
+  color: var(--gold);
+  background: rgba(0, 0, 0, 0.55);
+}
+.pp-tag {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font: 700 7.5px var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0b0d13;
+  text-align: center;
+}
+
+/*
+ * A sheet opened over the map would bury the board's hint bar — and with it the way out of the
+ * ask (don't declare, done moving, skip). While one is open the bar sits in the band under the
+ * topbar that the sheet leaves free.
+ */
+.app.phone[data-sheet] .board-hint {
+  position: fixed;
+  top: 48px;
+  bottom: auto;
+  z-index: 80;
+}
+
+/* --- the trays in the dock: Prelude, action tray, ask strip --- */
+/*
+ * On the desktop these are one fixed-height row over the hand. Here they are a panel that wraps:
+ * the head across the top, the choices under it at full width, the way out last. Capped and
+ * scrolled so the map always keeps some height.
+ */
+.app.phone .pr-tray,
+.app.phone .at-tray {
+  flex: none;
+  pointer-events: auto;
+}
+.app.phone .pr-inner,
+.app.phone .at-inner {
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  max-height: 42dvh;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 0;
+  padding: 8px 10px 10px;
+}
+.app.phone .at-head,
+.app.phone .pr-head {
+  flex: 1 1 100%;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  max-width: none;
+  padding: 0 0 6px;
+  border-right: 0;
+  border-bottom: 1px solid rgba(201, 169, 97, 0.16);
+}
+.app.phone .at-rows {
+  flex: 1 1 100%;
+  max-height: none;
+  overflow: visible;
+  grid-template-columns: minmax(80px, max-content) minmax(0, 1fr);
+}
+.app.phone .at-rail > .pb-guild {
+  max-width: 120px;
+}
+.app.phone .at-entries {
+  padding-left: 8px;
+}
+.app.phone .at-btn,
+.app.phone .strip-btn {
+  min-height: 38px;
+  padding: 8px 13px;
+}
+.app.phone .strip-actions {
+  flex: 1 1 100%;
+  max-height: none;
+  overflow: visible;
+}
+.app.phone .at-end {
+  flex: 1 1 100%;
+  min-height: 40px;
+  white-space: normal;
+}
+.app.phone .pr-body {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+/*
+ * While a tray asks, or the map does, the hand is context rather than the decision: shrink it to a
+ * strip. Not when the hint bar is the hand's own (seize, mulligan, Farseers) — then its cards are
+ * the choice, and some of them are playable.
+ */
+.app.phone .board-col:has(.at-inner, .pr-inner) .hand.tap .hand-card,
+.app.phone .board-col:has(.board-hint):not(:has(.hand-card.playable)) .hand.tap .hand-card {
+  width: 44px;
+  height: 62px;
+}
+/* Room to scroll the map's lower edge up out from under the hint bar. */
+.mz:has(.board-hint) .mz-scroll {
+  padding-bottom: 64px;
+}

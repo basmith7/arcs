@@ -28,6 +28,11 @@ import { RulesModal } from './components/RulesModal.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
 import { initAudio } from './audio.js'
+import { enterPhoneCanvas } from './phone-canvas.js'
+import { useNarrow, type Sheet } from './phone.js'
+import { MapZoom } from './components/MapZoom.js'
+import { PhonePlays } from './components/PhonePlays.js'
+import { PhoneTabs, SheetHead } from './components/PhoneTabs.js'
 import { canAct, hushed, viewFor, watchedActor } from './multiplayer/seat.js'
 import { setSettings, useSettings } from './settings.js'
 import { setupLabel } from './setups.js'
@@ -57,7 +62,14 @@ export function App(): JSX.Element {
    * Pinning the log is a statement about how you like to play rather than a thing you did to this
    * game, so it lives in settings. Open-but-unpinned stays local state, like the drawer always was.
    */
-  const { watchTurns, logPinned } = useSettings()
+  const { watchTurns, logPinned, phoneLayout, phoneHand } = useSettings()
+  /*
+   * The phone layout (phone.ts, phone.css): the game screen rearranged for a narrow window. Its
+   * open sheet and folded-away menu are local state like the log drawer.
+   */
+  const narrow = useNarrow()
+  const [sheet, setSheet] = useState<Sheet | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   /*
    * The rules reader. On both screens for the same reason settings is: someone deciding whether
    * to start a game is exactly the person who wants to read the rulebook first.
@@ -69,6 +81,18 @@ export function App(): JSX.Element {
    * happen, and that click is what the browser wants before it will play anything.
    */
   useEffect(() => initAudio(), [])
+  const inGame = result !== null
+  useEffect(() => (inGame ? enterPhoneCanvas(phoneLayout) : undefined), [inGame, phoneLayout])
+  const phone = inGame && narrow && phoneLayout === 'mobile'
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('phone', phone)
+    root.classList.toggle('phone-hand-grid', phone && phoneHand === 'grid')
+    if (!phone) {
+      setSheet(null)
+      setMenuOpen(false)
+    }
+  }, [phone, phoneHand])
   useEffect(() => {
     if (!logOpen) return
     const onKey = (e: KeyboardEvent): void => {
@@ -174,9 +198,15 @@ export function App(): JSX.Element {
    * `cont`: it is not a decision surface and `handOwner` already decides whose cards it fans.
    */
   const boardCont = watched === null ? cont : hushed(cont)
+  // A new decision, for the phone map to frame its targets by (MapZoom).
+  const mapFocus =
+    cont.kind === 'ask' ? `${cont.faction}:${cont.actions.map((x) => x.type).join()}` : cont.kind
 
   return (
-    <div className="app">
+    <div
+      className={phone ? 'app phone' : 'app'}
+      {...(phone && sheet !== null ? { 'data-sheet': sheet } : {})}
+    >
       {needsName && seatView.kind === 'seat' ? (
         <NamePrompt
           faction={seatView.faction}
@@ -190,7 +220,9 @@ export function App(): JSX.Element {
         {/* Was the status panel's heading; the panel itself is gone, the player boards
             along the bottom carry everything else it showed. */}
         <span className="turn-meta">
-          Act {state.act} · Chapter {state.chapter} · Round {state.round}
+          {phone
+            ? `Ch ${state.chapter} · Rd ${state.round}`
+            : `Act ${state.act} · Chapter ${state.chapter} · Round ${state.round}`}
         </span>
         {current !== undefined ? (
           <span className="turn-badge">
@@ -206,16 +238,34 @@ export function App(): JSX.Element {
           nameOf={(f) => store.seatName(f)}
           {...(myDiscordName === undefined ? {} : { myDiscordName })}
         />
-        <div className="toolbar">
+        {phone ? (
+          <button
+            className="ghost phone-menu-btn"
+            aria-expanded={menuOpen}
+            aria-label="Menu"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            ☰
+          </button>
+        ) : null}
+        <div
+          className={menuOpen ? 'toolbar open' : 'toolbar'}
+          onClickCapture={(e) => {
+            // A menu item was chosen; the file picker's own click is not one to close on.
+            if (phone && (e.target as HTMLElement).tagName === 'BUTTON') setMenuOpen(false)
+          }}
+        >
           <button className="ghost" onClick={() => store.undo()} disabled={!store.canUndo()}>
             Undo
           </button>
           <button className="ghost" onClick={saveGame}>
             Save
           </button>
-          <button className="ghost" onClick={() => setLogOpen((v) => !v)}>
-            Log
-          </button>
+          {phone ? null : (
+            <button className="ghost" onClick={() => setLogOpen((v) => !v)}>
+              Log
+            </button>
+          )}
           <button className="ghost" onClick={() => setRulesOpen(true)}>
             Rules
           </button>
@@ -229,10 +279,10 @@ export function App(): JSX.Element {
         </div>
       </header>
 
-      <main className={logPinned ? 'layout log-pinned' : 'layout'}>
+      <main className={logPinned && !phone ? 'layout log-pinned' : 'layout'}>
         <section className="board-col">
-          <CourtPanel state={state} />
-          <PlayedCards state={state} />
+          {phone ? null : <CourtPanel state={state} />}
+          {phone ? null : <PlayedCards state={state} />}
           <div className="board-cell">
             {/*
               * Every click on the map dispatches an action, so it is gated like any other surface.
@@ -240,21 +290,48 @@ export function App(): JSX.Element {
               * watcher gets the board at full strength and simply cannot move anything on it.
               */}
             <Watching canAct={acting}>
-              <Board state={state} cont={boardCont} />
+              {phone ? (
+                <MapZoom focusKey={mapFocus}>
+                  <Board state={state} cont={boardCont} />
+                </MapZoom>
+              ) : (
+                <Board state={state} cont={boardCont} />
+              )}
             </Watching>
+            {phone ? <PhonePlays state={state} onOpen={() => setSheet('court')} /> : null}
+            {/* Over the map only, never the dock: the decision being made stays in reach. */}
+            {phone && sheet !== null ? (
+              <div className={`phone-sheet ${sheet}`} role="dialog" aria-label={sheet}>
+                <SheetHead sheet={sheet} onClose={() => setSheet(null)} />
+                <div className="phone-sheet-body">
+                  {sheet === 'court' ? (
+                    <>
+                      <CourtPanel state={state} />
+                      <PlayedCards state={state} />
+                    </>
+                  ) : sheet === 'ambitions' ? (
+                    <AmbitionTrack state={state} cont={boardCont} />
+                  ) : sheet === 'boards' ? (
+                    <PlayerBoards state={state} current={current} />
+                  ) : (
+                    <LogPanel log={state.log} />
+                  )}
+                </div>
+              </div>
+            ) : null}
             {/*
               * The turn feed, over the map's lower-left and outside `Watching` — it is narration,
               * not a control, and making it inert would take the one thing on screen that explains
               * the pause out of the accessibility tree. Suppressed when the log is pinned, which is
               * the same rows in a bigger frame a few hundred pixels to the right.
               */}
-            {watched !== null && !logPinned ? (
+            {watched !== null && (phone || !logPinned) ? (
               <div className="turn-feed" role="status" aria-live="polite">
                 <LogPanel log={state.log} only="last-turn" />
               </div>
             ) : null}
           </div>
-          <AmbitionTrack state={state} cont={boardCont} />
+          {phone ? null : <AmbitionTrack state={state} cont={boardCont} />}
           {/*
             * The decision surfaces. Wrapped so a watcher sees them and cannot touch them —
             * `Watching` is `display: contents`, so `.hand-row` and its siblings stay grid items of
@@ -270,7 +347,7 @@ export function App(): JSX.Element {
           ) : (
             <Watching canAct={acting}>
               <div className="hand-row">
-                <Hand state={state} cont={cont} />
+                <Hand state={state} cont={cont} tapToSelect={phone} />
               </div>
               {/*
                 * The three that share the hand's grid area, and none of them mount in watch mode:
@@ -289,9 +366,17 @@ export function App(): JSX.Element {
               )}
             </Watching>
           )}
-          <PlayerBoards state={state} current={current} />
+          {phone ? null : <PlayerBoards state={state} current={current} />}
         </section>
-        {logOpen || logPinned ? (
+        {phone ? (
+          <PhoneTabs
+            cont={cont}
+            acting={acting && watched === null}
+            sheet={sheet}
+            onSheet={setSheet}
+          />
+        ) : null}
+        {!phone && (logOpen || logPinned) ? (
           <div className="log-drawer" role="complementary" aria-label="Game log">
             <div className="log-drawer-head">
               <span>Log</span>

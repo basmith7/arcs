@@ -55,6 +55,27 @@ describe('the settings store', () => {
     expect(getSettings().logPinned).toBe(true)
   })
 
+  it('remembers the phone layout and hand choices', () => {
+    expect(DEFAULTS.phoneLayout).toBe('mobile')
+    expect(DEFAULTS.phoneHand).toBe('row')
+    setSettings({ phoneLayout: 'canvas', phoneHand: 'grid' })
+    reloadSettings()
+    expect(getSettings().phoneLayout).toBe('canvas')
+    expect(getSettings().phoneHand).toBe('grid')
+  })
+
+  it('falls back per field when a stored phone choice is not one of the options', () => {
+    localStorage.setItem(KEY, JSON.stringify({ phoneLayout: 'tablet', phoneHand: 'grid' }))
+    reloadSettings()
+    expect(getSettings().phoneLayout).toBe(DEFAULTS.phoneLayout)
+    expect(getSettings().phoneHand).toBe('grid')
+  })
+
+  it('ignores an unknown phone choice passed to setSettings', () => {
+    setSettings({ phoneLayout: 'nonsense' as never })
+    expect(getSettings().phoneLayout).toBe(DEFAULTS.phoneLayout)
+  })
+
   it('watches other players by default, and does not pin the log', () => {
     expect(DEFAULTS.watchTurns).toBe(true)
     expect(DEFAULTS.logPinned).toBe(false)

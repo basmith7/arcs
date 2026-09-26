@@ -40,7 +40,18 @@ export interface Settings {
   watchTurns: boolean
   /** Whether the log drawer is a column of the layout rather than a panel over the board. */
   logPinned: boolean
+  /**
+   * What a phone held upright shows during a game: the phone layout (`phone.css`), or the desktop
+   * table shrunk to fit and pinch-zoomed (`phone-canvas.ts`). A phone held sideways always gets the
+   * latter — the desktop layout fits there.
+   */
+  phoneLayout: PhoneLayout
+  /** The phone layout's hand: one scrolling row of full-size cards, or every card at once, smaller. */
+  phoneHand: PhoneHand
 }
+
+export type PhoneLayout = 'mobile' | 'canvas'
+export type PhoneHand = 'row' | 'grid'
 
 export const DEFAULTS: Readonly<Settings> = {
   musicEnabled: true,
@@ -52,6 +63,8 @@ export const DEFAULTS: Readonly<Settings> = {
   watchTurns: true,
   // The board is the thing to look at; the log has to be asked for.
   logPinned: false,
+  phoneLayout: 'mobile',
+  phoneHand: 'row',
 }
 
 const KEY = 'arcs:settings'
@@ -72,6 +85,10 @@ function unit(v: unknown, fallback: number): number {
   return Math.min(1, Math.max(0, v))
 }
 
+function oneOf<T extends string>(v: unknown, options: readonly T[], fallback: T): T {
+  return options.includes(v as T) ? (v as T) : fallback
+}
+
 function parse(json: string): Settings {
   const raw = JSON.parse(json) as Record<string, unknown>
   if (typeof raw !== 'object' || raw === null) return { ...DEFAULTS }
@@ -82,6 +99,8 @@ function parse(json: string): Settings {
     boardDim: unit(raw['boardDim'], DEFAULTS.boardDim),
     watchTurns: bool(raw['watchTurns'], DEFAULTS.watchTurns),
     logPinned: bool(raw['logPinned'], DEFAULTS.logPinned),
+    phoneLayout: oneOf(raw['phoneLayout'], ['mobile', 'canvas'], DEFAULTS.phoneLayout),
+    phoneHand: oneOf(raw['phoneHand'], ['row', 'grid'], DEFAULTS.phoneHand),
   }
 }
 
@@ -127,6 +146,8 @@ export function setSettings(patch: Partial<Settings>): void {
     boardDim: patch.boardDim === undefined ? prev.boardDim : unit(patch.boardDim, prev.boardDim),
     watchTurns: patch.watchTurns ?? prev.watchTurns,
     logPinned: patch.logPinned ?? prev.logPinned,
+    phoneLayout: oneOf(patch.phoneLayout, ['mobile', 'canvas'], prev.phoneLayout),
+    phoneHand: oneOf(patch.phoneHand, ['row', 'grid'], prev.phoneHand),
   }
   /*
    * The no-op guard, over the keys rather than one `&&` per field. It used to name every field,

@@ -21,8 +21,10 @@ token (Tower container `palworld-discord-bot`) via Tower `.env`; `#arcs` channel
 
 Still open (verified 2026-09-22 unless noted): webhook transport never exercised live — the
 `game.webhook_url` column is there and unused; grace timers are in-memory in
-`packages/server-node/src/main.ts`, so a deploy drops that turn's follow-up; phone layout and the
-Blighted Reach campaign are still to spec; the `Deploy` (cloudflare) job still runs on every fork
+`packages/server-node/src/main.ts`, so a deploy drops that turn's follow-up; the phone layout is
+built but unreleased on `feat/phone-canvas` (2026-09-26, spec in
+`docs/superpowers/specs/2026-09-26-phone-layout-design.md`); the Blighted Reach campaign is still
+to spec; the `Deploy` (cloudflare) job still runs on every fork
 push as a no-op; `x-forwarded-for` is trusted blindly in `api.ts` (fine behind Traefik).
 
 Two rules deviations are known and deliberate, both in docs/15 section 5: the chapter-end ambition
