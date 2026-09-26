@@ -255,7 +255,9 @@ export function SlotBoard({ state, cont }: { state: GameState; cont: Continue })
           </button>
         </div>
 
-        <p className="da-note">Drag resources to re-arrange. Dropping onto a full slot swaps them.</p>
+        <p className="da-note">
+          Drag a resource, or tap it and then tap where it goes. Dropping onto a full slot swaps them.
+        </p>
       </div>
 
       {at !== null && held !== null ? (

@@ -73,6 +73,21 @@ export function AmbitionTrack({
     setTip({ text, x: r.right, y: r.bottom + 6 })
   }
   const hideTip = (): void => setTip(null)
+  /*
+   * Hover for a mouse, a tap for a touch screen. The hover half must be mouse-only: a tap also
+   * sends the compatibility `mouseenter` just before its `click`, which showed the tip and then
+   * had the tap toggle it straight off again.
+   */
+  const hoverTip = (e: React.PointerEvent<HTMLElement>): void => {
+    if (e.pointerType === 'mouse') showTip(e)
+  }
+  const unhoverTip = (e: React.PointerEvent<HTMLElement>): void => {
+    if (e.pointerType === 'mouse') hideTip()
+  }
+  const tapTip = (e: React.MouseEvent<HTMLElement>): void => {
+    if (tip?.text === e.currentTarget.dataset['tip']) hideTip()
+    else showTip(e)
+  }
   const threshold = 39 - state.factions.length * 3
 
   // Someone else declaring an ambition flashes that row (see turn-events.ts).
@@ -119,9 +134,16 @@ export function AmbitionTrack({
    */
   const panelRef = useRef<HTMLDivElement>(null)
   const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  /*
+   * The phone layout draws the track in a scrolling sheet. The flags are fixed to the window, so a
+   * row scrolled out of the sheet would leave its flag floating over whatever is below; this is the
+   * sheet's visible band, and a flag outside it is not drawn. Null on the desktop.
+   */
+  const [clip, setClip] = useState<DOMRect | null>(null)
   useLayoutEffect(() => {
     const measure = (): void => {
       setAnchor(panelRef.current?.getBoundingClientRect() ?? null)
+      setClip(panelRef.current?.closest('.phone-sheet-body')?.getBoundingClientRect() ?? null)
     }
     measure()
     window.addEventListener('resize', measure)
@@ -132,6 +154,20 @@ export function AmbitionTrack({
     }
     // Re-measure when the ask changes: the flags only exist during a declare moment.
   }, [cont])
+
+  // In the phone sheet, bring the first declarable row into view: its flag is only drawn there.
+  const firstDeclarable = AMBITIONS.find((a) => declarable.has(a))
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    const body = panel?.closest('.phone-sheet-body')
+    if (panel === null || panel === undefined || body === null || body === undefined) return
+    if (firstDeclarable === undefined) return
+    const p = panel.getBoundingClientRect()
+    const b = body.getBoundingClientRect()
+    const y = p.top + p.height * ROW_FRAC[firstDeclarable]
+    if (y > b.top + 24 && y < b.bottom - 24) return
+    body.scrollTop += y - (b.top + b.height / 2)
+  }, [cont, firstDeclarable])
 
   const declaredByAmbition = new Map<Ambition, AmbitionMarker[]>()
   for (const d of state.declared) {
@@ -154,21 +190,22 @@ export function AmbitionTrack({
       ? null
       : createPortal(
           <>
-            {[...declarable.entries()].map(([a, action]) => (
-              <button
-                key={`declare-${a}`}
-                type="button"
-                className="amb-flag"
-                style={{
-                  top: anchor.top + anchor.height * ROW_FRAC[a],
-                  left: anchor.left - 10,
-                }}
-                title={String(action['label'] ?? `Declare ${a}`)}
-                onClick={() => store.apply(action)}
-              >
-                Declare {a}
-              </button>
-            ))}
+            {[...declarable.entries()].map(([a, action]) => {
+              const top = anchor.top + anchor.height * ROW_FRAC[a]
+              if (clip !== null && (top < clip.top + 12 || top > clip.bottom - 12)) return null
+              return (
+                <button
+                  key={`declare-${a}`}
+                  type="button"
+                  className="amb-flag"
+                  style={{ top, left: anchor.left - 10 }}
+                  title={String(action['label'] ?? `Declare ${a}`)}
+                  onClick={() => store.apply(action)}
+                >
+                  Declare {a}
+                </button>
+              )
+            })}
           </>,
           document.body,
         )
@@ -230,8 +267,9 @@ export function AmbitionTrack({
                * the Populist Demands claim rows, and a click must win over a hover explanation.
                */
               style={{ top: ROW_Y[a], pointerEvents: declarable.size > 0 ? 'none' : 'auto' }}
-              onMouseEnter={showTip}
-              onMouseLeave={hideTip}
+              onPointerEnter={hoverTip}
+              onPointerLeave={unhoverTip}
+              onClick={tapTip}
               data-tip={`Two-player rule (rulebook p19): the ${held} out-of-play ${
                 held === 1 ? 'resource counts' : 'resources count'
               } toward ${a} as if a third player held them — they can place but never score`}
@@ -268,8 +306,9 @@ export function AmbitionTrack({
                 // Same hover-vs-claim-click rule as the phantom chip below.
                 pointerEvents: declarable.size > 0 ? 'none' : 'auto',
               }}
-              onMouseEnter={showTip}
-              onMouseLeave={hideTip}
+              onPointerEnter={hoverTip}
+              onPointerLeave={unhoverTip}
+              onClick={tapTip}
               data-tip={`${holder}'s ${courtCard(card).name}: the ${n} ${resource} in the supply count toward ${holder}'s Tycoon — held on the card, and ${holder} can't spend them`}
             >
               {n}

@@ -19,7 +19,7 @@
 
 import { CardLocation, SUITS, contentsOf, parseCardId } from '@arcs/engine'
 import type { Action, Continue, GameState } from '@arcs/engine'
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 
 import { store } from '../store.js'
 import { handOwner } from '../multiplayer/seat.js'
@@ -47,14 +47,22 @@ export function modeOf(cont: Continue): HandMode {
   if (cont.kind !== 'ask') return { kind: 'plays' }
   const find = (t: string): Action | undefined => cont.actions.find((a) => a.type === t)
   if (find('turn/seize') !== undefined || find('turn/lattice-seize') !== undefined) {
-    return { kind: 'seize', lattice: find('turn/lattice-seize'), out: find('turn/skip-seize') }
+    return {
+      kind: 'seize',
+      lattice: find('turn/lattice-seize'),
+      out: find('turn/skip-seize'),
+    }
   }
   const draw = find('turn/mulligan')
   const keep = find('turn/keep-hand')
   if (draw !== undefined && keep !== undefined) return { kind: 'mulligan', draw, keep }
   const done = find('turn/farseers-done')
   if (done !== undefined) {
-    return { kind: 'farseers', done, picked: (done['picked'] as readonly string[]) ?? [] }
+    return {
+      kind: 'farseers',
+      done,
+      picked: (done['picked'] as readonly string[]) ?? [],
+    }
   }
   return { kind: 'plays' }
 }
@@ -62,9 +70,15 @@ export function modeOf(cont: Continue): HandMode {
 interface Props {
   state: GameState
   cont: Continue
+  /**
+   * The phone layout's hand: no hover to raise a card, so a tap *selects* it and its play buttons
+   * appear in a bar under the row; a second tap on a card with one ordinary play plays it.
+   */
+  tapToSelect?: boolean
 }
 
-export function Hand({ state, cont }: Props): JSX.Element | null {
+export function Hand({ state, cont, tapToSelect = false }: Props): JSX.Element | null {
+  const [selected, setSelected] = useState<string | null>(null)
   if (cont.kind !== 'ask') return null
 
   /*
@@ -114,8 +128,31 @@ export function Hand({ state, cont }: Props): JSX.Element | null {
   const spread = Math.min(n * 7, 34) // total fan angle
   const step = n > 1 ? spread / (n - 1) : 0
 
-  return (
-    <div className="hand">
+  const selPlays = selected === null ? [] : (playsByCard.get(selected) ?? [])
+  const selBar =
+    tapToSelect && selected !== null && cards.includes(selected) ? (
+      <div className="hand-sel">
+        {selPlays.length > 0 ? (
+          selPlays.map((a, j) => (
+            <button
+              key={j}
+              className="play-btn"
+              onClick={() => {
+                setSelected(null)
+                store.apply(a)
+              }}
+            >
+              {PLAY_LABEL[a.type] ?? 'Play'}
+            </button>
+          ))
+        ) : (
+          <span className="hand-sel-none">{yourTurn ? 'Not playable now' : 'Not your turn'}</span>
+        )}
+      </div>
+    ) : null
+
+  const faces = (
+    <>
       {cards.map((cardId, i) => {
         const mid = (n - 1) / 2
         const rot = (i - mid) * step
@@ -128,7 +165,9 @@ export function Hand({ state, cont }: Props): JSX.Element | null {
         return (
           <div
             key={cardId}
-            className={`hand-card${playable ? ' playable' : ''}${picked ? ' picked' : ''}`}
+            className={`hand-card${playable ? ' playable' : ''}${picked ? ' picked' : ''}${
+              tapToSelect && selected === cardId ? ' selected' : ''
+            }`}
             style={
               {
                 '--rot': `${rot}deg`,
@@ -138,6 +177,14 @@ export function Hand({ state, cont }: Props): JSX.Element | null {
               } as CSSProperties
             }
             onClick={() => {
+              if (tapToSelect) {
+                const again = selected === cardId
+                setSelected(again ? null : cardId)
+                if (again && plays.length === 1 && PLAY_TYPES.includes(plays[0]!.type)) {
+                  store.apply(plays[0]!)
+                }
+                return
+              }
               /*
                * Only an ordinary play applies from the card body. A seize or Farseers discard
                * costs the card, so it takes the explicit button on the raised card — a stray
@@ -147,7 +194,7 @@ export function Hand({ state, cont }: Props): JSX.Element | null {
             }}
           >
             <CardFace cardId={cardId} />
-            {playable ? (
+            {playable && !tapToSelect ? (
               <div className="card-plays">
                 {plays.map((a, j) => (
                   <button
@@ -166,8 +213,18 @@ export function Hand({ state, cont }: Props): JSX.Element | null {
           </div>
         )
       })}
-    </div>
+    </>
   )
+
+  if (tapToSelect) {
+    return (
+      <div className="hand tap">
+        <div className="hand-cards">{faces}</div>
+        {selBar}
+      </div>
+    )
+  }
+  return <div className="hand">{faces}</div>
 }
 
 function bySuitThenStrength(a: string, b: string): number {

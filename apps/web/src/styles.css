@@ -354,9 +354,19 @@ button {
 
 /* --- app layout --- */
 .app {
-  height: 100vh;
+  height: calc(100 * var(--vh, 1vh));
   display: flex;
   flex-direction: column;
+}
+/*
+ * A phone held upright: the game is a fixed band at the top of a page far taller than it (see
+ * phone-canvas.ts). The transform makes the body the containing block for everything
+ * `position: fixed` — the modals, the card zoom, the log — so they centre on the band rather
+ * than halfway down an empty page.
+ */
+html.phone-portrait body {
+  height: calc(100 * var(--vh));
+  transform: translateZ(0);
 }
 /*
  * Above every overlay. A full-screen backdrop (the battle window, the enlarged court card) used
@@ -902,7 +912,7 @@ button {
 .court-modal-art {
   /* Sized off the viewport so the card is as large as the screen allows — this is the
      readable copy, and 744x1039 art needs the room. */
-  height: min(78vh, 900px);
+  height: min(calc(78 * var(--vh, 1vh)), 900px);
   width: auto;
   max-width: 60vw;
   object-fit: contain;
@@ -2689,7 +2699,7 @@ button {
 }
 .log-feed {
   /* Long turns scroll rather than growing up the board; the newest line is the one pinned in view. */
-  max-height: 30vh;
+  max-height: calc(30 * var(--vh, 1vh));
   padding: 8px 10px;
 }
 
@@ -2779,7 +2789,7 @@ button {
 /* An action card opened from the log: the same backdrop as the court modal, art and nothing else. */
 .log-action-art {
   max-width: 90vw;
-  max-height: 86vh;
+  max-height: calc(86 * var(--vh, 1vh));
   border-radius: 14px;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.7);
 }
@@ -3109,7 +3119,7 @@ button {
 .da-modal {
   position: relative;
   width: min(720px, 100%);
-  max-height: 90vh;
+  max-height: calc(90 * var(--vh, 1vh));
   overflow-y: auto;
   background: linear-gradient(rgba(17, 14, 16, 0.98), rgba(9, 10, 15, 0.99));
   border: 1px solid rgba(224, 96, 78, 0.45);
@@ -3851,7 +3861,7 @@ button {
   max-height: 100%;
 }
 .draft-reader-art {
-  height: min(78vh, 900px);
+  height: min(calc(78 * var(--vh, 1vh)), 900px);
   width: auto;
   max-width: 60vw;
   object-fit: contain;
@@ -4119,7 +4129,7 @@ button {
   position: fixed;
   inset: auto 12px 12px auto;
   width: min(460px, 42vw);
-  max-height: 62vh;
+  max-height: calc(62 * var(--vh, 1vh));
   background: none;
   backdrop-filter: none;
   pointer-events: none;
@@ -4127,7 +4137,7 @@ button {
   overflow: hidden;
 }
 .watching .da-modal {
-  max-height: 62vh;
+  max-height: calc(62 * var(--vh, 1vh));
   overflow: auto;
   box-shadow: 0 10px 40px -8px rgba(0, 0, 0, 0.8);
 }
@@ -6313,8 +6323,8 @@ button {
  */
 .rules-modal {
   width: min(900px, 100%);
-  height: 90vh;
-  max-height: 90vh;
+  height: calc(90 * var(--vh, 1vh));
+  max-height: calc(90 * var(--vh, 1vh));
   overflow: hidden;
   display: flex;
   flex-direction: column;

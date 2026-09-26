@@ -1,0 +1,344 @@
+/*
+ * The phone layout's dialogs and full-screen screens — see phone.css for the frame and
+ * docs/superpowers/specs/2026-09-26-phone-layout-design.md. Every rule is scoped under `html.phone`.
+ *
+ * The desktop dialogs are centred consoles you can drag aside to look at the map. On a phone there
+ * is nowhere to drag them to, so each becomes a *sheet*: full width, pinned to the bottom edge,
+ * scrolling inside itself, and never taller than the room under the topbar — the topbar (z 400)
+ * sits over the modal layer (300), so a sheet that reached the top would lose its own header under
+ * Undo and the menu. `--phone-top` is that reserved band; `dvh` because the phone's own bars come
+ * and go and the sheet's buttons must stay on screen under them.
+ */
+html.phone {
+  --phone-top: 48px;
+  --phone-sheet-max: calc(100dvh - var(--phone-top));
+}
+
+/* --- the console dialogs: battle, raid, shelf, slots, ask, source, settings, rules --- */
+
+html.phone .da-backdrop {
+  align-items: flex-end;
+  justify-content: stretch;
+  padding: 0;
+}
+html.phone .da-modal,
+html.phone .shelf-modal,
+html.phone .raid-modal,
+html.phone .sb-modal,
+html.phone .settings-modal,
+html.phone .rules-modal {
+  width: 100%;
+  max-width: 100%;
+  max-height: var(--phone-sheet-max);
+  border-radius: 14px 14px 0 0;
+  border-bottom: 0;
+  padding: 12px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+  /* modal-drag.ts positions a dragged dialog with an inline transform; a sheet has one place. */
+  transform: none !important;
+}
+/*
+ * The drag handle sets `touch-action: none` inline so the pointer stays with the header on the
+ * desktop. Here the header is not a handle, and that setting would stop a finger on it from
+ * scrolling the sheet.
+ */
+html.phone .da-head {
+  touch-action: pan-y !important;
+  cursor: default !important;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+html.phone .da-title {
+  font-size: 13px;
+}
+html.phone .da-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+/* Every button in a sheet is a tap target: 36px tall, whatever its type size says. */
+html.phone .da-ghost,
+html.phone .da-confirm,
+html.phone .shelf-alt,
+html.phone .srcm-act,
+html.phone .sb-done,
+html.phone .sb-ghost,
+html.phone .rules-tab,
+html.phone .strip-btn,
+html.phone .draft-random,
+html.phone .learned-read,
+html.phone .shelf-read,
+html.phone .raid-read,
+html.phone .court-modal-side .ghost,
+html.phone .draft-reader-actions button,
+html.phone .name-card button,
+html.phone .il-continue,
+html.phone .il-close {
+  min-height: 36px;
+}
+html.phone .da-confirm {
+  padding: 9px 18px;
+}
+
+/* --- the card shelf: three cards across, the width shared out instead of fixed at 110px --- */
+html.phone .shelf-items {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+html.phone .shelf-item {
+  padding: 6px 4px;
+  min-width: 0;
+}
+html.phone .shelf-item img:not(.raid-price) {
+  width: 100%;
+}
+html.phone .shelf-name,
+html.phone .raid-name {
+  max-width: 100%;
+}
+/* The magnifier is a 22px square on the desktop; on a card this small a thumb needs more. */
+html.phone .shelf-read,
+html.phone .raid-read,
+html.phone .learned-read {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  font-size: 15px;
+}
+
+/* --- the raid: the same shelf, the purse under the title rather than beside it --- */
+html.phone .raid-purse {
+  margin-left: 0;
+  flex-basis: 100%;
+}
+html.phone .raid-items {
+  gap: 8px;
+}
+html.phone .raid-item {
+  padding: 8px 8px 6px;
+}
+
+/* --- the slot board: six wells and a bin will not fit 360px at 60px each --- */
+/* The row wraps rather than scrolling: the supply bin drops under the slots when they fill the width. */
+html.phone .sb-slots {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+html.phone .sb-bin {
+  flex-direction: row;
+  gap: 8px;
+  padding: 4px 8px;
+}
+html.phone .sb-group {
+  gap: 3px;
+}
+html.phone .sb-slot {
+  padding: 4px 2px 6px;
+  gap: 3px;
+}
+html.phone .sb-well {
+  width: 44px;
+  height: 44px;
+}
+html.phone .sb-keys {
+  width: 22px;
+  height: 22px;
+}
+html.phone .sb-tokens {
+  gap: 8px;
+  padding: 8px;
+  min-height: 60px;
+  flex-wrap: wrap;
+}
+
+/* --- the tray's source modal: the card above its actions, not beside them --- */
+html.phone .srcm-body {
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+html.phone .srcm-art {
+  width: min(240px, 60vw);
+}
+html.phone .srcm-actions {
+  width: 100%;
+  padding-top: 0;
+}
+
+/* --- settings: the label column gives up room so the segmented choices can wrap --- */
+html.phone .set-row {
+  grid-template-columns: 84px minmax(0, 1fr) 40px;
+  gap: 8px;
+}
+
+/* --- rules: the reader takes the full height under the topbar; the tabs wrap --- */
+html.phone .rules-modal {
+  height: var(--phone-sheet-max);
+}
+html.phone .rules-tabs {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+html.phone .rules-tab {
+  padding: 8px 10px;
+  font-size: 9.5px;
+}
+
+/*
+ * Watching someone else's decision. The desktop tucks the console into the bottom-right corner
+ * as a 460px card; here the sheet sits over the map, above the dock and the tab bar, and short
+ * enough that the map stays in view — the reason it stopped being modal in the first place.
+ */
+html.phone .watching .da-backdrop {
+  inset: auto 8px 118px 8px;
+  width: auto;
+  max-height: 44dvh;
+}
+html.phone .watching .da-modal {
+  max-height: 44dvh;
+  border-radius: 10px;
+  border-bottom: 1px solid rgba(224, 96, 78, 0.45);
+  padding: 10px 12px 12px;
+}
+
+/* --- the full-screen pickers: draft, learned, chapter interlude, game over --- */
+html.phone .draft {
+  padding: calc(var(--phone-top) + 8px) 12px calc(20px + env(safe-area-inset-bottom, 0px));
+}
+html.phone .draft-head {
+  gap: 6px 12px;
+}
+html.phone .draft-title {
+  font-size: 18px;
+}
+html.phone .draft-body {
+  gap: 16px;
+}
+/* Two cards across whatever the width, so the art is as large as the row allows. */
+html.phone .draft-cards {
+  gap: 10px;
+}
+html.phone .draft-card,
+html.phone .learned-card {
+  width: calc(50% - 5px);
+}
+html.phone .learned-slot {
+  width: calc(50% - 5px);
+}
+html.phone .learned-slot .learned-card {
+  width: 100%;
+}
+/* The hover lift has no hover to answer to, and a lifted card in a scrolling screen jitters. */
+html.phone .draft-card:hover,
+html.phone .learned-card:hover {
+  transform: none;
+}
+html.phone .draft-pile {
+  width: 72px;
+}
+
+/* The readers: card over panel rather than beside it, the whole thing scrolling. */
+html.phone .court-modal,
+html.phone .draft-reader {
+  padding: var(--phone-top) 8px 8px;
+  align-items: flex-end;
+}
+html.phone .court-modal-inner,
+html.phone .draft-reader-inner {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 12px;
+}
+html.phone .court-modal-art,
+html.phone .draft-reader-art {
+  height: auto;
+  width: auto;
+  max-width: 100%;
+  max-height: 58dvh;
+  align-self: center;
+}
+html.phone .court-modal-side,
+html.phone .draft-reader-side {
+  width: auto;
+}
+html.phone .draft-reader-actions {
+  margin-top: 4px;
+}
+
+/* The chapter interlude and the game over screen: one column per ambition row. */
+html.phone .il-head {
+  gap: 12px;
+}
+html.phone .il-chapter-art {
+  width: 84px;
+}
+html.phone .il-ambition-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 0;
+}
+html.phone .il-awards {
+  gap: 8px 12px;
+}
+/* Right-aligned in the desktop's third column; in one column that reads as stranded. */
+html.phone .il-holdings {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+html.phone .il-power-strip {
+  gap: 10px 14px;
+  padding: 10px 12px;
+}
+html.phone .il-foot {
+  flex-wrap: wrap;
+  padding: 8px 0 12px;
+}
+html.phone .il-continue,
+html.phone .il-close {
+  padding: 12px 20px;
+}
+
+/* --- the name prompt: the card takes the width it is given --- */
+html.phone .name-backdrop {
+  padding: 16px;
+}
+html.phone .name-card {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 18px 16px;
+}
+
+/*
+ * Floating readouts. The ambition tip anchors itself to the chip it explains — its right edge,
+ * growing leftward, below the chip. On a phone the chip sits in a sheet that can put it within
+ * 260px of the left edge or a line above the tab bar, so anchoring can push the tip off either
+ * side. Pinned to the window instead: a strip across the width, just above the tab bar, where
+ * it is always whole. The log card preview already keeps itself inside the window, but its
+ * 240px art is sized for the desktop drawer.
+ */
+html.phone .amb-tip {
+  left: 10px !important;
+  right: 10px;
+  top: auto !important;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  transform: none;
+  width: auto;
+  max-width: none;
+  font-size: 12px;
+  padding: 8px 10px;
+  /* Over the sheet (70) it is explaining, whichever element it is rendered from. */
+  z-index: 80;
+}
+html.phone .log-preview img {
+  width: 200px;
+  height: 280px;
+}

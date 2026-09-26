@@ -6,6 +6,8 @@ import { MULTIPLAYER_URL } from './multiplayer/config.js'
 import { parseLink, recall } from './multiplayer/link.js'
 import { store } from './store.js'
 import './styles.css'
+import './phone.css'
+import './phone-modals.css'
 
 /*
  * A game link in the address bar joins that game before anything renders, so a player who follows

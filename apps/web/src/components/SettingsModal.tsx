@@ -54,6 +54,37 @@ function SliderRow({
   )
 }
 
+/** A one-of-few choice as a row of buttons, the pressed one lit. */
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T
+  options: readonly (readonly [T, string])[]
+  onChange: (v: T) => void
+}): JSX.Element {
+  return (
+    <div className="set-row">
+      <span className="set-label">{label}</span>
+      <div className="set-seg" role="group" aria-label={label}>
+        {options.map(([v, text]) => (
+          <button
+            key={v}
+            className={v === value ? 'on' : ''}
+            aria-pressed={v === value}
+            onClick={() => onChange(v)}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function SettingsModal({
   onClose,
   seat,
@@ -120,6 +151,33 @@ export function SettingsModal({
             While a bot or another player decides, their menus are replaced by a feed of what they
             actually did. Off shows their surfaces instead, grayed out — slower, and the better way
             to learn the game by watching one.
+          </p>
+        </section>
+
+        <section className="set-section">
+          <h3 className="set-heading">Phone</h3>
+          <Segmented
+            label="Layout"
+            value={settings.phoneLayout}
+            options={[
+              ['mobile', 'Mobile'],
+              ['canvas', 'Zoomable desktop'],
+            ]}
+            onChange={(v) => setSettings({ phoneLayout: v })}
+          />
+          <Segmented
+            label="Hand"
+            value={settings.phoneHand}
+            options={[
+              ['row', 'Row'],
+              ['grid', 'Grid'],
+            ]}
+            onChange={(v) => setSettings({ phoneHand: v })}
+          />
+          <p className="set-note">
+            For a phone held upright. Mobile rearranges the game for a small screen; Zoomable
+            desktop shows the full table to pinch and pan. Held sideways, a phone always gets the
+            full table.
           </p>
         </section>
 
