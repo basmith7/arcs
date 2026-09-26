@@ -274,11 +274,16 @@ Neither design moves the budget much:
 
 **What would change this:**
 
-- **A learned policy cheap enough to make rollouts engine-bound.** Suppose inference is ≤1 ms
-  per decision, so a 4p playout falls near the `playoutChoice` 29 ms. Then the engine (plus
-  `stepBot`/`observe`) becomes most of the cost, and a TS representation pass, followed by
-  offline Rust if needed, starts to pay. Re-profile a `playoutChoice` playout first: its engine
-  shares, not the `normal` bot's, would decide it.
+- **A learned policy cheap enough to make rollouts engine-bound.** It must be one inference per
+  decision, not one per simulated candidate. A playout is several hundred decisions (~500 is an
+  estimate; not counted). To stay near the `playoutChoice` 29 ms, inference must be about ≤50 µs
+  per decision: 29 ms + 500 × 50 µs ≈ 55 ms. At 1 ms per decision a playout is ~530 ms: still
+  ~27x cheaper than `normal`, but then the policy is the cost again. Once the policy is that
+  cheap, the engine (plus `stepBot`/`observe`) becomes most of the cost, and a TS representation
+  pass, followed by offline Rust if needed, starts to pay. Re-profile a `playoutChoice` playout
+  first: its engine shares, not the `normal` bot's, would decide it. Whether such a policy is a
+  credible simulator (§3d) is the prior question: measure its agreement with `hard` and its arena
+  strength first.
 - **A step 5-style kernel with integer ids at ≥5x over TS on the same ids.** That would make a
   redesigned Rust engine worth pricing again.
 - **A TS pass (interned locations, fewer string-keyed maps) at ≥1.3x on a whole game.** That would
