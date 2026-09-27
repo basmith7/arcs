@@ -94,10 +94,10 @@ function judge(name: string, p: Probe): { declaresOk: boolean; battlesOk: boolea
 const fmt = (g: ReturnType<typeof pairedGate>): string =>
   `win ${(100 * g.winDiff).toFixed(1)} ± ${(100 * g.winSe).toFixed(1)} pts/side (z ${g.winZ.toFixed(2)}), power ${g.powerDiff >= 0 ? '+' : ''}${g.powerDiff.toFixed(2)} ± ${g.powerSe.toFixed(2)} (z ${g.powerZ.toFixed(2)}), ${g.games} games/${g.units} deals`
 
-function gate(name: string, spec: string): string {
+function gate(name: string, spec: string, seedBase = 1_110_000): string {
   const files: string[] = []
   for (let k = 0; k < 4; k++) {
-    files.push(arena(`gate-${name}-${k}`, `A=hard,B=${spec},B=${spec},A=hard`, 400, 1_110_000 + 1000 * k))
+    files.push(arena(`gate-${name}-${k}`, `A=hard,B=${spec},B=${spec},A=hard`, 400, seedBase + 1000 * k))
     const g = pairedGate(outcomes(files), 'B', 'A')
     note(`${name} gate after ${files.length * 400} games: ${fmt(g)}`)
     if (k === 1) {
@@ -120,6 +120,31 @@ function main(): void {
     return
   }
   if (!existsSync(SUMMARY)) appendFileSync(SUMMARY, `# Committed strategies — run log\n\n`)
+
+  // docs/spikes/2026-09-pip-menu.md: probe then gate `exp:s1` against `hard`.
+  if (mode === 's1') {
+    if (state.steps['probe-s1'] === undefined) {
+      const p = probe('s1', 'exp:s1')
+      const t = (id: string): Tally => p.tallies[id]!
+      const rate = (x: Tally, k: string): number => (x.taken[k] ?? 0) / Math.max(1, x.offered[k] ?? 0)
+      const secure = rate(t('B'), 'take:Secure')
+      const ok = p.unfinished === 0 && secure >= 0.05
+      const pct = (x: number): string => `${(100 * x).toFixed(1)}%`
+      note(`s1 probe: ${p.unfinished} unfinished; take:Secure ${pct(secure)} vs hard ${pct(rate(t('A'), 'take:Secure'))} (need >= 5%); ` +
+        `Battle ${pct(rate(t('B'), 'take:Battle'))} vs ${pct(rate(t('A'), 'take:Battle'))}, Move ${pct(rate(t('B'), 'take:Move'))} vs ${pct(rate(t('A'), 'take:Move'))}, ` +
+        `Influence ${pct(rate(t('B'), 'take:Influence'))} vs ${pct(rate(t('A'), 'take:Influence'))}`)
+      state.steps['probe-s1'] = ok ? 'pass' : 'fail'
+      save()
+      note(`**s1 probe: ${state.steps['probe-s1']!.toUpperCase()}**`)
+    }
+    if (state.steps['probe-s1'] === 'pass' && state.steps['gate-s1'] === undefined) {
+      state.steps['gate-s1'] = gate('s1', 'exp:s1', 1_210_000)
+      save()
+      note(`**s1 gate: ${state.steps['gate-s1']!.toUpperCase()}**`)
+    }
+    current('s1 done')
+    return
+  }
 
   if (mode === 'explore') {
     for (const board of ['Board4MixUp2', 'Board4Frontiers', 'Board4MixUp3']) {
