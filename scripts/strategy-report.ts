@@ -43,7 +43,7 @@ for (const name of NAMES) {
     const seatGames = 2 * j.games
     p(`| ${name} | ${key.endsWith('0.95') ? 'commitment 0.95' : 'commitment 0.85'} | ${j.unfinished} | ${(decl(b) / seatGames).toFixed(2)} / ${(decl(a) / seatGames).toFixed(2)} | ${pct(share(b))} / ${pct(share(a))} | ${pct(rate(b, 'take:Battle'))} / ${pct(rate(a, 'take:Battle'))} | ${pct(rate(b, 'take:Influence'))} / ${pct(rate(a, 'take:Influence'))} | ${state.config[name] === (key.endsWith('0.95') ? `strat:${name}:0.95` : `strat:${name}`) ? state.steps[`probe-${name}`] ?? '' : 'retried'} |`)
     // Every ambition, for the record.
-    const by = (t: Tally): string => ['Tycoon', 'Tyrant', 'Warlord', 'Keeper', 'Empath'].map((x) => `${x[0]}${x[1]} ${t.taken[`declare:${x}`] ?? 0}`).join(', ')
+    const by = (t: Tally): string => ['Tycoon', 'Tyrant', 'Warlord', 'Keeper', 'Empath'].map((x) => `${x} ${t.taken[`declare:${x}`] ?? 0}`).join(', ')
     out.push(`<!-- ${key}: strat declares ${by(b)}; hard declares ${by(a)} -->`)
   }
 }

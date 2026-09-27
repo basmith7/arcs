@@ -175,3 +175,119 @@ games an hour. Estimates:
 
 Runs are resumable (`scripts/strategy-lab.ts`). Results are written into this file as each
 stage completes.
+
+---
+
+# Part 2 — Results (2026-09-27)
+
+## Answer
+
+**No committed strategy beats adaptive `hard`; the two that were distinct lose clearly.** Builder
+loses 12.5 points of win share per side, and Court loses 30.5. Both gates stopped for futility at
+800 games. Warlord failed its probe: it was not distinct from `hard`, which already opens as a
+warlord. The mixed field (M1-M3) and the exploratory board and leader runs **were not run**. The
+machine was needed, and the pip-menu regression found in parallel (docs/spikes/2026-09-pip-menu.md)
+took priority. So Q3, transitivity, is **unanswered**, and Q2 rests on the gate games only.
+
+Wall clock was ~2.5x the protocol's estimate: a 100-game probe took 12.5-16 min at 14 shards, and a
+400-game chunk took 42-55 min at 13 shards.
+
+## Probes (100 4p games each, seed 91000)
+
+| strategy | unfinished | declares per seat-game (strat / `hard`) | plan share of declares (strat / `hard`) | Battle take rate (strat / `hard`) | Influence take rate (strat / `hard`) | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| Warlord | 0 | 2.11 / 2.60 | **59.7% / 33.8%** (met) | 64.4% / 62.4% (+2.0, needed +5: **missed**) | 7.9% / 8.9% | **fail**: no gate |
+| Builder | 0 | 2.23 / 2.51 | **71.1% / 13.3%** (met) | 64.4% / 63.1% (met) | 6.5% / 6.4% | pass |
+| Court | 0 | 2.19 / 2.88 | **71.3% / 34.8%** (met) | 59.0% / 59.9% (met) | 9.6% / 6.9% | pass |
+
+Declarations by ambition (Tycoon / Tyrant / Warlord / Keeper / Empath):
+
+| probe | strategy | `hard` in the same games |
+| --- | --- | --- |
+| Warlord | 51 / 117 / 135 / 97 / 22 | 133 / 60 / 116 / 170 / 41 |
+| Builder | 318 / 29 / 23 / 74 / 3 | 67 / 91 / 120 / 185 / 39 |
+| Court | 49 / 29 / 48 / 198 / 115 | 158 / 105 / 112 / 175 / 25 |
+
+Reading:
+
+- **The commitment works: declarations follow the plan.** Builder declares Tycoon 318 times where
+  `hard` declares it 67 times.
+- **What the plans cannot move is the pip choice.** Battle take rates stay within 2 points of
+  `hard`'s for every strategy. The pip-menu investigation (docs/spikes/2026-09-pip-menu.md) found
+  why: every pip-menu option scores identically, so offer order picks the action. The plan's
+  intent cannot reach that choice, and no overlay could have lifted Warlord's battle rate.
+- **Committed strategies declare less often** (2.1-2.2 per seat-game against 2.5-2.9). They pass
+  up declarations off their plan.
+
+## Gates (4p, A,B,B,A, clustered by deal)
+
+**Builder**: not detected, futility at 800 (z -3.83).
+
+| chunk | games (deals) | Builder / `hard` wins per seat | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- | --- |
+| 0 | 400 (100) | 21.3% / 28.7% | -15.0 ± 4.8 (z -3.10) | -2.46 ± 0.49 (z -5.07) |
+| 1 | 400 (100) | 22.5% / 27.5% | -10.0 ± 4.4 (z -2.28) | -1.73 ± 0.52 (z -3.30) |
+| **pooled** | **800 (200)** | 21.9% / 28.1% | **-12.5 ± 3.3 (z -3.83)** | **-2.10 ± 0.36 (z -5.87)** |
+
+**Court**: not detected, futility at 800 (z -9.40).
+
+| chunk | games (deals) | Court / `hard` wins per seat | win share Δ per side | power Δ per seat |
+| --- | --- | --- | --- | --- |
+| 0 | 400 (100) | 18.3% / 31.8% | -27.0 ± 4.9 (z -5.52) | -4.36 ± 0.56 (z -7.75) |
+| 1 | 400 (100) | 16.5% / 33.5% | -34.0 ± 4.3 (z -7.99) | -5.76 ± 0.44 (z -13.13) |
+| **pooled** | **800 (200)** | 17.4% / 32.6% | **-30.5 ± 3.2 (z -9.40)** | **-5.06 ± 0.36 (z -14.09)** |
+
+## Mixed field
+
+**Not run.** It was stopped part-way at the user's request, with no outcomes saved; the arena
+writes its file at the end. M1-M3 are untested.
+
+## Setup-dependence — EXPLORATORY (gate games only; no tests)
+
+Win share per seat-game. Each strategy is shown beside `hard` in the same games.
+
+| split | cell | Builder | `hard` | Court | `hard` |
+| --- | --- | --- | --- | --- | --- |
+| seat | red (leads first) | 47.5% | 54.8% | 40.3% | 51.7% |
+| seat | yellow | 20.8% | 27.8% | 11.8% | 36.0% |
+| seat | blue | 8.8% | 17.8% | 10.0% | 21.0% |
+| seat | white | 10.5% | 12.3% | 7.5% | 21.8% |
+| plan-declaring cards in the opening hand | 0 | 21.9% (178) | 28.7% | 10.5% (38) | 28.9% |
+| | 1 | 20.0% (514) | 29.8% | 18.4% (212) | 33.0% |
+| | 2 | 23.7% (562) | 28.6% | 17.8% (528) | 35.0% |
+| | 3+ | 21.7% (346) | 24.6% | 17.2% (822) | 31.1% |
+| majority suit of the opening hand | Administration | 22.0% | 27.1% | 12.6% | 27.1% |
+| | Aggression | 27.7% | 26.2% | 18.0% | 36.4% |
+| | Construction | 21.8% | 27.7% | 15.3% | 33.7% |
+| | Mobilization | 24.3% | 31.7% | 19.8% | 31.7% |
+| | tied | 19.7% | 28.1% | 18.4% | 33.1% |
+
+Cells are 400 seat-games per seat, and 200-800 per hand cell, as shown.
+
+Reading:
+
+- **No setup rescues a strategy.** The only cell where a strategy is level with `hard` is Builder
+  with an Aggression-majority hand (+1.5 points, 206 seat-games). That lifts Builder 5.8 points
+  over its own overall share, short of the pre-registered 10.
+- **Holding the cards to declare the plan does not help the plan.** Builder's win share is flat
+  across 0 to 3+ Tycoon-declaring cards, and Court's is flat across 1 to 3+.
+- **The seat effect dwarfs everything here.** Red, which leads first, wins ~48-55% of these
+  games. That is a property of the game and of Board4MixUp1, not of the bots.
+
+## Recommendation: **stop**
+
+This follows the fixed rule:
+
+- **Not "ship"**: no gate passed.
+- **Not "choose a plan per chapter"**: no setup cell met the rule. The best cell lifted a strategy
+  5.8 points, not 10, and no strategy led `hard` anywhere that had 200 or more seat-games.
+- **"Personalities" is not established.** Its criterion is the mixed field, which was not run. The
+  gates suggest Builder might qualify, at 6.2 points per seat behind `hard` (21.9% against 28.1%),
+  against the rule's 5. Court would not, at 15.2 behind.
+
+**What would change it.** A mixed-field run in which Builder lands within 5 points per seat of
+`hard` would make Builder a candidate personality: a Tycoon-first opponent that plays visibly
+differently at a modest strength cost. The cost is ~1,600 games, about 3.5 h at 8 shards
+(estimate). And if the pip-menu fix ships, the strategies should be re-measured on top of it. The
+probes show the plans could not reach the pip choice. With it resolved, a Warlord's overlay (ships,
+trophies, battles) can finally change what it does with its pips.
