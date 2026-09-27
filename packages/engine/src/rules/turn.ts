@@ -44,7 +44,7 @@ import {
 import type { RuleModule, RuleResult } from '../dispatch.js'
 import { unhandled } from '../dispatch.js'
 import { CardLocation, Location, parseFigureId } from '../ids.js'
-import type { FactionId, SystemId } from '../ids.js'
+import type { FactionId, LocationId, SystemId } from '../ids.js'
 import { Prelude, guildPreludes, lorePreludes, preludeOffers } from '../prelude.js'
 import type { GuildPrelude } from '../prelude.js'
 import type { Resource } from '../resources.js'
@@ -61,7 +61,7 @@ import {
 } from '../resources.js'
 import { shuffle } from '../rng.js'
 import type { Ambition, GameState, Lead } from '../state.js'
-import { contentsOf, move, moveAll, place } from '../tracker.js'
+import { contentsOf, locationOf, move, moveAll, place } from '../tracker.js'
 import {
   CheckDeclare,
   ScoreAmbitions,
@@ -1203,9 +1203,30 @@ function performPreludeSpend(
   pips: number,
 ): RuleResult {
   const next = paying(state, faction, resource)
+  /*
+   * The return carries what was paid and where it sat, so a Cancel on the action's opening picker
+   * can put it back (`refundPip`). Nothing else reads the two fields: the Prelude ignores them.
+   */
+  const token = tokenOf(state, faction, resource)!
+  const back: Action = { ...Prelude(faction, suit, pips), paid: token, from: locationOf(state.resources, token) }
   return {
     state: { ...next, log: [...next.log, `${faction} spent ${resource} in Prelude for ${action}`] },
-    continue: C.then(TakeAction(faction, action, Prelude(faction, suit, pips))),
+    continue: C.then(TakeAction(faction, action, back)),
+  }
+}
+
+/** A cancelled Prelude spend: the token goes back to the slot it was paid from. */
+function performPreludeRefund(state: GameState, action: Action): RuleResult {
+  const faction = action['faction'] as FactionId
+  const token = action['token'] as string
+  const { resource } = parseResourceToken(token)
+  return {
+    state: {
+      ...state,
+      resources: move(state.resources, token, action['from'] as LocationId),
+      log: [...state.log, `${faction} took back the ${resource}`],
+    },
+    continue: C.then(Prelude(faction, action['suit'] as Suit, action['pips'] as number)),
   }
 }
 
@@ -1913,6 +1934,8 @@ export const TurnModule: RuleModule = {
           action['suit'] as Suit,
           action['pips'] as number,
         )
+      case 'turn/prelude-refund':
+        return performPreludeRefund(state, action)
       case 'turn/prelude-spend':
         return performPreludeSpend(
           state,

@@ -118,11 +118,25 @@ function cancelPip(faction: FactionId, then: PipReturn): Action {
   return { ...skip(faction, then), refund: true }
 }
 
-/** Where a refunding Cancel returns to: the same pip menu, with the pip not yet spent. */
+/**
+ * Where a refunding Cancel returns to: the same pip menu with the pip not yet spent, or, for an
+ * action bought in the Prelude, the Prelude with the resource back in its slot.
+ */
 export function refundPip(action: Action): Action {
   const then = action['then'] as Action
-  if (action['refund'] !== true || then.type !== 'turn/pips') return then
-  return { ...then, done: (then['done'] as number) - 1 }
+  if (action['refund'] !== true) return then
+  if (then.type === 'turn/pips') return { ...then, done: (then['done'] as number) - 1 }
+  if (then.type === 'turn/prelude' && typeof then['paid'] === 'string') {
+    return {
+      type: 'turn/prelude-refund',
+      faction: then['faction'],
+      token: then['paid'],
+      from: then['from'],
+      suit: then['suit'],
+      pips: then['pips'],
+    }
+  }
+  return then
 }
 
 const GuildAltAction = (faction: FactionId, alt: string, then: PipReturn): Action => ({
