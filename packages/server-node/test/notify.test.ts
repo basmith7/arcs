@@ -120,13 +120,16 @@ describe('postToDiscord', () => {
 })
 
 describe('Notifier', () => {
-  it('pings the next human by name with their seat link', async () => {
+  it('pings the next human by name with the game link, never a seat token', async () => {
     const { game, sent, notifier, start, afterRed } = await setup()
     await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
     expect(sent).toHaveLength(1)
     expect(sent[0]!.url).toBe(HOOK)
     expect(sent[0]!.content).toContain('**Sam**')
-    expect(sent[0]!.content).toContain(seatLink('https://arcs.test', game.gameId, game.seats[1]!.seatToken))
+    // The channel is shared: anyone who clicks a seat link becomes that player, and the browser
+    // remembers it over their own seat. Each browser recalls its own seat from the bare link.
+    expect(sent[0]!.content).toContain(seatLink('https://arcs.test', game.gameId))
+    for (const s of game.seats) expect(sent[0]!.content).not.toContain(s.seatToken)
   })
 
   it('falls back to the faction when no name is set and says nothing without a webhook', async () => {

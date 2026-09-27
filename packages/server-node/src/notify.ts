@@ -191,7 +191,13 @@ export class Notifier {
     if (!seat.pings) return undefined
     const seats = this.store.seats(gameId)
     const nameOf = (faction: string): string => seats.find((s) => s.faction === faction)?.name ?? faction
-    const link = seatLink(this.origin, gameId, seat.seatToken)
+    /*
+     * The game link, not the seat's. The channel is shared, so a seat link there lets anyone who
+     * clicks it play that seat, and their browser then remembers it in place of their own. A bare
+     * game link opens whichever seat this browser last played in the game (`recall` in the web
+     * client), so the player whose turn it is still lands in their seat.
+     */
+    const link = seatLink(this.origin, gameId)
     if (seat.discordId !== undefined) {
       return {
         text: `<@${seat.discordId}> (**${nameOf(seat.faction)}**), it's your turn in Arcs (chapter ${chapter}) — ${link}`,
