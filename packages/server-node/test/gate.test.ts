@@ -177,3 +177,46 @@ describe('EngineGate resumeAll fault tolerance', () => {
     expect(errors.some((a) => String(a[0]).includes('[gate] resume failed'))).toBe(true)
   })
 })
+
+/**
+ * Take-back: the online undo. A player removes their own last action while nobody has acted since,
+ * provided it revealed nothing (`takeBackBlock` in the engine). Everyone watching is told to reload.
+ */
+describe('EngineGate take-back', () => {
+  it("removes the seat's own last action and tells watchers to reload", async () => {
+    const { gate, game, seat, store } = await table()
+    const pushes: { from: number; entries: readonly string[]; reset?: boolean }[] = []
+    gate.subscribe(game.gameId, (p) => pushes.push(p))
+    await gate.append(game.gameId, seat('red'), 0, RED_FIRST_LEAD)
+    expect(await gate.takeBack(game.gameId, seat('red'), 1)).toEqual({ ok: true, length: 0 })
+    expect(store.journal(game.gameId)).toEqual([])
+    expect(gate.resultOf(game.gameId)?.state.journal).toEqual([])
+    expect(gate.askedFaction(game.gameId)).toBe('red')
+    expect(pushes.at(-1)).toEqual({ from: 0, entries: [], reset: true })
+  })
+
+  it("refuses someone else's action, a stale length, and an empty journal", async () => {
+    const { gate, game, seat, store } = await table()
+    expect(await gate.takeBack(game.gameId, seat('red'), 0)).toEqual({ ok: false, reason: 'nothing' })
+    await gate.append(game.gameId, seat('red'), 0, RED_FIRST_LEAD)
+    expect(await gate.takeBack(game.gameId, seat('yellow'), 1)).toEqual({ ok: false, reason: 'not-yours' })
+    expect(await gate.takeBack(game.gameId, seat('red'), 2)).toEqual({ ok: false, reason: 'conflict', length: 1 })
+    expect(await gate.takeBack(game.gameId, 'bogus', 1)).toEqual({ ok: false, reason: 'bad-seat' })
+    expect(store.journal(game.gameId)).toEqual([RED_FIRST_LEAD])
+  })
+
+  it('walks back your own actions until it reaches dice already rolled', async () => {
+    // Red's opening ends with a battle: roll the dice, then confirm the hits.
+    const { gate, game, seat, store } = await table()
+    await playOpening(gate, game.gameId, seat('red'))
+    const n = RED_OPENING.length
+    expect(RED_OPENING[n - 2]).toMatch(/^battle\/roll/)
+    expect(await gate.takeBack(game.gameId, seat('red'), n)).toEqual({ ok: true, length: n - 1 })
+    expect(await gate.takeBack(game.gameId, seat('red'), n - 1)).toEqual({
+      ok: false,
+      reason: 'revealed',
+      why: 'dice were rolled or cards shuffled',
+    })
+    expect(store.journal(game.gameId)).toEqual(RED_OPENING.slice(0, n - 1))
+  })
+})

@@ -93,6 +93,14 @@ export class Session {
   /** Cleanup for the document/window activity listeners, or `null` when not attached. */
   private removeActivityListeners: (() => void) | null = null
   private lastActiveSentAt = 0
+  /**
+   * Moves and take-backs, sent one at a time in the order they were made.
+   *
+   * Each carries the journal length it expects, and a take-back followed at once by a move (or two
+   * take-backs, as "start over" in hit assignment does) must reach the server in that order: sent
+   * in parallel, the second can arrive first and be refused as stale.
+   */
+  private sending: Promise<unknown> = Promise.resolve()
 
   constructor(
     baseUrl: string,
@@ -252,6 +260,12 @@ export class Session {
       return
     }
 
+    // A take-back shortened the journal. Replaying is the whole recovery story, as for a conflict.
+    if ((push as { reset?: unknown }).reset === true) {
+      void this.resync()
+      return
+    }
+
     const from = push.from
     const entries = push.entries
     if (typeof from !== 'number' || !Array.isArray(entries)) return
@@ -356,6 +370,34 @@ export class Session {
    * only outcome that needs handling is a conflict, which resolves itself by replaying.
    */
   async publish(action: Action, expectedLength: number): Promise<void> {
+    const run = this.sending.then(() => this.publishNow(action, expectedLength))
+    this.sending = run.catch(() => {})
+    return run
+  }
+
+  /**
+   * Take back this seat's last action, already undone locally. `undefined` when the server agreed;
+   * otherwise the reason it refused. The caller then replays the server's journal (`resync`) — after
+   * recording the reason, so the redraw the replay causes carries it.
+   */
+  async takeBack(expectedLength: number): Promise<string | undefined> {
+    const run = this.sending.then(() => this.takeBackNow(expectedLength))
+    this.sending = run.catch(() => {})
+    return run
+  }
+
+  private async takeBackNow(expectedLength: number): Promise<string | undefined> {
+    if (this.link.seatToken === undefined) return 'spectators cannot undo'
+    try {
+      const outcome = await this.client.undo(this.link.gameId, this.link.seatToken, expectedLength)
+      if (outcome.ok) return undefined
+      return 'refused' in outcome ? outcome.refused : 'someone moved first'
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e)
+    }
+  }
+
+  private async publishNow(action: Action, expectedLength: number): Promise<void> {
     if (this.link.seatToken === undefined) return
     try {
       const outcome = await this.client.append(

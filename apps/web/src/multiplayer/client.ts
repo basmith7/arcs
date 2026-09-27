@@ -59,6 +59,12 @@ export type AppendOutcome =
   | { readonly ok: true; readonly length: number }
   | { readonly ok: false; readonly conflictAt: number }
 
+/** A take-back: done, stale (someone moved), or refused with a reason to show the player. */
+export type UndoOutcome =
+  | { readonly ok: true; readonly length: number }
+  | { readonly ok: false; readonly conflictAt: number }
+  | { readonly ok: false; readonly refused: string }
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -160,6 +166,26 @@ export class MultiplayerClient {
    * turning it into an exception would make the ordinary case look like a failure at every call
    * site.
    */
+  /** Take back this seat's own last action (`POST /games/:id/undo`). */
+  async undo(gameId: string, seatToken: string, expectedLength: number): Promise<UndoOutcome> {
+    const res = await fetch(`${this.baseUrl}/games/${encodeURIComponent(gameId)}/undo`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ seatToken, expectedLength }),
+    })
+    if (res.status === 409) {
+      const body = (await res.json()) as { length: number }
+      return { ok: false, conflictAt: body.length }
+    }
+    if (res.status === 403) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string; why?: string }
+      return { ok: false, refused: body.why ?? body.error ?? 'refused' }
+    }
+    if (!res.ok) throw new ApiError(res.status, `undo -> ${res.status} ${await res.text().catch(() => '')}`)
+    const body = (await res.json()) as { length: number }
+    return { ok: true, length: body.length }
+  }
+
   async append(
     gameId: string,
     seatToken: string,

@@ -173,6 +173,7 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const game = /^\/games\/([^/]+)$/.exec(path)
   const actions = /^\/games\/([^/]+)\/actions$/.exec(path)
   const seat = /^\/games\/([^/]+)\/seat$/.exec(path)
+  const undo = /^\/games\/([^/]+)\/undo$/.exec(path)
   const live = /^\/games\/([^/]+)\/live$/.exec(path)
 
   if (live !== null) return bad(426, 'expected a websocket upgrade')
@@ -214,6 +215,34 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
         return bad(403, 'game-over')
       case 'conflict':
         return json({ error: 'conflict', length: result.length }, 409)
+    }
+  }
+
+  // --- POST /games/:id/undo -----------------------------------------------
+  // Take back your own last action (`EngineGate.takeBack`). A refusal says why, in words the
+  // client can show: the action revealed something, or it is not yours to take back.
+  if (undo !== null && request.method === 'POST') {
+    const gameId = decodeURIComponent(undo[1]!)
+    const b = await body<{ seatToken?: unknown; expectedLength?: unknown }>(request)
+    if (b === undefined) return bad(400, 'body must be JSON')
+    if (typeof b.seatToken !== 'string') return bad(400, 'seatToken is required')
+    if (!Number.isInteger(b.expectedLength) || (b.expectedLength as number) < 0) {
+      return bad(400, 'expectedLength must be a non-negative integer')
+    }
+    const result = await gate.takeBack(gameId, b.seatToken, b.expectedLength as number)
+    if (result.ok) return json(result)
+    switch (result.reason) {
+      case 'no-such-game':
+        return bad(404, 'no such game')
+      case 'bad-seat':
+        return bad(403, 'seat token does not belong to this game')
+      case 'conflict':
+        return json({ error: 'conflict', length: result.length }, 409)
+      case 'revealed':
+        return json({ error: 'revealed', why: result.why }, 403)
+      case 'nothing':
+      case 'not-yours':
+        return bad(403, result.reason)
     }
   }
 

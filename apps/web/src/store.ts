@@ -19,6 +19,8 @@ import {
   botForLevel,
   stepBot,
   undo as engineUndo,
+  decodeAction,
+  takeBackBlock,
 } from '@arcs/engine'
 import type {
   Action,
@@ -572,6 +574,7 @@ class GameStore {
     const at = this.now()
     if (at - this.lastApplyAt < this.tapGuardMs) return
     this.lastApplyAt = at
+    this.undoNote = null
     this.clearBotTimer()
     /*
      * The first hook. Read the length *before* applying: that is what the server compares against,
@@ -593,8 +596,48 @@ class GameStore {
     if (!this.detectInterlude(prev)) this.scheduleBot()
   }
 
+  /**
+   * Why the server refused the last take-back, shown beside Undo until the next move or undo. The
+   * client checks the same rule first (`undoBlock`), so this only fires when someone moved first.
+   */
+  undoNote: string | null = null
+  private undoCache: { for: RuleResult; why: string | undefined } | null = null
+
+  /**
+   * Why Undo is unavailable right now, or `undefined` when it is available.
+   *
+   * A local game can always step back. A joined game is the server's journal, so Undo there is a
+   * take-back (`EngineGate.takeBack`): only this seat's own last action, and only if it revealed
+   * nothing (`takeBackBlock`). Judged here too, so the button is disabled rather than refused.
+   * Replaying to judge is the cost of a whole replay, so the answer is kept per position.
+   */
+  undoBlock(): string | undefined {
+    if (this.result === null || this.options === null) return 'nothing to undo'
+    const journal = this.result.state.journal
+    if (journal.length === 0) return 'nothing to undo'
+    if (this.session === null) return undefined
+    if (this.undoCache?.for === this.result) return this.undoCache.why
+    const why = this.takeBackWhy()
+    this.undoCache = { for: this.result, why }
+    return why
+  }
+
+  private takeBackWhy(): string | undefined {
+    const session = this.session!
+    if (session.isSpectator) return 'watching: nothing to undo'
+    const last = decodeAction(this.result!.state.journal.at(-1)!)
+    if (last['faction'] !== session.faction) return 'only your own last move can be taken back'
+    const before = engineUndo(this.options!, this.result!, this.registry)
+    const why = takeBackBlock(before, this.result!, last)
+    return why === undefined ? undefined : `can't take back: ${why}`
+  }
+
   undo(): void {
     if (this.result === null || this.options === null) return
+    if (this.session !== null) {
+      this.takeBack()
+      return
+    }
     /*
      * Undo must not let the bot immediately replay the action you just took back. With no panel to
      * resume from, stopping outright would deadlock a bot turn instead — so the next bot step is
@@ -612,7 +655,29 @@ class GameStore {
   }
 
   canUndo(): boolean {
-    return (this.result?.state.journal.length ?? 0) > 0
+    return this.undoBlock() === undefined
+  }
+
+  /**
+   * Undo in a joined game: step back locally at once, then ask the server to drop the entry.
+   *
+   * Optimistic like `apply`, and for the same reason: the answer is almost always yes, because the
+   * rule was checked here first. A refusal (someone moved first) replays the server's journal, which
+   * puts the action back, and says why beside the button.
+   */
+  private takeBack(): void {
+    if (this.undoBlock() !== undefined) return
+    const expectedLength = this.result!.state.journal.length
+    this.result = engineUndo(this.options!, this.result!, this.registry)
+    this.turnEvents = []
+    this.undoNote = null
+    this.emit()
+    const session = this.session
+    void session?.takeBack(expectedLength).then((refused) => {
+      if (refused === undefined) return
+      this.undoNote = `Undo refused: ${refused}`
+      return session.resync()
+    })
   }
 
   /**

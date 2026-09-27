@@ -203,6 +203,33 @@ export class SqliteStore implements GameStore {
     return { ok: true, length: next }
   }
 
+  /**
+   * Remove the last journal row, compare-and-set on the length like `append`. The take-back
+   * (`EngineGate.takeBack`) is the only caller and has already judged that the row may go.
+   *
+   * Also lowers the notified mark to the new length, so replaying the same move pings the next
+   * player again rather than being taken for a ping already sent.
+   */
+  truncateLast(gameId: GameId, expectedLength: number): { ok: true; length: number } | { ok: false; length: number } {
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      const length = this.length(gameId)
+      if (length !== expectedLength || length === 0) {
+        this.db.exec('ROLLBACK')
+        return { ok: false, length }
+      }
+      this.db.prepare('DELETE FROM journal WHERE game_id = ? AND idx = ?').run(gameId, length - 1)
+      this.db
+        .prepare('UPDATE game SET last_notified_length = MIN(last_notified_length, ?) WHERE id = ?')
+        .run(length - 1, gameId)
+      this.db.exec('COMMIT')
+      return { ok: true, length: length - 1 }
+    } catch (e) {
+      this.db.exec('ROLLBACK')
+      throw e
+    }
+  }
+
   subscribe(gameId: GameId, onAppend: OnAppend): Unsubscribe {
     let set = this.watchers.get(gameId)
     if (set === undefined) {
