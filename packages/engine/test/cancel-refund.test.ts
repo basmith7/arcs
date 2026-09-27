@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { applyExternal, defaultRegistry, replayGame } from '../src/index.js'
 import { locationOf } from '../src/tracker.js'
+import { refundPip } from '../src/rules/standard-actions.js'
 import { RESOURCES, TOKENS_PER_RESOURCE, resourceToken } from '../src/resources.js'
 import type { Action, NewGameOptions, RuleResult } from '../src/index.js'
 
@@ -162,5 +163,28 @@ describe('Cancel hands a Prelude resource back', () => {
       registry,
     )
     expect(ask(old).actions.map((a) => a['label'])).not.toContain('Material: Build')
+  })
+})
+
+/**
+ * Tactical and Charismatic pair two actions on one pip. Cancelling the first half gives the whole
+ * pip back; cancelling the second does not, because the first half has already resolved.
+ */
+describe('refundPip with a leader follow-up', () => {
+  const pips = { type: 'turn/pips', faction: 'red', suit: 'Aggression', done: 2, total: 3 }
+  const cancel = (then: Action): Action => ({ type: 'action/skip', faction: 'red', then, refund: true })
+
+  it('refunds the pip when the first half is cancelled', () => {
+    const follow = { type: 'leaders/must-follow', faction: 'red', act: 'Battle', then: pips }
+    expect(refundPip(cancel(follow))).toEqual({ ...pips, done: 1 })
+  })
+
+  it('keeps the pip spent when the follow-up is cancelled', () => {
+    const followed = { ...pips, followed: true }
+    expect(refundPip(cancel(followed))).toEqual(followed)
+  })
+
+  it('refunds nothing without the flag', () => {
+    expect(refundPip({ type: 'action/skip', faction: 'red', then: pips })).toEqual(pips)
   })
 })

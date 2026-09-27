@@ -478,7 +478,7 @@ describe('Abduct — Court Enforcers on Battle', () => {
     expect(abductableSlots(state, 'red')).toContain(2)
   })
 
-  it('joins the Battle menu without displacing Battle itself', () => {
+  it('joins the Battle menu, which offers Battle itself only when there is a fight', () => {
     // Battle already opens its own "which system" ask, so the test is what is *in* the menu.
     expect(labels(take(fresh(), 'red', 'Battle').continue).join()).not.toMatch(/Abduct/)
 
@@ -486,8 +486,11 @@ describe('Abduct — Court Enforcers on Battle', () => {
     state = agentsOnSlot(state, 'yellow', 1, 1)
     const c = take(state, 'red', 'Battle').continue
     expect(c.kind).toBe('ask')
-    expect(labels(c)).toContain('Battle') // the plain action survives
     expect(labels(c).join()).toMatch(/Abduct/)
+    // Nothing of red's faces a rival at setup, so plain Battle would open nothing and spend the
+    // pip. It stays off the menu, and a Cancel that hands the pip back is there instead.
+    expect(labels(c)).not.toContain('Battle')
+    expect(labels(c)).toContain('Cancel')
   })
 
   it('takes every rival agent on the card as captives, leaving yours alone', () => {

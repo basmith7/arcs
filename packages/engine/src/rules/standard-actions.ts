@@ -53,6 +53,7 @@ import type { GameState } from '../state.js'
 import { contentsOf, move } from '../tracker.js'
 import { CourtPile, courtCard, courtSlots, hasGuild } from '../court.js'
 import { prunable } from '../guild-actions.js'
+import type { GuildAlt } from '../guild-actions.js'
 import { hasTrait } from '../leaders.js'
 import {
   ANCIENT_HOLDINGS,
@@ -125,6 +126,13 @@ function cancelPip(faction: FactionId, then: PipReturn): Action {
 export function refundPip(action: Action): Action {
   const then = action['then'] as Action
   if (action['refund'] !== true) return then
+  // The second half of a Tactical or Charismatic pair: the first half resolved, so the pip stays
+  // spent. Refunding here would hand back a pip for the Move that already happened.
+  if (then['followed'] === true) return then
+  // The first half, cancelled: nothing has happened, so the whole pip comes back, pair and all.
+  if (then.type === 'leaders/may-follow' || then.type === 'leaders/must-follow') {
+    return refundPip({ ...action, then: then['then'] as Action })
+  }
   if (then.type === 'turn/pips') return { ...then, done: (then['done'] as number) - 1 }
   if (then.type === 'turn/prelude' && typeof then['paid'] === 'string') {
     return {
@@ -163,12 +171,51 @@ function withAlts(
 ): Action[] {
   return [
     ...options,
-    ...altsFor(state, faction, on).map((a) => ({
+    ...usefulAlts(state, faction, on, then).map((a) => ({
       ...GuildAltAction(faction, a.id, then),
       faction,
       label: a.label,
     })),
   ]
+}
+
+/**
+ * The alts on `on`'s menu that would actually do something, judged by opening each one.
+ *
+ * `available` on each registry entry is a cheap guard, and several were looser than the flow they
+ * guard: Manufacture with the supply empty, Nurture with no city that would yield anything, Prune
+ * with no opposite piece in reserve. Offered anyway, each spent the pip (or the Prelude resource)
+ * for a line in the log. Asking the flow itself, the way `canTake` does for the standard actions,
+ * means a guard can no longer drift from what it guards.
+ *
+ * Manufacture and Synthesize resolve on the spot rather than asking, so they are judged by the
+ * supply they draw from; Rifles hands off to the battle module, whose own guard is `riflesSources`.
+ */
+function usefulAlts(
+  state: GameState,
+  faction: FactionId,
+  on: StandardAction,
+  then: PipReturn,
+): readonly GuildAlt[] {
+  return altsFor(state, faction, on).filter((a) => {
+    switch (a.id) {
+      case 'manufacture':
+        return supplyOf(state.resources, 'Material').length > 0
+      case 'synthesize':
+        return supplyOf(state.resources, 'Fuel').length > 0
+      case 'rifles':
+        return true
+      default: {
+        const opened = offerGuildAlt(state, faction, a.id, then).continue
+        // Another alt on the opened menu does not count: Nurture opens the Tax menu, and Trade
+        // standing on it is not a tax.
+        return (
+          opened.kind === 'ask' &&
+          opened.actions.some((x) => x.type !== 'action/skip' && x.type !== 'action/guild-alt')
+        )
+      }
+    }
+  })
 }
 
 /** Cities in reserve -> resource-slot capacity. */
@@ -426,7 +473,7 @@ function offerGuide(state: GameState, faction: FactionId, then: PipReturn): Cont
     })
   }
   if (options.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...options, skip(faction, then)], 'Guide — along which lane?')
+  return C.ask(faction, [...options, cancelPip(faction, then)], 'Guide — along which lane?')
 }
 
 /**
@@ -473,7 +520,7 @@ function offerGuideMore(
   // Before anything has moved this is still a free exit; after, it is "that is the whole group".
   const stop: Action = moved
     ? { ...(then as Action), faction, label: `Send no more to ${to}` }
-    : skip(faction, then)
+    : cancelPip(faction, then)
   return C.ask(
     faction,
     [...options, stop],
@@ -541,7 +588,7 @@ function offerMartyr(state: GameState, faction: FactionId, then: PipReturn): Con
     }
   }
   if (options.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...options, skip(faction, then)], 'Martyr — which ship, and whose?')
+  return C.ask(faction, [...options, cancelPip(faction, then)], 'Martyr — which ship, and whose?')
 }
 
 function performMartyr(
@@ -994,7 +1041,8 @@ function taxGainsNothing(
   const owner = loreActive(state, faction, EMPATHS_BOND)
     ? undefined
     : cityOwner(state, faction, city)
-  if (owner !== undefined) return false
+  // A rival's city still pays a captive, if they have an agent left to take.
+  if (owner !== undefined && reservePiece(state, owner, 'Agent') !== undefined) return false
   // A leader's bonus resource is still a gain, if any of them is still in the supply.
   for (const r of taxBonusResources(state, faction)) {
     if (supplyOf(state.resources, r).length > 0) return false
@@ -2409,7 +2457,7 @@ function gaining(state: GameState, faction: FactionId, r: Resource, how: string)
  * The captive goes back to **its owner's** reserve, not the captor's — it was never the
  * captor's piece.
  */
-function offerPressgang(state: GameState, faction: FactionId, then: PipReturn): Continue {
+function offerPressgang(state: GameState, faction: FactionId, then: PipReturn, first = false): Continue {
   if (captivesOf(state, faction).length === 0) return C.then(then as Action)
   const options: Action[] = RESOURCES.filter(
     (r) => contentsOf(state.resources, ResourceSlot.supply(r)).length > 0,
@@ -2418,7 +2466,8 @@ function offerPressgang(state: GameState, faction: FactionId, then: PipReturn): 
     faction,
     label: `Return a captive → gain ${r}`,
   }))
-  const done: Action = { type: 'action/skip', faction, then, label: 'Done' }
+  // Before any captive has gone back this is a Cancel, and the pip comes back with it.
+  const done: Action = first ? cancelPip(faction, then) : { type: 'action/skip', faction, then, label: 'Done' }
   if (options.length === 0) return C.then(then as Action)
   return C.ask(faction, [...options, done], `Press Gang — ${captivesOf(state, faction).length} captive(s)`)
 }
@@ -2446,10 +2495,10 @@ function performPressgang(
  * (`game-guilds.scala:167-177`) — Tyrant points converted into Warlord points. Offered one at
  * a time; captives are interchangeable for both metrics, so which one is never a decision.
  */
-function offerExecute(state: GameState, faction: FactionId, then: PipReturn): Continue {
+function offerExecute(state: GameState, faction: FactionId, then: PipReturn, first = false): Continue {
   const n = captivesOf(state, faction).length
   if (n === 0) return C.then(then as Action)
-  const done: Action = { type: 'action/skip', faction, then, label: 'Done' }
+  const done: Action = first ? cancelPip(faction, then) : { type: 'action/skip', faction, then, label: 'Done' }
   return C.ask(
     faction,
     [{ ...ExecuteOne(faction, then), faction, label: 'Execute a captive → trophy' }, done],
@@ -2499,7 +2548,7 @@ function offerAbduct(state: GameState, faction: FactionId, then: PipReturn): Con
       label: `Abduct ${n_} agent(s) from ${card === undefined ? `slot ${n}` : courtCard(card).name}`,
     }
   })
-  return C.ask(faction, [...options, skip(faction, then)], `Abduct (reach ${weaponReach(state, faction)})`)
+  return C.ask(faction, [...options, cancelPip(faction, then)], `Abduct (reach ${weaponReach(state, faction)})`)
 }
 
 function performAbduct(
@@ -2545,7 +2594,7 @@ function offerTrade(state: GameState, faction: FactionId, then: PipReturn): Cont
     }
   }
   if (options.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...options, skip(faction, then)], 'Trade')
+  return C.ask(faction, [...options, cancelPip(faction, then)], 'Trade')
 }
 
 function performTrade(
@@ -2616,7 +2665,7 @@ function offerPrune(state: GameState, faction: FactionId, then: PipReturn): Cont
     })
   }
   if (options.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...options, skip(faction, then)], 'Prune')
+  return C.ask(faction, [...options, cancelPip(faction, then)], 'Prune')
 }
 
 function performPrune(
@@ -2667,9 +2716,9 @@ function offerGuildAlt(
       return { state: next, continue: overflowThen(next, faction, then) }
     }
     case 'pressgang':
-      return { state, continue: offerPressgang(state, faction, then) }
+      return { state, continue: offerPressgang(state, faction, then, true) }
     case 'execute':
-      return { state, continue: offerExecute(state, faction, then) }
+      return { state, continue: offerExecute(state, faction, then, true) }
     case 'abduct':
       return { state, continue: offerAbduct(state, faction, then) }
     case 'trade':
@@ -2715,8 +2764,12 @@ export function offerFor(
       // Battle needs no menu of its own; a guild alt on it is the only thing that adds one.
       const alts = withAlts(state, faction, 'Battle', then, [])
       if (alts.length === 0) return C.then(DeclareBattle(faction, then))
-      const declare: Action = { ...DeclareBattle(faction, then), faction, label: 'Battle' }
-      return C.ask(faction, [declare, ...alts], 'Battle')
+      // Beside an alt, Battle itself is offered only when there is a fight to pick: with none,
+      // choosing it opened nothing and the pip was gone.
+      const declare: Action[] = canBattle(state, faction)
+        ? [{ ...DeclareBattle(faction, then), faction, label: 'Battle' }]
+        : []
+      return C.ask(faction, [...declare, ...alts, cancelPip(faction, then)], 'Battle')
     }
     case 'Influence':
       return offerInfluence(state, faction, then)
@@ -2748,7 +2801,7 @@ export function canTake(
   then: PipReturn,
 ): boolean {
   if (which === 'Battle') {
-    return canBattle(state, faction) || altsFor(state, faction, 'Battle').length > 0
+    return canBattle(state, faction) || usefulAlts(state, faction, 'Battle', then).length > 0
   }
   const offer = offerFor(state, faction, which, then)
   // A `then` means the offer had nothing to show and handed the turn straight on.

@@ -589,6 +589,9 @@ function offerFollow(
   then: PipReturn,
   required: boolean,
 ): RuleResult {
+  // Marked so a Cancel in the follow-up does not refund the pip (`refundPip`): it was spent on
+  // the first half, which has resolved.
+  then = { ...(then as Action), followed: true }
   if (!canTake(state, faction, act, then)) {
     // A `must` that cannot be met is not a rules violation — you may move somewhere with nothing
     // to fight. The pip is spent either way, so the turn simply carries on.
