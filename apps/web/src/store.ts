@@ -551,13 +551,32 @@ class GameStore {
     this.scheduleBot()
   }
 
+  /**
+   * How long after an applied action another is ignored, in milliseconds.
+   *
+   * `apply` re-renders synchronously, so the second tap of a double tap lands on whatever the next
+   * decision drew in the same spot — often its Cancel, Skip or End turn — and was a genuine second
+   * move. The server's length check cannot tell: the second tap reads the new length. Nobody makes
+   * two real decisions inside a third of a second, so the window costs nothing.
+   *
+   * Zero outside a browser, where tests and scripts apply back to back. `now` is the clock, so a
+   * test can drive it.
+   */
+  tapGuardMs = typeof document === 'undefined' ? 0 : 350
+  now: () => number = () => performance.now()
+  private lastApplyAt = Number.NEGATIVE_INFINITY
+
   apply(action: Action): void {
     if (this.result === null) return
     if (!this.mayAct(action)) return
+    const at = this.now()
+    if (at - this.lastApplyAt < this.tapGuardMs) return
+    this.lastApplyAt = at
     this.clearBotTimer()
     /*
      * The first hook. Read the length *before* applying: that is what the server compares against,
-     * and it is what makes a double-tap or a stale tab a no-op rather than a duplicated action.
+     * and it is what makes a stale tab a no-op rather than a duplicated action. A double tap is the
+     * guard above's job: its second tap reads the new length and would pass this check.
      */
     const expectedLength = this.result.state.journal.length
     const prev = this.result

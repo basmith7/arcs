@@ -145,8 +145,15 @@ describe('the frozen baseline', () => {
  * baseline bot raided a resource with its own row full. Values before: [35,16,18], [41,9,23],
  * [21,18,37].
  */
+/*
+ * Re-recorded for the v0.9.4 cost-trap fixes — the usual rules-fix exception;
+ * `weightsMatchBaseline` still passes. Menus no longer offer options that do nothing (an alt with
+ * nothing to act on, Battle beside an alt with no fight), and Press Gang's first exit is now a
+ * refunding Cancel, which bots never take, where it was a "Done" that spent the resource. Only
+ * seed 0 moved. Values before: [35,16,18], [47,13,19], [21,18,37].
+ */
 const GOLDEN = [
-  [35, 16, 18],
+  [35, 28, 13],
   [47, 13, 19],
   [21, 18, 37],
 ]

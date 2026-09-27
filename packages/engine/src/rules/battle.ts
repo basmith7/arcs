@@ -357,7 +357,7 @@ function openBattle(
       then,
     })
   }
-  return openBattleArmed(state, faction, system, enemy, then)
+  return openBattleArmed(state, faction, system, enemy, then, true)
 }
 
 /**
@@ -373,17 +373,18 @@ function openBattleArmed(
   system: SystemId,
   enemy: ColorId,
   then: PipReturn,
+  fresh = false,
 ): Continue {
   const defender = defendingFaction(state, enemy)
   const armed =
     defender !== undefined &&
     hasLore(state, defender, RAILGUN_ARRAYS) &&
     piecesAt(state, system, enemy, isShip).some((id) => !state.damaged.includes(id))
-  if (!armed) return offerGather(state, faction, system, enemy, then)
+  if (!armed) return offerGather(state, faction, system, enemy, then, fresh)
 
   // Nothing of the attacker's to hit: the volley simply has no target.
   if (standing(state, system, faction, isShip).length === 0) {
-    return offerGather(state, faction, system, enemy, then)
+    return offerGather(state, faction, system, enemy, then, fresh)
   }
 
   const ctx: Resolve = {
@@ -410,12 +411,18 @@ function openBattleArmed(
  * die type, and raid dice only when the enemy has buildings (HRF's freeRaid). Matches the
  * combination enumeration in game-battle.scala:194.
  */
+/**
+ * `fresh` when nothing has happened in this battle yet. The dice menu is often the first thing
+ * after picking a system (one enemy there skips the target picker), so its Cancel gives the pip
+ * back then. After the defender's Predictive Sensors or Railgun volley it does not: those resolved.
+ */
 function offerGather(
   state: GameState,
   faction: FactionId,
   system: SystemId,
   enemy: ColorId,
   then: PipReturn,
+  fresh = false,
 ): Continue {
   const ships = piecesAt(state, system, faction, isShip).length
   /*
@@ -502,7 +509,8 @@ function offerGather(
     }
   }
   if (options.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...options, cancel(faction, then)], `Battle ${enemy} in ${system} — choose dice`)
+  const out = fresh ? cancelPip(faction, then) : cancel(faction, then)
+  return C.ask(faction, [...options, out], `Battle ${enemy} in ${system} — choose dice`)
 }
 
 // --- roll & assign ---------------------------------------------------------
@@ -1420,7 +1428,7 @@ function offerRiflesFrom(state: GameState, faction: FactionId, then: PipReturn):
     label: `Fire from ${s}`,
   }))
   if (options.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...options, cancel(faction, then)], 'Fire Rifles — from where?')
+  return C.ask(faction, [...options, cancelPip(faction, then)], 'Fire Rifles — from where?')
 }
 
 function offerRiflesTarget(
@@ -1444,7 +1452,7 @@ function offerRiflesTarget(
     }
   }
   if (options.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...options, cancel(faction, then)], `Fire Rifles from ${from} — at whom?`)
+  return C.ask(faction, [...options, cancelPip(faction, then)], `Fire Rifles from ${from} — at whom?`)
 }
 
 function performRiflesRoll(
