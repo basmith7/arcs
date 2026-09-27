@@ -19,6 +19,7 @@ import {
   NO_ASKS,
   replayGame,
   stepBot,
+  takeBackBlock,
 } from '@arcs/engine'
 import type { AskedThisTurn, NewGameOptions, RuleResult } from '@arcs/engine'
 import type { AppendResult } from '@arcs/server'
@@ -28,10 +29,18 @@ import type { SqliteStore } from './sqlite-store.js'
 export interface Push {
   readonly from: number
   readonly entries: readonly string[]
+  /** The journal was shortened (a take-back): drop everything from `from` and reload. */
+  readonly reset?: boolean
   readonly seats?: readonly { faction: string; name?: string; isBot: boolean }[]
 }
 
 export type GateAppend = AppendResult | { readonly ok: false; readonly reason: 'wrong-turn' | 'game-over' }
+
+export type GateTakeBack =
+  | { readonly ok: true; readonly length: number }
+  | { readonly ok: false; readonly reason: 'no-such-game' | 'bad-seat' | 'nothing' | 'not-yours' }
+  | { readonly ok: false; readonly reason: 'conflict'; readonly length: number }
+  | { readonly ok: false; readonly reason: 'revealed'; readonly why: string }
 
 export interface Settled {
   readonly gameId: string
@@ -112,6 +121,41 @@ export class EngineGate {
     // On the game's queue, so the turn check always sees the real head of the journal — a bot run
     // in progress finishes first, and a stale expectedLength then fails as a plain conflict.
     return this.enqueue(gameId, () => this.appendNow(gameId, seatToken, expectedLength, action))
+  }
+
+  /**
+   * Take back the seat's own last action: the online undo.
+   *
+   * Only the last entry, only if this seat made it (so nobody has acted since), and only if it
+   * revealed nothing (`takeBackBlock`: no dice, no draw, no look at a rival's hand). Repeating it
+   * walks back further through the same player's actions. On the game's queue like an append, so it
+   * can never interleave with a bot run.
+   */
+  async takeBack(gameId: string, seatToken: string, expectedLength: number): Promise<GateTakeBack> {
+    return this.enqueue(gameId, async () => this.takeBackNow(gameId, seatToken, expectedLength))
+  }
+
+  private takeBackNow(gameId: string, seatToken: string, expectedLength: number): GateTakeBack {
+    const now = this.resultOf(gameId)
+    const options = this.store.options(gameId) as NewGameOptions | undefined
+    if (now === undefined || options === undefined) return { ok: false, reason: 'no-such-game' }
+    const seat = this.store.seats(gameId).find((s) => s.seatToken === seatToken)
+    if (seat === undefined) return { ok: false, reason: 'bad-seat' }
+    const journal = now.state.journal
+    if (journal.length !== expectedLength) return { ok: false, reason: 'conflict', length: journal.length }
+    if (journal.length === 0) return { ok: false, reason: 'nothing' }
+    const last = decodeAction(journal[journal.length - 1]!)
+    if (last['faction'] !== seat.faction) return { ok: false, reason: 'not-yours' }
+
+    const before = replayGame(options, journal.slice(0, -1), this.registry)
+    const why = takeBackBlock(before, now, last)
+    if (why !== undefined) return { ok: false, reason: 'revealed', why }
+
+    const cut = this.store.truncateLast(gameId, expectedLength)
+    if (!cut.ok) return { ok: false, reason: 'conflict', length: cut.length }
+    this.remember(gameId, before)
+    this.broadcast(gameId, { from: cut.length, entries: [], reset: true })
+    return { ok: true, length: cut.length }
   }
 
   private async appendNow(

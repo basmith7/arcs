@@ -204,3 +204,27 @@ describe('route', () => {
     expect((await route(get(`/games/${created.gameId}/live`), a))?.status).toBe(426)
   })
 })
+
+describe('POST /games/:id/undo', () => {
+  it("takes back the seat's own last action, and explains a refusal", async () => {
+    const a = api()
+    const created = (await (
+      await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }), a)
+    )!.json()) as Created
+    const token = (f: string) => created.seats.find((s) => s.faction === f)!.seatToken
+    const id = created.gameId
+    await route(post(`/games/${id}/actions`, { seatToken: token('red'), expectedLength: 0, action: RED_FIRST_LEAD }), a)
+
+    const refused = await route(post(`/games/${id}/undo`, { seatToken: token('yellow'), expectedLength: 1 }), a)
+    expect(refused?.status).toBe(403)
+    expect(await refused!.json()).toEqual({ error: 'not-yours' })
+
+    const stale = await route(post(`/games/${id}/undo`, { seatToken: token('red'), expectedLength: 5 }), a)
+    expect(stale?.status).toBe(409)
+
+    const ok = await route(post(`/games/${id}/undo`, { seatToken: token('red'), expectedLength: 1 }), a)
+    expect(ok?.status).toBe(200)
+    expect(await ok!.json()).toEqual({ ok: true, length: 0 })
+    expect(a.store.journal(id)).toEqual([])
+  })
+})

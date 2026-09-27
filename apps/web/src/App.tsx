@@ -255,9 +255,15 @@ export function App(): JSX.Element {
             if (phone && (e.target as HTMLElement).tagName === 'BUTTON') setMenuOpen(false)
           }}
         >
-          <button className="ghost" onClick={() => store.undo()} disabled={!store.canUndo()}>
+          <button
+            className="ghost"
+            onClick={() => store.undo()}
+            disabled={!store.canUndo()}
+            title={store.undoBlock() ?? 'Take back your last move'}
+          >
             Undo
           </button>
+          {store.undoNote === null ? null : <span className="undo-note">{store.undoNote}</span>}
           <button className="ghost" onClick={saveGame}>
             Save
           </button>
