@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { applyExternal, defaultRegistry, replayGame } from '../src/index.js'
+import { locationOf } from '../src/tracker.js'
+import { RESOURCES, TOKENS_PER_RESOURCE, resourceToken } from '../src/resources.js'
 import type { Action, NewGameOptions, RuleResult } from '../src/index.js'
 
 /**
@@ -56,6 +58,18 @@ const JOURNAL = [
   'action/move-ships(count=2,faction="blue",from="2-Gate",then={"type":"turn/pips","faction":"blue","suit":"Mobilization","done":2,"total":3},to="2-Hex")',
 ]
 
+
+// Tim's turn in the same game: white surpasses and spends a Material in the Prelude to Build.
+const TO_PRELUDE_BUILD = [
+  ...JOURNAL,
+  'action/take(action="Influence",faction="blue",then={"type":"turn/pips","faction":"blue","suit":"Mobilization","done":3,"total":3})',
+  'action/influence(faction="blue",slot=1,then={"type":"turn/pips","faction":"blue","suit":"Mobilization","done":3,"total":3})',
+  'turn/surpass(card="Mobilization-4",faction="white")',
+  'turn/prelude-arrange(faction="white",pips=3,suit="Mobilization")',
+  'resources/arrange-done(faction="white",then={"type":"turn/prelude","faction":"white","suit":"Mobilization","pips":3})',
+  'turn/prelude-spend(action="Build",faction="white",pips=3,resource="Material",suit="Mobilization")',
+]
+
 const registry = defaultRegistry()
 
 function ask(r: RuleResult): { faction: string; prompt: string; actions: readonly Action[] } {
@@ -109,5 +123,44 @@ describe('Cancel hands the pip back', () => {
       registry,
     )
     expect(ask(old).faction).toBe('white')
+  })
+})
+
+/**
+ * The same trap, paid in resources. A Prelude spend pays the token before the action opens, so
+ * cancelling the Build picker it bought kept the Material spent (live game 158107d8, 2026-09-26:
+ * "I built a city and it never spawned"). The Cancel now puts the token back in its slot.
+ */
+describe('Cancel hands a Prelude resource back', () => {
+  // Each held token with the slot it sits in, so a refund to the wrong slot fails too.
+  const held = (r: RuleResult, faction: string): string[] =>
+    RESOURCES.flatMap((res) =>
+      Array.from({ length: TOKENS_PER_RESOURCE }, (_, i) => resourceToken(res, i)),
+    )
+      .map((t) => `${t}@${String(locationOf(r.state.resources, t))}`)
+      .filter((s) => s.includes(`slot:${faction}:`))
+      .sort()
+
+  it('returns the Material to white and reopens the Prelude', () => {
+    const before = replayGame(OPTIONS, TO_PRELUDE_BUILD.slice(0, -1), registry)
+    const opened = replayGame(OPTIONS, TO_PRELUDE_BUILD, registry)
+    expect(ask(opened).prompt).toBe('Build')
+    const back = applyExternal(opened, pick(opened, (a) => a['label'] === 'Cancel'), registry)
+    expect(ask(back).prompt).toBe('white — Prelude')
+    expect(ask(back).actions.map((a) => a['label'])).toContain('Material: Build')
+    expect(held(back, 'white')).toEqual(held(before, 'white'))
+    expect(held(back, 'white').some((s) => s.includes('Material'))).toBe(true)
+  })
+
+  it('a Prelude Cancel journaled before the fix still spends the resource', () => {
+    const old = replayGame(
+      OPTIONS,
+      [
+        ...TO_PRELUDE_BUILD,
+        'action/skip(faction="white",refund=true,then={"type":"turn/prelude","faction":"white","suit":"Mobilization","pips":3})',
+      ],
+      registry,
+    )
+    expect(ask(old).actions.map((a) => a['label'])).not.toContain('Material: Build')
   })
 })
