@@ -101,6 +101,30 @@ function skip(faction: FactionId, then: PipReturn): Action {
   return { type: 'action/skip', faction, then, label: 'Cancel' }
 }
 
+/**
+ * The Cancel on an action's first picker, which gives the pip back.
+ *
+ * `then` is built by the pip menu as `done + 1`, so a plain skip back to it spends the pip, and a
+ * player who opened Influence just to read the court lost the action for looking. `refund` marks
+ * the exits where nothing has happened yet, and the handler steps `done` back. A Cancel journaled
+ * before the flag existed has no `refund` field, so it replays as it was played: the pip is spent.
+ *
+ * Only for the opening asks. An exit after something has resolved (declining the Noble's second
+ * influence, "Leave the planet as it is") stays a plain skip, because refunding it would buy a
+ * free action. So do the dead ends (no agents left, empty court): with nothing to pick they would
+ * offer the same Cancel again, and a bot could go round forever.
+ */
+function cancelPip(faction: FactionId, then: PipReturn): Action {
+  return { ...skip(faction, then), refund: true }
+}
+
+/** Where a refunding Cancel returns to: the same pip menu, with the pip not yet spent. */
+export function refundPip(action: Action): Action {
+  const then = action['then'] as Action
+  if (action['refund'] !== true || then.type !== 'turn/pips') return then
+  return { ...then, done: (then['done'] as number) - 1 }
+}
+
 const GuildAltAction = (faction: FactionId, alt: string, then: PipReturn): Action => ({
   type: 'action/guild-alt',
   faction,
@@ -238,7 +262,7 @@ function offerMove(state: GameState, faction: FactionId, then: PipReturn): Conti
   }
   const all = withAlts(state, faction, 'Move', then, options)
   if (all.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...all, skip(faction, then)], 'Move')
+  return C.ask(faction, [...all, cancelPip(faction, then)], 'Move')
 }
 
 /** How many ships go. Any number may move together (`game-movement.scala:98`). */
@@ -333,7 +357,7 @@ function offerFleetSize(
       label: `Move ${n} ship${n === 1 ? '' : 's'} to ${to}`,
     })
   }
-  return C.ask(faction, [...options, skip(faction, then)], `Move to ${to} — how many?`)
+  return C.ask(faction, [...options, cancelPip(faction, then)], `Move to ${to} — how many?`)
 }
 
 /**
@@ -1035,7 +1059,7 @@ function offerTax(state: GameState, faction: FactionId, then: PipReturn): Contin
   }
   const all = withAlts(state, faction, 'Tax', then, options)
   if (all.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...all, skip(faction, then)], 'Tax')
+  return C.ask(faction, [...all, cancelPip(faction, then)], 'Tax')
 }
 
 /**
@@ -1393,7 +1417,7 @@ function offerBuild(state: GameState, faction: FactionId, then: PipReturn): Cont
 
   const all = withAlts(state, faction, 'Build', then, options)
   if (all.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...all, skip(faction, then)], 'Build')
+  return C.ask(faction, [...all, cancelPip(faction, then)], 'Build')
 }
 
 /**
@@ -1812,7 +1836,7 @@ function offerRepair(state: GameState, faction: FactionId, then: PipReturn): Con
   })
   const all = withAlts(state, faction, 'Repair', then, options)
   if (all.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...all, skip(faction, then)], 'Repair')
+  return C.ask(faction, [...all, cancelPip(faction, then)], 'Repair')
 }
 
 function performRepair(
@@ -1895,7 +1919,7 @@ function offerInfluence(state: GameState, faction: FactionId, then: PipReturn): 
   if (all.length === 0) {
     return C.ask(faction, [skip(faction, then)], 'the court is empty')
   }
-  return C.ask(faction, [...all, skip(faction, then)], `${faction} — Influence`)
+  return C.ask(faction, [...all, cancelPip(faction, then)], `${faction} — Influence`)
 }
 
 function performInfluence(
@@ -2011,7 +2035,7 @@ function offerSecure(state: GameState, faction: FactionId, then: PipReturn): Con
   if (all.length === 0) {
     return C.ask(faction, [skip(faction, then)], `${faction} controls no court card`)
   }
-  return C.ask(faction, [...all, skip(faction, then)], `${faction} — Secure`)
+  return C.ask(faction, [...all, cancelPip(faction, then)], `${faction} — Secure`)
 }
 
 /**
@@ -3006,7 +3030,7 @@ export const StandardActionsModule: RuleModule = {
           action['then'] as PipReturn,
         )
       case 'action/skip':
-        return { state, continue: C.then(action['then'] as Action) }
+        return { state, continue: C.then(refundPip(action)) }
       default:
         return unhandled(state)
     }

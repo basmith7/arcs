@@ -87,7 +87,7 @@ import type { GameState } from '../state.js'
 import type { PipReturn } from './standard-actions.js'
 // Value import back into standard-actions is a cycle, but both sides only touch the other's
 // exports inside function bodies, so neither hits a half-evaluated module.
-import { overflowThen } from './standard-actions.js'
+import { overflowThen, refundPip } from './standard-actions.js'
 import { contentsOf, move } from '../tracker.js'
 
 // --- action constructors ---------------------------------------------------
@@ -195,7 +195,7 @@ function offerDeclare(state: GameState, faction: FactionId, then: PipReturn): Co
     options.push({ type: 'battle/system', faction, system: s, then, label: `Battle in ${s}` })
   }
   if (options.length === 0) return C.then(then as Action)
-  return C.ask(faction, [...options, cancel(faction, then)], 'Battle — choose a system')
+  return C.ask(faction, [...options, cancelPip(faction, then)], 'Battle — choose a system')
 }
 
 function offerTarget(state: GameState, faction: FactionId, system: SystemId, then: PipReturn): Continue {
@@ -208,7 +208,7 @@ function offerTarget(state: GameState, faction: FactionId, system: SystemId, the
     faction,
     label: `Attack ${e}`,
   }))
-  return C.ask(faction, [...options, cancel(faction, then)], `Battle in ${system} — choose a target`)
+  return C.ask(faction, [...options, cancelPip(faction, then)], `Battle in ${system} — choose a target`)
 }
 
 /**
@@ -1491,6 +1491,11 @@ function cancel(faction: FactionId, then: PipReturn): Action {
   return { type: 'battle/cancel', faction, then, label: 'Cancel' }
 }
 
+/** Backing out before a system or target is fixed gives the pip back; see `refundPip`. */
+function cancelPip(faction: FactionId, then: PipReturn): Action {
+  return { ...cancel(faction, then), refund: true }
+}
+
 export const BattleModule: RuleModule = {
   id: 'battle',
   perform(state: GameState, action: Action): RuleResult {
@@ -1628,7 +1633,7 @@ export const BattleModule: RuleModule = {
       case 'battle/finish':
         return performFinish(state, action['ctx'] as Resolve)
       case 'battle/cancel':
-        return { state, continue: C.then(action['then'] as Action) }
+        return { state, continue: C.then(refundPip(action)) }
       default:
         return unhandled(state)
     }
