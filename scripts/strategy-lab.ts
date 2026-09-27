@@ -97,9 +97,16 @@ const fmt = (g: ReturnType<typeof pairedGate>): string =>
 function gate(name: string, spec: string, seedBase = 1_110_000): string {
   const files: string[] = []
   for (let k = 0; k < 4; k++) {
-    files.push(arena(`gate-${name}-${k}`, `A=hard,B=${spec},B=${spec},A=hard`, 400, seedBase + 1000 * k))
+    const seats = `A=hard,B=${spec},B=${spec},A=hard`
+    const whole = `${DIR}/gate-${name}-${k}.jsonl`
+    if (existsSync(whole) && lines(whole).length >= 400) files.push(whole)
+    else {
+      // Four 100-game pieces, each saved as it finishes: the same 400 games (deal = seed + floor(i/4),
+      // so pieces at seed offsets 0/25/50/75 reproduce the chunk), but an interruption costs one piece.
+      for (let j = 0; j < 4; j++) files.push(arena(`gate-${name}-${k}p${j}`, seats, 100, seedBase + 1000 * k + 25 * j))
+    }
     const g = pairedGate(outcomes(files), 'B', 'A')
-    note(`${name} gate after ${files.length * 400} games: ${fmt(g)}`)
+    note(`${name} gate after ${(k + 1) * 400} games: ${fmt(g)}`)
     if (k === 1) {
       if (g.winZ <= 0.5) return `not detected (futility at 800, z ${g.winZ.toFixed(2)})`
       if (g.winZ >= 3.54 && g.powerZ >= -2) return 'pass (early, at 800)'
