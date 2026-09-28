@@ -294,16 +294,20 @@ export function App(): JSX.Element {
               * Every click on the map dispatches an action, so it is gated like any other surface.
               * Nothing is dimmed: the dimming rule targets controls, and the map has none — a
               * watcher gets the board at full strength and simply cannot move anything on it.
+              * On a phone the gate goes inside MapZoom: its scroller must stay live so a watcher
+              * can still pan, pinch and zoom.
               */}
-            <Watching canAct={acting}>
-              {phone ? (
-                <MapZoom focusKey={mapFocus}>
+            {phone ? (
+              <MapZoom focusKey={mapFocus}>
+                <Watching canAct={acting}>
                   <Board state={state} cont={boardCont} />
-                </MapZoom>
-              ) : (
+                </Watching>
+              </MapZoom>
+            ) : (
+              <Watching canAct={acting}>
                 <Board state={state} cont={boardCont} />
-              )}
-            </Watching>
+              </Watching>
+            )}
             {phone ? <PhonePlays state={state} onOpen={() => setSheet('court')} /> : null}
             {/* Over the map only, never the dock: the decision being made stays in reach. */}
             {phone && sheet !== null ? (
