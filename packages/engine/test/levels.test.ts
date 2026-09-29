@@ -55,6 +55,14 @@ describe('the ladder', () => {
   })
 })
 
+describe('hard resolves the pip menu (docs/19 §26)', () => {
+  it('hard settles sub-flows; normal and easy are unchanged', () => {
+    expect(botForLevel('hard').settleSubflows).toBe(true)
+    expect(botForLevel('normal').settleSubflows).toBeUndefined()
+    expect(botForLevel('easy').settleSubflows).toBeUndefined()
+  })
+})
+
 describe('the level in a save', () => {
   it('survives serialize and load, so a loaded game keeps its opponent', () => {
     const options = {
@@ -201,14 +209,14 @@ describe('the easy bot', () => {
   })
 })
 
-describe('hard is the gated assembly (docs/19 §23)', () => {
-  it('plays decision for decision like asm14 — the configuration the arena measured', async () => {
+describe('hard is the gated configuration (docs/19 §23, §26)', () => {
+  it('plays decision for decision like exp:s1 — the configuration the arena measured last', async () => {
     const { EXPERIMENTS, botForLevel, defaultRegistry, runBots, startGame } = await import('../src/index.js')
     const reg = defaultRegistry()
     const F = ['red', 'yellow'] as const
     const options = { board: 'Board2Frontiers', factions: [...F], seed: 61, bots: [...F] }
     const a = runBots(startGame(options, reg), [...F], botForLevel('hard'), reg, 50_000)
-    const b = runBots(startGame(options, reg), [...F], EXPERIMENTS['asm14']!(), reg, 50_000)
+    const b = runBots(startGame(options, reg), [...F], EXPERIMENTS['s1']!(), reg, 50_000)
     expect(a.result.state.journal).toEqual(b.result.state.journal)
   }, 600_000)
 })

@@ -31,6 +31,8 @@
  *     reply from sampled hands. 63%-37% over normal at two players against a zero twin floor.
  *     Since 2026-09-24 it also ranks Move destinations by intent (`moveToward`) and sees what a
  *     seize buys (`seizeReady`) — `HARD_WEIGHTS` below, the two largest gains the register has.
+ *     Since 2026-09-29 it scores the pip menu with each action's sub-flow resolved
+ *     (`settleSubflows`, below).
  *
  * ## What was dropped, and why the gaps are where they are
  *
@@ -78,7 +80,17 @@ export type BotLevel = (typeof BOT_LEVELS)[number]
  */
 export const HARD_WEIGHTS: Weights = { ...MOBILE_WEIGHTS, moveToward: 0.25, seizeReady: 0.1 }
 
-const HARD = searchBot({ width: 3, depth: 14, replies: { roots: 1, deals: 1 }, weights: HARD_WEIGHTS })
+/*
+ * `settleSubflows` since 2026-09-29 (v0.11.0): the pip menu is scored after each option's sub-flow is
+ * resolved, so Battle, Move and Secure stop tying and offer order stops choosing. vs the previous
+ * hard, 4p, 1,600 games / 400 deals: +6.3 ± 2.4 pts win share per side (z 2.68), +2.1 power (z 8.3)
+ * — `exp:s1`, docs/spikes/2026-09-pip-menu.md and docs/19 §26. It makes rare card plays slower
+ * (worst seen 12.9 s against 3.5 s), which is why bots now think in a worker (`think.ts`).
+ */
+const HARD: Bot = {
+  ...searchBot({ width: 3, depth: 14, replies: { roots: 1, deals: 1 }, weights: HARD_WEIGHTS }),
+  settleSubflows: true,
+}
 
 /** The bot a level names. `undefined` — no level chosen — is normal, which keeps old saves intact. */
 export function botForLevel(level: BotLevel | undefined): Bot {

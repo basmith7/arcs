@@ -50,7 +50,9 @@ export const EXPERIMENTS: Readonly<Record<string, () => Bot>> = {
   c8c: () => hardWith({ ...HARD_WEIGHTS, guildUse: 2 }),
   /**
    * S1: today's `hard`, with the pip menu scored after its sub-flow is resolved (`Bot.settleSubflows`)
-   * — docs/19 §2j's fix, which had silently stopped applying (docs/spikes/2026-09-strategies.md).
+   * — docs/19 §2j's fix, which had silently stopped applying (docs/spikes/2026-09-pip-menu.md).
+   * Passed its gate and shipped as `hard` on 2026-09-29, so this now plays exactly as `hard` does;
+   * every `hardWith` entry above is the *previous* hard plus its term.
    */
   s1: () => ({ ...hardWith(HARD_WEIGHTS), settleSubflows: true }),
 }
