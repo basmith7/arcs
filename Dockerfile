@@ -18,6 +18,7 @@ ENV NODE_ENV=production \
     DATABASE_PATH=/data/arcs.db \
     STATIC_DIR=/app/web
 COPY --from=build /app/packages/server-node/dist/main.js ./server/main.js
+COPY --from=build /app/packages/server-node/dist/bot-worker.js ./server/bot-worker.js
 COPY --from=build /app/node_modules/ws ./node_modules/ws
 COPY --from=build /app/apps/web/dist ./web
 RUN mkdir -p /data && echo '{"type":"module"}' > /app/server/package.json

@@ -29,6 +29,8 @@ import type {
   GameState,
   NewGameOptions,
   RuleResult,
+  ThinkReply,
+  ThinkRequest,
 } from '@arcs/engine'
 import { useSyncExternalStore } from 'react'
 
@@ -65,6 +67,44 @@ export type Interlude =
 
 /** Milliseconds between bot actions — slow enough that each on-board event reads. */
 const BOT_PACE = 1500
+
+/** A bot decision made elsewhere — `bot-worker.ts` in the browser, a test double in tests. */
+type Think = (req: ThinkRequest) => Promise<ThinkReply>
+
+/**
+ * The browser's bot worker, started on first use. A `hard` card play can take seconds; thought on
+ * the main thread, it froze the tab. `null` where there are no workers (the tests' Node), and the
+ * paced bot then steps in-process as it always did.
+ */
+function workerThink(): Think | null {
+  if (typeof Worker === 'undefined') return null
+  let worker: Worker | undefined
+  let nextId = 1
+  const pending = new Map<number, { resolve: (r: ThinkReply) => void; reject: (e: Error) => void }>()
+  const lost = (why: string): void => {
+    worker?.terminate()
+    worker = undefined
+    for (const p of pending.values()) p.reject(new Error(why))
+    pending.clear()
+  }
+  return (req) =>
+    new Promise<ThinkReply>((resolve, reject) => {
+      if (worker === undefined) {
+        worker = new Worker(new URL('./bot-worker.ts', import.meta.url), { type: 'module' })
+        worker.onmessage = (e: MessageEvent<{ id: number; reply?: ThinkReply; error?: string }>) => {
+          const p = pending.get(e.data.id)
+          if (p === undefined) return
+          pending.delete(e.data.id)
+          if (e.data.reply !== undefined) p.resolve(e.data.reply)
+          else p.reject(new Error(e.data.error ?? 'bot worker failed'))
+        }
+        worker.onerror = (e) => lost(e.message || 'bot worker failed')
+      }
+      const id = nextId++
+      pending.set(id, { resolve, reject })
+      worker.postMessage({ id, req })
+    })
+}
 
 const BROWSER_NOTIFICATIONS_KEY = 'arcs.notify.browser'
 
@@ -136,6 +176,16 @@ class GameStore {
    * history describes a game that no longer exists.
    */
   private botAsked: AskedThisTurn = NO_ASKS
+
+  /** Where the paced bot thinks: the worker, unless a test swaps it (`useThinker`). */
+  private think: Think | null | undefined
+  /** Bumped by `clearBotTimer`, so an answer to a question that was withdrawn is dropped. */
+  private botGeneration = 0
+
+  /** Tests only: think through `think`, or `undefined` to go back to the default. */
+  useThinker(think: Think | undefined): void {
+    this.think = think
+  }
 
   private forgetBotTurn(): void {
     this.botAsked = NO_ASKS
@@ -278,12 +328,57 @@ class GameStore {
     const faction = this.botTurn()
     if (faction === undefined) return
     const prev = this.result
-    // The log lines appended by this one action are the event's own narration (turn-events.ts).
-    const logBefore = prev.state.log.length
     const out = stepBot(prev, botForLevel(this.options?.botLevel), faction, this.registry, this.botAsked)
-    this.result = out.result
-    this.botAsked = out.asked
-    this.record(faction, out.decision.action, out.result.state.log.slice(logBefore))
+    this.landBot(prev, faction, out.decision.action, out.asked)
+  }
+
+  /**
+   * The paced path: ask the thinker (a worker) and play its answer when it comes — unless the
+   * position has moved on by then. An undo, load or new game clears the timer, which bumps
+   * `botGeneration`; whoever did that owns the next step. A thinker that fails is not a stuck
+   * game: this position is stepped in-process instead.
+   */
+  private stepBotSoon(): void {
+    if (this.think === undefined) this.think = workerThink()
+    const think = this.think
+    if (think === null) return this.stepBotOnce()
+    if (this.result === null || this.options === null || !this.botsAvailable()) return
+    const faction = this.botTurn()
+    if (faction === undefined) return
+    const prev = this.result
+    const generation = this.botGeneration
+    /*
+     * Withdrawn (the timer was cleared): someone else owns the next step. Merely stale (the
+     * position changed without that): nobody does, so ask again rather than stall.
+     */
+    const current = (): boolean => {
+      if (generation !== this.botGeneration) return false
+      if (this.result === prev) return true
+      this.scheduleBot()
+      return false
+    }
+    think({
+      options: this.options,
+      journal: prev.state.journal,
+      faction,
+      level: this.options?.botLevel,
+      asked: this.botAsked,
+    }).then(
+      (reply) => {
+        if (current()) this.landBot(prev, faction, decodeAction(reply.action), reply.asked)
+      },
+      (e: unknown) => {
+        console.warn('[bots] thinking in the page:', e)
+        if (current()) this.stepBotOnce()
+      },
+    )
+  }
+
+  private landBot(prev: RuleResult, faction: FactionId, action: Action, asked: AskedThisTurn): void {
+    this.result = applyExternal(prev, action, this.registry)
+    this.botAsked = asked
+    // The log lines appended by this one action are the event's own narration (turn-events.ts).
+    this.record(faction, action, this.result.state.log.slice(prev.state.log.length))
     this.persist()
     // A chapter interlude holds the game: the timer re-arms when it is dismissed.
     if (!this.detectInterlude(prev)) this.scheduleBot()
@@ -357,11 +452,12 @@ class GameStore {
     if (this.botTurn() === undefined) return
     this.timer = setTimeout(() => {
       this.timer = null
-      this.stepBotOnce()
+      this.stepBotSoon()
     }, delay)
   }
 
   private clearBotTimer(): void {
+    this.botGeneration += 1
     if (this.timer !== null) {
       clearTimeout(this.timer)
       this.timer = null

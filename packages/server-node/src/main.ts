@@ -8,6 +8,7 @@ import { Notifier } from './notify.js'
 import { Presence } from './presence.js'
 import { createArcsServer } from './server.js'
 import { SqliteStore } from './sqlite-store.js'
+import { WorkerThinker, localThink } from './thinker.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env['PORT'] ?? 3070)
@@ -46,7 +47,17 @@ const notifier = new Notifier(store, {
     ? { fallbackChannel: { channelId: DISCORD_CHANNEL_ID, bot } }
     : {}),
 })
-const gate = new EngineGate(store, { pace: BOT_PACE_MS, onSettled: (s) => void notifier.onSettled(s) })
+// Bots think in a worker thread, so a slow decision never stalls the other games (thinker.ts).
+// Built as `bot-worker.js` beside `main.js`; under `tsx` (dev) the source file runs directly.
+const thinker = new WorkerThinker(
+  new URL(import.meta.url.endsWith('.ts') ? './bot-worker.ts' : './bot-worker.js', import.meta.url),
+  localThink(),
+)
+const gate = new EngineGate(store, {
+  pace: BOT_PACE_MS,
+  think: thinker.think,
+  onSettled: (s) => void notifier.onSettled(s),
+})
 const server = createArcsServer({
   api: { store, gate, ...(bot === undefined ? {} : { bot }) },
   staticDir: STATIC_DIR,

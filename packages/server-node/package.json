@@ -7,7 +7,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "dev": "tsx watch --no-warnings=ExperimentalWarning src/main.ts",
-    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node22 --external:ws --outfile=dist/main.js",
+    "build": "esbuild src/main.ts src/bot-worker.ts --bundle --platform=node --format=esm --target=node22 --external:ws --outdir=dist",
     "start": "node --no-warnings=ExperimentalWarning dist/main.js"
   },
   "dependencies": {
