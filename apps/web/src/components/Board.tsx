@@ -32,6 +32,7 @@ import type { TurnEvent } from '../turn-events.js'
 import { colorOf, figureArt } from '../theme.js'
 import { asset } from '../assets.js'
 import { useSettings } from '../settings.js'
+import { declareHint } from '../surfaces.js'
 
 interface Props {
   state: GameState
@@ -640,13 +641,9 @@ export function Board({ state, cont }: Props): JSX.Element {
    * The declare asks light rows on the ambition track (to the right of the map); the hint bar
    * says so and carries the decline, the same division of labour as the hand modes above.
    */
-  const declareAsk =
-    cont.kind === 'ask' &&
-    cont.actions.some((a) => a.type === 'ambition/declare' || a.type === 'turn/bards-declare')
-  const declareOut =
-    cont.kind === 'ask' && declareAsk
-      ? cont.actions.find((a) => a.type === 'ambition/skip-declare' || a.type === 'turn/bards-skip')
-      : undefined
+  const declare = declareHint(cont)
+  const declareAsk = declare !== undefined
+  const declareOut = declare?.out
   const pieceOut =
     cont.kind === 'ask' && piecePicks.length > 0
       ? cont.actions.find((a) => a.type === 'action/skip' || a.type === 'vox/done')

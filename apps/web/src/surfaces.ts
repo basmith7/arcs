@@ -30,7 +30,7 @@
  * time someone reaches it in a real game.
  */
 
-import type { Continue } from '@arcs/engine'
+import type { Action, Continue } from '@arcs/engine'
 
 /** The surfaces that can draw an Ask. `strip` is the bottom band's fallback list of buttons. */
 export type Surface =
@@ -344,4 +344,24 @@ export function surfaceFor(cont: Continue): Surface | undefined {
  */
 export function owns(surface: Surface, cont: Continue): boolean {
   return surfaceFor(cont) === surface
+}
+
+/** The declarations the ambition track draws as lit rows, each with the decline that goes with it. */
+const DECLARES: readonly (readonly [declare: string, decline: string])[] = [
+  ['ambition/declare', 'ambition/skip-declare'],
+  ['turn/bards-declare', 'turn/bards-skip'],
+  // Populist Demands (bc27): the Vox card's own way out.
+  ['vox/populist', 'vox/done'],
+]
+
+/**
+ * A declare ask, for Board's hint bar: the rows are clicked on the track, and the decline is the
+ * hint's button. `out` is undefined when the ask cannot be declined. One table, so a new way to
+ * declare cannot light the rows while leaving no way to say no — Populist Demands did exactly that.
+ */
+export function declareHint(cont: Continue): { readonly out: Action | undefined } | undefined {
+  if (cont.kind !== 'ask') return undefined
+  const pair = DECLARES.find(([declare]) => cont.actions.some((a) => a.type === declare))
+  if (pair === undefined) return undefined
+  return { out: cont.actions.find((a) => a.type === pair[1]) }
 }
