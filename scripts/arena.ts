@@ -29,7 +29,8 @@
  * noise floor for that run, and any comparison not clearing it is not a result. It costs one seat.
  */
 
-import { spawn } from 'node:child_process'
+import { shardCommand } from './shard-runner.js'
+import { spawn, spawnSync } from 'node:child_process'
 import { availableParallelism } from 'node:os'
 
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -230,24 +231,73 @@ if (jobs === 1) {
       console.log(`\n! ${games - outcomes.length} games produced no result (shard failure)`)
     }
     report(outcomes, Date.now() - started)
-    process.exit(failed > 0 ? 1 : 0)
+    process.exit(outcomes.length < games ? 1 : 0)
   }
 
-  for (let shard = 0; shard < jobs; shard++) {
-    const job: ArenaJob = {
-      specs,
-      ids,
-      games,
-      seed,
-      board,
-      factions,
-      shard,
-      jobs,
-      ...(leadersAndLore === undefined ? {} : { leadersAndLore }),
+  /*
+   * A work queue rather than a fixed split. Each shard is told one game index at a time on stdin and
+   * asks for the next by answering, so a slow shard (a remote one — `--remote host:N`, one capped
+   * container per shard) simply plays fewer games instead of holding up the whole run. A game whose
+   * shard dies mid-play goes back on the queue. Results are still slotted by index, so the table is
+   * the same whoever played which game.
+   */
+  const queue = [...Array(games).keys()]
+  const remote = (flag('remote') ?? '').split(',').filter((r) => r.includes(':'))
+  const remoteDir = process.env['ARENA_REMOTE_DIR'] ?? '/mnt/cache/appdata/arcs-lab'
+  const shards: { host?: string }[] = [
+    ...[...Array(jobs).keys()].map(() => ({})),
+    ...remote.flatMap((r) => {
+      const [host, n] = r.split(':')
+      return [...Array(Number(n)).keys()].map(() => ({ host: host! }))
+    }),
+  ]
+  const job: ArenaJob = {
+    specs,
+    ids,
+    games,
+    seed,
+    board,
+    factions,
+    shard: 0,
+    jobs: 1,
+    pull: true,
+    ...(leadersAndLore === undefined ? {} : { leadersAndLore }),
+  }
+  // Built once; the bundle is self-contained (engine included), so remote hosts get just this file.
+  const local = shardCommand('arena-shard')
+  if (local[0] === 'node') {
+    for (const host of new Set(remote.map((r) => r.split(':')[0]!))) {
+      const r = spawnSync('rsync', ['-a', 'dist-lab/arena-shard.mjs', `${host}:${remoteDir}/dist-lab/`], { encoding: 'utf8' })
+      if (r.status !== 0) throw new Error(`could not copy the shard bundle to ${host}: ${r.stderr}`)
     }
-    const child = spawn('npx', ['vite-node', 'scripts/arena-shard.ts', JSON.stringify(job)], {
-      stdio: ['ignore', 'pipe', 'inherit'],
-    })
+  }
+  const encoded = `b64:${Buffer.from(JSON.stringify(job)).toString('base64')}`
+  for (const shard of shards) {
+    const child =
+      shard.host === undefined
+        ? spawn(local[0], [...local[1], encoded], { stdio: ['pipe', 'pipe', 'inherit'] })
+        : spawn(
+            'ssh',
+            [
+              shard.host,
+              `docker run --rm -i --cpus 1 --cpu-shares 128 -e NPM_CONFIG_UPDATE_NOTIFIER=false ` +
+                `-v ${remoteDir}:/work -w /work node:22-slim ${local[0] === 'node' ? 'node dist-lab/arena-shard.mjs' : 'node node_modules/.bin/vite-node scripts/arena-shard.ts'} ${encoded}`,
+            ],
+            { stdio: ['pipe', 'pipe', 'inherit'] },
+          )
+    let inflight: number | undefined
+    const feed = (): void => {
+      const next = queue.shift()
+      if (next === undefined) {
+        inflight = undefined
+        child.stdin.end()
+        return
+      }
+      inflight = next
+      child.stdin.write(`${next}\n`)
+    }
+    child.stdin.on('error', () => undefined)
+    feed()
 
     let buffer = ''
     child.stdout.setEncoding('utf8')
@@ -257,18 +307,23 @@ if (jobs === 1) {
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
       for (const line of lines) {
-        if (line.trim() === '') continue
+        if (!line.startsWith('{')) continue
         const { index, outcome } = JSON.parse(line) as { index: number; outcome: GameOutcome }
         collected[index] = outcome
         show(outcome, index)
         progress()
+        feed()
       }
     })
 
     child.on('exit', (code) => {
-      if (code !== 0) failed++
+      if (inflight !== undefined && collected[inflight] === undefined) queue.unshift(inflight)
+      if (code !== 0) {
+        failed++
+        process.stderr.write(`  ! shard${shard.host === undefined ? '' : ` on ${shard.host}`} exited ${code}\n`)
+      }
       done++
-      if (done === jobs) finish()
+      if (done === shards.length) finish()
     })
   }
 }

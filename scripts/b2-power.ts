@@ -17,6 +17,7 @@
  *   - pass: net held-out gain per decision (non-displaced count as 0), game-clustered, z >= 2.
  *     Early stop after 150 decisions if gain < +0.5% with se < 2%.
  */
+import { shardCommand } from './shard-runner.js'
 import { spawn } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 
@@ -91,7 +92,8 @@ async function corpus(): Promise<void> {
     [...Array(jobs).keys()].map(
       (shard) =>
         new Promise<void>((resolve, reject) => {
-          const child = spawn('npx', ['vite-node', 'scripts/b2-corpus-shard.ts', JSON.stringify({ games, shard, jobs, seed })], {
+          const cmd = shardCommand('b2-corpus-shard')
+          const child = spawn(cmd[0], [...cmd[1], JSON.stringify({ games, shard, jobs, seed })], {
             stdio: ['ignore', 'pipe', 'inherit'],
           })
           let buffer = ''

@@ -2980,3 +2980,44 @@ ruling: seizing passed on its own against the old `hard` (z 2.83), it is not wor
 without it the bot never seizes at all. `normal` and `easy` are byte-identical (20 golden `normal`
 journals unchanged); the six golden `hard` journals were re-recorded.
 
+## 24. The weekend lab — three more blind spots, none a gain (2026-09-24)
+
+`npm run lab` runs probe -> 2p pre-screen -> 4p gate unattended, every rule fixed in advance
+(`scripts/lab.ts`), on 14 desktop shards plus 6 capped Tower shards (`--remote tower:6`, a work
+queue so slow shards play fewer games). Candidates are `hardw:` overlays on today's `hard`, each an
+action-level term (`action-terms.ts`) aimed at a choice the coverage report or tie audit flagged.
+
+| candidate | probe | 2p pre-screen (400 games, 200 deals) | verdict |
+| --- | --- | --- | --- |
+| C6 `garrison` 0.25 — keep ships home against rival ships within a gate | reversals 0 vs 0 | **-9.5 ± 4.5 pts/side (z -2.1)**, power -2.4 (z -2.7) | worse; stopped |
+| C8a `guildUse` 1 — flat bonus per guild Prelude ability | take rate 11.9% vs `hard`'s 4.9% (band 5-50%) | -1.5 ± 2.1 (z -0.7), power 0.0 | not detected |
+| C7 `takeMove` 0.02 — pip-menu tie toward Move when a fleet can close on a target | **Move share +14.4 pts** (allowed ±3) | — | probe failed |
+
+Readings. The fleet-size tie was a real blind spot but the obvious fix is wrong: moving the whole
+fleet (the old default) beats holding a garrison, at least at two players — concentration wins
+fights, and a home threat within one gate is rarely acted on. Using guild abilities more is neutral:
+their value roughly equals the card's holding worth, so the old hoarding was not costing games. And
+the pip-menu ties are not like the Move-destination ties of §23: breaking them toward Move changes
+what the bot does a great deal (+14 points of Move share), which is the pull `mobile.ts` records as
+harmful, so the probe rejected it before any arena time.
+
+The pre-screen is two-player; C6 in particular might behave differently at four. That is recorded
+as a limit of the screen, not a finding.
+
+## 25. Faster experiments: compiled shards yes, persistent state maps no (2026-09-25)
+
+Measured as CPU time per process with every other job paused (wall time was unusable: B2 was
+loading the machine, and one game swung 21 s to 45 s between identical runs).
+
+| change | 2 × 4p `normal` games, CPU | verdict |
+| --- | --- | --- |
+| baseline (vite-node) | 43.7-51.1 s | — |
+| `Tracker` on a persistent map (`with()` shares storage instead of copying ~300 entries per move) | 45.5-49.1 s vs 43.7-48.1 s paired | **no gain** — dropped. The profile's `move`/`contentsOf` time was mostly cheap reads, not the copies |
+| shards run as esbuild-bundled JavaScript instead of through vite-node | **38.1-39.0 s vs 50.6-51.1 s** | **~25% less CPU per game** — shipped |
+
+`scripts/shard-runner.ts` bundles each shard (arena, tally, oracle, B2 corpus) on first use from
+the current source, so a stale bundle cannot run old code; `LAB_NO_COMPILE=1` falls back. The
+bundle is self-contained, so remote hosts receive just that one file. Compiled and vite-node runs
+were checked identical: 8 arena games (with 2 of them on Tower), a coverage tally, and an oracle
+evaluation.
+

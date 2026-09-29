@@ -43,6 +43,14 @@ export function recorder(
     for (const k of new Set(offered.map(keyOf))) t.offered[k] = (t.offered[k] ?? 0) + 1
     const k = keyOf(taken)
     t.taken[k] = (t.taken[k] ?? 0) + 1
+    // Declarations broken out by ambition too (`declare:Warlord`), additively: the strategy probes
+    // check that a committed bot declares what its plan says (docs/spikes/2026-09-strategies.md).
+    const declares = new Set(offered.filter((a) => a.type === 'ambition/declare').map((a) => `declare:${String(a['ambition'])}`))
+    for (const d of declares) t.offered[d] = (t.offered[d] ?? 0) + 1
+    if (taken.type === 'ambition/declare') {
+      const d = `declare:${String(taken['ambition'])}`
+      t.taken[d] = (t.taken[d] ?? 0) + 1
+    }
     if (CARD_PLAYS.has(taken.type)) lastLeg.delete(faction)
     if (taken.type === 'action/move-pick') {
       const leg = { from: String(taken['from']), to: String(taken['to']) }

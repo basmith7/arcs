@@ -151,6 +151,9 @@ export const FEATURES = [
   'courtText',
   'seizeReady',
   'battleChoice',
+  'garrison',
+  'takeMove',
+  'guildUse',
 ] as const
 
 export type Feature = (typeof FEATURES)[number]
@@ -274,6 +277,10 @@ export const WEIGHTS: Weights = {
    * Always 0 as a state feature. Off by default.
    */
   battleChoice: 0,
+  /* The weekend lab's action-level terms (`action-terms.ts`, docs/19 §24). Off by default. */
+  garrison: 0,
+  takeMove: 0,
+  guildUse: 0,
 }
 
 /** Every feature at 0, in `FEATURES` order; copied rather than rebuilt per call (docs/19 §21). */

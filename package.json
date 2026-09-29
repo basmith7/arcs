@@ -29,7 +29,9 @@
     "advise": "vite-node scripts/advise.ts",
     "coverage": "vite-node scripts/coverage.ts",
     "b2": "vite-node scripts/b2-power.ts",
-    "gate": "vite-node scripts/gate-pool.ts"
+    "gate": "vite-node scripts/gate-pool.ts",
+    "lab": "vite-node scripts/lab.ts",
+    "lab:ui": "vite-node scripts/lab-ui-serve.ts"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

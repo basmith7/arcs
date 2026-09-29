@@ -38,3 +38,6 @@ assets/rules/text/
 # Arena runs, golden recordings and oracle logs: regenerable, often large.
 runs/
 .superpowers/
+
+# Compiled shard bundles (scripts/shard-runner.ts) — rebuilt from source on use.
+dist-lab/

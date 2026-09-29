@@ -6,6 +6,7 @@
  * measured and a shard process builds the identical bot from the same string. Each is `hard` with
  * one change, so a gate against `hard` attributes the difference to that change alone.
  */
+import { HARD_WEIGHTS } from './levels.js'
 import { MOBILE_WEIGHTS } from './mobile.js'
 import { searchBot } from './search.js'
 import type { Bot } from './bot.js'
@@ -41,4 +42,15 @@ export const EXPERIMENTS: Readonly<Record<string, () => Bot>> = {
   /** Assemblies of what passed, gated against `c1a` (docs/19 §23). */
   asm14: () => hardWith({ ...MOBILE_WEIGHTS, moveToward: 0.25, seizeReady: 0.1 }),
   asm145: () => hardWith({ ...MOBILE_WEIGHTS, moveToward: 0.25, seizeReady: 0.1, battleChoice: 0.25 }),
+  /** The weekend lab (docs/19 §24): each on top of today's `hard`, gated against it. */
+  c6: () => hardWith({ ...HARD_WEIGHTS, garrison: 0.25 }),
+  c7: () => hardWith({ ...HARD_WEIGHTS, takeMove: 0.02 }),
+  c8a: () => hardWith({ ...HARD_WEIGHTS, guildUse: 1 }),
+  c8b: () => hardWith({ ...HARD_WEIGHTS, guildUse: 0.5 }),
+  c8c: () => hardWith({ ...HARD_WEIGHTS, guildUse: 2 }),
+  /**
+   * S1: today's `hard`, with the pip menu scored after its sub-flow is resolved (`Bot.settleSubflows`)
+   * — docs/19 §2j's fix, which had silently stopped applying (docs/spikes/2026-09-strategies.md).
+   */
+  s1: () => ({ ...hardWith(HARD_WEIGHTS), settleSubflows: true }),
 }

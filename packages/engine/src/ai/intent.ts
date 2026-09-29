@@ -63,6 +63,12 @@ const payoutOf = (high: number): number => high
  */
 export type Fitness = (observed: ObservedState, self: FactionId, ambition: Ambition) => number
 
+/**
+ * A whole-intent override: how a bot configured with a fixed plan (`strategy.ts`) reads its own
+ * chapter intent instead of `intentFor`. Bound by the same rule — a pure function of the observation.
+ */
+export type IntentFn = (observed: ObservedState, self: FactionId) => ChapterIntent
+
 export const structuralFitness: Fitness = (observed, self, ambition) => {
   const mine = (piece: string): number =>
     observed.board.systems.reduce(

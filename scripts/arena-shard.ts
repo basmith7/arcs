@@ -19,7 +19,9 @@ import type { FactionId } from '@arcs/engine'
 import { buildBot } from './bot-spec.js'
 import type { ArenaJob } from './bot-spec.js'
 
-const job = JSON.parse(process.argv[2] ?? '{}') as ArenaJob
+const arg = process.argv[2] ?? '{}'
+// `b64:` lets the job cross an ssh command line without shell quoting.
+const job = JSON.parse(arg.startsWith('b64:') ? Buffer.from(arg.slice(4), 'base64').toString('utf8') : arg) as ArenaJob
 const registry = defaultRegistry()
 /*
  * Ids come from the job, not from the spec: two seats may run the same configuration under
@@ -28,7 +30,7 @@ const registry = defaultRegistry()
 const bots = job.specs.map((spec, i) => ({ ...buildBot(spec), id: job.ids[i] ?? buildBot(spec).id }))
 const factions = job.factions as readonly FactionId[]
 
-for (let i = job.shard; i < job.games; i += job.jobs) {
+const play = (i: number): void => {
   const outcome = playGameAt(
     bots,
     i,
@@ -44,3 +46,18 @@ for (let i = job.shard; i < job.games; i += job.jobs) {
   // One line per game, so the parent can stream them rather than wait for the shard to finish.
   process.stdout.write(`${JSON.stringify({ index: i, outcome })}\n`)
 }
+
+if (job.pull === true) {
+  // Work-queue mode: one game index per stdin line, until stdin closes.
+  let buffer = ''
+  process.stdin.setEncoding('utf8')
+  process.stdin.on('data', (chunk: string) => {
+    buffer += chunk
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) if (line.trim() !== '') play(Number(line))
+  })
+} else {
+  for (let i = job.shard; i < job.games; i += job.jobs) play(i)
+}
+

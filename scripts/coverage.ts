@@ -6,7 +6,9 @@
  * Plays the games across shards (same seating and seeds as the arena) and prints, per bot: every
  * offered key with its take rate, the Move share of pip choices, and move reversals.
  */
+import { shardCommand } from './shard-runner.js'
 import { spawn } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
 
 import { parseSpec } from './bot-spec.js'
 import type { ArenaJob } from './bot-spec.js'
@@ -28,6 +30,7 @@ const seed = Number(flag('seed') ?? 90000)
 const factions = (['red', 'yellow', 'blue', 'white'] as FactionId[]).slice(0, specs.length)
 const board = specs.length === 4 ? 'Board4MixUp1' : specs.length === 3 ? 'Board3Frontiers' : 'Board2Frontiers'
 
+const tally = shardCommand('tally-shard')
 const totals = new Map<string, Tally>()
 let finished = 0
 let unfinished = 0
@@ -36,7 +39,7 @@ await Promise.all(
     (shard) =>
       new Promise<void>((resolve, reject) => {
         const job: ArenaJob = { specs, ids, games, seed, board, factions, shard, jobs }
-        const child = spawn('npx', ['vite-node', 'scripts/tally-shard.ts', JSON.stringify(job)], {
+        const child = spawn(tally[0], [...tally[1], JSON.stringify(job)], {
           stdio: ['ignore', 'pipe', 'inherit'],
         })
         let buffer = ''
@@ -64,6 +67,11 @@ await Promise.all(
 )
 
 console.log(`\n${games} games on ${board}: ${finished} finished, ${unfinished} unfinished`)
+// `--json <file>`: the totals as data, for the lab runner's probe criteria.
+const jsonOut = flag('json')
+if (jsonOut !== undefined) {
+  writeFileSync(jsonOut, JSON.stringify({ games, finished, unfinished, tallies: Object.fromEntries(totals) }))
+}
 for (const [id, t] of totals) {
   console.log(`\n== ${id}: ${t.decisions} decisions, move share of pips ${(100 * moveShare(t)).toFixed(1)}%, reversals ${t.reversals}`)
   for (const at of t.reversalAt) console.log(`  reversal: ${at}`)
