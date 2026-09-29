@@ -1,6 +1,6 @@
 # Experiment: do committed strategies beat adaptive `hard`? (2026-09-26)
 
-Branch `exp/strategies` (from `feat/weekend-lab` d90a0ea), worktree `~/Projects/arcs-strategies`.
+Branch `exp/strategies` (from `feat/weekend-lab` d90a0ea; merged 2026-09-29, worktree removed).
 This is an experiment, not a feature. The output is an answer with measurements, plus the profiles
 if anything wins.
 

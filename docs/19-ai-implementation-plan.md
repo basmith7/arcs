@@ -3021,3 +3021,34 @@ bundle is self-contained, so remote hosts receive just that one file. Compiled a
 were checked identical: 8 arena games (with 2 of them on Tower), a coverage tally, and an oracle
 evaluation.
 
+
+## 26. The last week of experiments: one ship, four nulls (2026-09-24 to 09-29)
+
+Every run below was pre-registered before its first game. The detail is in the reports named.
+
+| experiment | question | result | report |
+| --- | --- | --- | --- |
+| **S1 `settleSubflows`** | Does resolving each pip's sub-flow before scoring the pip menu (§2j's fix, which had stopped applying) beat `hard`? | **Pass: +6.3 ± 2.4 pts/side (z 2.68), +2.1 power (z 8.3), 1,600 games. Shipped as `hard` in v0.11.0.** | docs/spikes/2026-09-pip-menu.md |
+| Committed strategies | Does a fixed plan (Warlord / Builder / Court overlays plus a fixed intent) beat adaptive `hard`? | No. Builder -12.5 pts/side, Court -30.5 (both futility at 800). Warlord was not distinct (probe failed). Mixed field not run. Recommendation: stop. | docs/spikes/2026-09-strategies.md |
+| B2 rollout power test | Do full-game rollouts, picked by the advisor's selection rule, improve on `hard`'s pick? | **Not detected**: early stop at 150 decisions / 40 games, net held-out gain +0.35% ± 0.37 per decision (z 0.96); 45 displacements, 14 of them harmful. `npm run advise -- --oracle` keeps saying so. | spec 2026-09-23 §B2; `runs/b2/report.txt` (archived) |
+| Engine speed | Is the rules engine what limits training a learned bot? | No: 99.8% of a playout is the evaluator. A dense-id `Tracker` bought 1.02x, and Rust 1.17-1.41x on hot kernels. Neither was merged. | docs/spikes/2026-09-engine-speed.md |
+| Learned policy, step A | Do averaged interventional-pair labels become learnable? | Inconclusive (held-out R² 0.032 against the 0.05 bar). The labels are reliable (0.976), but the only learnable fact is "leading beats passing". | docs/spikes/2026-09-learned-policy.md |
+
+**S1 changes how `hard` plays, not only how well.** With the pip menu scored apart, `hard` Secures
+(79% of offers, from 5%) and Influences (70%, from 9%) where it used to Move (10%, from 58%): offer
+order had been choosing Move. The committed strategies were measured *before* this, when no overlay
+could reach the pip choice. That is the one reason to re-run them.
+
+**S1's cost is the tail.** Most decisions got no slower; rare card plays got much slower (worst
+12.9 s against 3.5 s). v0.11.0 therefore moves bot thinking off the main thread on both the server
+(`worker_threads`) and the page (a Web Worker). Both use the engine's `createThinker`, which
+rebuilds the position from options and journal. The main thread applies the returned action, so
+journals are unchanged. Numbers are in the pip-menu report.
+
+**What is left that could still buy strength** (none of it is started):
+
+- Re-measure `normal` with `settleSubflows`. It is the same tie, and `normal` is what most games
+  use. That needs its own gate, not the S1 one.
+- Re-run the Builder strategy's mixed field on the new `hard` ("personalities", strategies report).
+- `playoutChoice` livelocks: 167 of 1,024 spike pairs stalled on `action/take` against `turn/end`.
+  That blocks any rollout-based work, including B2 again.
