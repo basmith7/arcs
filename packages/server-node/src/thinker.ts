@@ -25,6 +25,7 @@ export type WorkerReply = { readonly id: number; readonly reply: ThinkReply } | 
 interface Pending {
   readonly req: ThinkRequest
   readonly resolve: (r: ThinkReply) => void
+  readonly reject: (e: unknown) => void
 }
 
 /**
@@ -46,9 +47,9 @@ export class WorkerThinker {
   ) {}
 
   readonly think: Think = (req) =>
-    new Promise<ThinkReply>((resolve) => {
+    new Promise<ThinkReply>((resolve, reject) => {
       const id = this.nextId++
-      this.pending.set(id, { req, resolve })
+      this.pending.set(id, { req, resolve, reject })
       if (this.broken) return this.fallBack(id, undefined)
       try {
         this.spawned().postMessage({ id, req })
@@ -109,6 +110,10 @@ export class WorkerThinker {
     if (why !== undefined && !this.broken) {
       console.warn('[thinker] thinking in-process:', why instanceof Error ? why.message : String(why))
     }
-    void this.fallback(p.req).then(p.resolve)
+    // Deferred and caught: a bot that throws in the worker usually throws here too, and that must
+    // reject this think (the gate logs it) rather than escape a worker event handler.
+    Promise.resolve()
+      .then(() => this.fallback(p.req))
+      .then(p.resolve, p.reject)
   }
 }

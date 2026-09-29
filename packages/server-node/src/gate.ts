@@ -207,10 +207,17 @@ export class EngineGate {
       () =>
         new Promise<void>((resolve) => {
           setTimeout(() => {
-            void this.runBots(gameId, after).then((done) => {
-              this.onSettled?.({ gameId, before, after: done })
-              resolve()
-            })
+            this.runBots(gameId, after).then(
+              (done) => {
+                this.onSettled?.({ gameId, before, after: done })
+                resolve()
+              },
+              (e: unknown) => {
+                // Release the queue: a bot that cannot move must not lock the humans out too.
+                console.error('[gate] bot run failed', gameId, e)
+                resolve()
+              },
+            )
           }, 0)
         }),
     )
@@ -240,7 +247,6 @@ export class EngineGate {
         level: options.botLevel,
         asked,
       })
-      asked = thought.asked
       const encoded = thought.action
       const at = result.state.journal.length
       const stored = await this.store.append(gameId, seat.seatToken, at, encoded)
@@ -257,6 +263,8 @@ export class EngineGate {
         continue
       }
       failedAttempts = 0
+      // Only a stored move joins the turn's history; a refused one was never played.
+      asked = thought.asked
       result = applyExternal(result, decodeAction(encoded), this.registry)
       this.remember(gameId, result)
       this.broadcast(gameId, { from: at, entries: [encoded] })

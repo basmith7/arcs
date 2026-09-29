@@ -78,6 +78,28 @@ describe('bot thinking off the main thread', () => {
     expect(t.stats().fallback).toBe(0)
   }, 60_000)
 
+  it('a bot that throws rejects the think instead of hanging, and the game stays playable', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warns = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const boom: Think = () => Promise.reject(new Error('engine bug'))
+    const t = new WorkerThinker(pathToFileURL(join(dir, 'missing.js')), () => {
+      throw new Error('engine bug, in-process too')
+    })
+    thinkers.push(t)
+    await expect(t.think({} as never)).rejects.toThrow('engine bug, in-process too')
+
+    const store = new SqliteStore(':memory:')
+    const gate = new EngineGate(store, { pace: 0, think: boom })
+    const game = await store.create(ONE_HUMAN, ONE_HUMAN.factions, { bots: ['yellow', 'blue'] })
+    const red = game.seats.find((s) => s.faction === 'red')!.seatToken
+    await playOpening(gate, game.gameId, red)
+    // The failed bot run must release the game's queue, not hold it forever.
+    await gate.settled(game.gameId)
+    expect(errors).toHaveBeenCalled()
+    errors.mockRestore()
+    warns.mockRestore()
+  }, 60_000)
+
   it('falls back to thinking in-process when the worker cannot start', async () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
     const warns = vi.spyOn(console, 'warn').mockImplementation(() => {})

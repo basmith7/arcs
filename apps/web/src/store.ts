@@ -79,19 +79,25 @@ type Think = (req: ThinkRequest) => Promise<ThinkReply>
 function workerThink(): Think | null {
   if (typeof Worker === 'undefined') return null
   let worker: Worker | undefined
+  // A worker that fails before answering anything cannot load here; stop respawning it.
+  let broken = false
+  let answered = false
   let nextId = 1
   const pending = new Map<number, { resolve: (r: ThinkReply) => void; reject: (e: Error) => void }>()
   const lost = (why: string): void => {
     worker?.terminate()
     worker = undefined
+    if (!answered) broken = true
     for (const p of pending.values()) p.reject(new Error(why))
     pending.clear()
   }
   return (req) =>
     new Promise<ThinkReply>((resolve, reject) => {
+      if (broken) return reject(new Error('bot worker unavailable'))
       if (worker === undefined) {
         worker = new Worker(new URL('./bot-worker.ts', import.meta.url), { type: 'module' })
         worker.onmessage = (e: MessageEvent<{ id: number; reply?: ThinkReply; error?: string }>) => {
+          answered = true
           const p = pending.get(e.data.id)
           if (p === undefined) return
           pending.delete(e.data.id)
@@ -181,6 +187,7 @@ class GameStore {
   private think: Think | null | undefined
   /** Bumped by `clearBotTimer`, so an answer to a question that was withdrawn is dropped. */
   private botGeneration = 0
+  private warnedThink = false
 
   /** Tests only: think through `think`, or `undefined` to go back to the default. */
   useThinker(think: Think | undefined): void {
@@ -368,7 +375,8 @@ class GameStore {
         if (current()) this.landBot(prev, faction, decodeAction(reply.action), reply.asked)
       },
       (e: unknown) => {
-        console.warn('[bots] thinking in the page:', e)
+        if (!this.warnedThink) console.warn('[bots] thinking in the page:', e)
+        this.warnedThink = true
         if (current()) this.stepBotOnce()
       },
     )
