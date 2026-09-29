@@ -286,6 +286,7 @@ function settle(
   faction: FactionId,
   reg: RuleRegistry,
   resolve: (result: RuleResult, actions: readonly Action[]) => Action,
+  subflows = false,
 ): RuleResult {
   let current = result
   /*
@@ -299,7 +300,11 @@ function settle(
     const c = current.continue
     if (c.kind !== 'ask' || c.faction !== faction) return current
     // The horizon: the turn's actions are about to be spent, which is what candidates are compared at.
-    if (pipsAhead(c, faction) > 0) return current
+    /*
+     * With `subflows`, only the pip menu itself is the horizon: a sub-ask inside a pip also has pips
+     * ahead (they ride in its continuation), and stopping there is what re-tied every pip option.
+     */
+    if (pipsAhead(c, faction) > 0 && (!subflows || c.actions.some((a) => a.type === 'action/take'))) return current
     if (c.prompt !== undefined && visited.has(c.prompt)) return current
     if (c.prompt !== undefined) visited.add(c.prompt)
 
@@ -354,6 +359,7 @@ function settledSamples(
   faction: FactionId,
   reg: RuleRegistry,
   resolve: (result: RuleResult, actions: readonly Action[]) => Action,
+  subflows = false,
 ): readonly ObservedState[] {
   const base = probeFrom(state, 0)
   const first = advance(base, action, reg)
@@ -361,7 +367,7 @@ function settledSamples(
   const out: ObservedState[] = []
   for (let i = 1; i < SAMPLES; i++) {
     try {
-      const settled = settle(advance(probeFrom(state, i), action, reg), faction, reg, resolve)
+      const settled = settle(advance(probeFrom(state, i), action, reg), faction, reg, resolve, subflows)
       out.push(observe(settled.state, faction))
     } catch {
       // As above: a failed sample is one fewer opinion, not a reason to discard the candidate.
@@ -780,7 +786,7 @@ export function stepBot(
        * re-entry it exists to catch. The value is read after settling, because that is the horizon
        * candidates have to share to be comparable.
        */
-      const settled = settle(next, faction, reg, resolve)
+      const settled = settle(next, faction, reg, resolve, bot.settleSubflows === true)
       /*
        * `repeats` and `actionsAhead` come from the first sample alone: both are questions about the
        * shape of the game — which question comes next, how many pips are left — and neither is
@@ -790,7 +796,7 @@ export function stepBot(
       const here = observe(settled.state, faction)
       return {
         observed: here,
-        samples: [here, ...settledSamples(result.state, action, faction, reg, resolve)],
+        samples: [here, ...settledSamples(result.state, action, faction, reg, resolve, bot.settleSubflows === true)],
         repeats: at !== undefined && at >= depth,
         undoes:
           action.type === 'action/move-pick' &&

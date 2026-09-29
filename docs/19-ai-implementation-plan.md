@@ -2980,3 +2980,75 @@ ruling: seizing passed on its own against the old `hard` (z 2.83), it is not wor
 without it the bot never seizes at all. `normal` and `easy` are byte-identical (20 golden `normal`
 journals unchanged); the six golden `hard` journals were re-recorded.
 
+## 24. The weekend lab — three more blind spots, none a gain (2026-09-24)
+
+`npm run lab` runs probe -> 2p pre-screen -> 4p gate unattended, every rule fixed in advance
+(`scripts/lab.ts`), on 14 desktop shards plus 6 capped Tower shards (`--remote tower:6`, a work
+queue so slow shards play fewer games). Candidates are `hardw:` overlays on today's `hard`, each an
+action-level term (`action-terms.ts`) aimed at a choice the coverage report or tie audit flagged.
+
+| candidate | probe | 2p pre-screen (400 games, 200 deals) | verdict |
+| --- | --- | --- | --- |
+| C6 `garrison` 0.25 — keep ships home against rival ships within a gate | reversals 0 vs 0 | **-9.5 ± 4.5 pts/side (z -2.1)**, power -2.4 (z -2.7) | worse; stopped |
+| C8a `guildUse` 1 — flat bonus per guild Prelude ability | take rate 11.9% vs `hard`'s 4.9% (band 5-50%) | -1.5 ± 2.1 (z -0.7), power 0.0 | not detected |
+| C7 `takeMove` 0.02 — pip-menu tie toward Move when a fleet can close on a target | **Move share +14.4 pts** (allowed ±3) | — | probe failed |
+
+Readings. The fleet-size tie was a real blind spot but the obvious fix is wrong: moving the whole
+fleet (the old default) beats holding a garrison, at least at two players — concentration wins
+fights, and a home threat within one gate is rarely acted on. Using guild abilities more is neutral:
+their value roughly equals the card's holding worth, so the old hoarding was not costing games. And
+the pip-menu ties are not like the Move-destination ties of §23: breaking them toward Move changes
+what the bot does a great deal (+14 points of Move share), which is the pull `mobile.ts` records as
+harmful, so the probe rejected it before any arena time.
+
+The pre-screen is two-player; C6 in particular might behave differently at four. That is recorded
+as a limit of the screen, not a finding.
+
+## 25. Faster experiments: compiled shards yes, persistent state maps no (2026-09-25)
+
+Measured as CPU time per process with every other job paused (wall time was unusable: B2 was
+loading the machine, and one game swung 21 s to 45 s between identical runs).
+
+| change | 2 × 4p `normal` games, CPU | verdict |
+| --- | --- | --- |
+| baseline (vite-node) | 43.7-51.1 s | — |
+| `Tracker` on a persistent map (`with()` shares storage instead of copying ~300 entries per move) | 45.5-49.1 s vs 43.7-48.1 s paired | **no gain** — dropped. The profile's `move`/`contentsOf` time was mostly cheap reads, not the copies |
+| shards run as esbuild-bundled JavaScript instead of through vite-node | **38.1-39.0 s vs 50.6-51.1 s** | **~25% less CPU per game** — shipped |
+
+`scripts/shard-runner.ts` bundles each shard (arena, tally, oracle, B2 corpus) on first use from
+the current source, so a stale bundle cannot run old code; `LAB_NO_COMPILE=1` falls back. The
+bundle is self-contained, so remote hosts receive just that one file. Compiled and vite-node runs
+were checked identical: 8 arena games (with 2 of them on Tower), a coverage tally, and an oracle
+evaluation.
+
+
+## 26. The last week of experiments: one ship, four nulls (2026-09-24 to 09-29)
+
+Every run below was pre-registered before its first game. The detail is in the reports named.
+
+| experiment | question | result | report |
+| --- | --- | --- | --- |
+| **S1 `settleSubflows`** | Does resolving each pip's sub-flow before scoring the pip menu (§2j's fix, which had stopped applying) beat `hard`? | **Pass: +6.3 ± 2.4 pts/side (z 2.68), +2.1 power (z 8.3), 1,600 games. Shipped as `hard` in v0.11.0.** | docs/spikes/2026-09-pip-menu.md |
+| Committed strategies | Does a fixed plan (Warlord / Builder / Court overlays plus a fixed intent) beat adaptive `hard`? | No. Builder -12.5 pts/side, Court -30.5 (both futility at 800). Warlord was not distinct (probe failed). Mixed field not run. Recommendation: stop. | docs/spikes/2026-09-strategies.md |
+| B2 rollout power test | Do full-game rollouts, picked by the advisor's selection rule, improve on `hard`'s pick? | **Not detected**: early stop at 150 decisions / 40 games, net held-out gain +0.35% ± 0.37 per decision (z 0.96); 45 displacements, 14 of them harmful. `npm run advise -- --oracle` keeps saying so. | spec 2026-09-23 §B2; `runs/b2/report.txt` (archived) |
+| Engine speed | Is the rules engine what limits training a learned bot? | No: 99.8% of a playout is the evaluator. A dense-id `Tracker` bought 1.02x, and Rust 1.17-1.41x on hot kernels. Neither was merged. | docs/spikes/2026-09-engine-speed.md |
+| Learned policy, step A | Do averaged interventional-pair labels become learnable? | Inconclusive (held-out R² 0.032 against the 0.05 bar). The labels are reliable (0.976), but the only learnable fact is "leading beats passing". | docs/spikes/2026-09-learned-policy.md |
+
+**S1 changes how `hard` plays, not only how well.** With the pip menu scored apart, `hard` Secures
+(79% of offers, from 5%) and Influences (70%, from 9%) where it used to Move (10%, from 58%): offer
+order had been choosing Move. The committed strategies were measured *before* this, when no overlay
+could reach the pip choice. That is the one reason to re-run them.
+
+**S1's cost is the tail.** Most decisions got no slower; rare card plays got much slower (worst
+12.9 s against 3.5 s). v0.11.0 therefore moves bot thinking off the main thread on both the server
+(`worker_threads`) and the page (a Web Worker). Both use the engine's `createThinker`, which
+rebuilds the position from options and journal. The main thread applies the returned action, so
+journals are unchanged. Numbers are in the pip-menu report.
+
+**What is left that could still buy strength** (none of it is started):
+
+- Re-measure `normal` with `settleSubflows`. It is the same tie, and `normal` is what most games
+  use. That needs its own gate, not the S1 one.
+- Re-run the Builder strategy's mixed field on the new `hard` ("personalities", strategies report).
+- `playoutChoice` livelocks: 167 of 1,024 spike pairs stalled on `action/take` against `turn/end`.
+  That blocks any rollout-based work, including B2 again.

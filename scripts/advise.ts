@@ -32,10 +32,11 @@ import { evaluate, meanSe, paired } from './oracle-lib.js'
 
 /**
  * The B2 verdict (docs/19): `undefined` until the power test passes, then the section that
- * recorded it. While undefined the advisor never lets rollouts override `hard`.
+ * recorded it. While undefined the advisor never lets rollouts override `hard`. B2 ran to its early
+ * stop on 2026-09-26 and did not pass (docs/19 §26), so this stays undefined.
  */
 const ORACLE_VERDICT: string | undefined = undefined
-const NOT_DETECTED = 'rollout check: not detected to help — the offline power test (spec B2) has not passed'
+const NOT_DETECTED = 'rollout check: not detected to help — the offline power test (spec B2) did not detect a gain (docs/19 §26)'
 
 const argv = process.argv.slice(2)
 const flag = (name: string): string | undefined => {

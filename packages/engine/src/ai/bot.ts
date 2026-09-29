@@ -289,6 +289,14 @@ export type Rollout = (action: Action, options: RolloutOptions) => readonly Obse
 export interface Bot {
   readonly id: string
   /**
+   * Resolve a pip's sub-flow (Battle -> choose a system, Secure -> choose a card) when scoring the
+   * pip menu, instead of stopping at it. docs/19 §2j built this; it silently stopped working once
+   * sub-asks began carrying the remaining pips in their continuation, because `settle` treats "pips
+   * ahead" as its horizon — so every pip-menu option scored the same and offer order chose.
+   * Opt-in so every shipped bot (and the golden journals) is unchanged.
+   */
+  readonly settleSubflows?: boolean
+  /**
    * `lookahead` is absent for callers that cannot supply it. A bot that needs it must degrade
    * rather than throw: an evaluator with no lookahead is a worse bot, not a broken game.
    */

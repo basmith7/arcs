@@ -62,6 +62,8 @@ export interface GameOutcome {
   /** Decisions taken. Near-zero means the bots passed rather than played. */
   readonly actions: number
   readonly ms: number
+  /** Leaders & Lore games only: who drafted which leader, for setup splits. Absent in the base game. */
+  readonly leaders?: Readonly<Partial<Record<FactionId, string>>>
 }
 
 export interface ArenaGame {
@@ -114,7 +116,7 @@ export function playGame(game: ArenaGame, registry?: RuleRegistry): GameOutcome 
   const seats: Partial<Record<FactionId, string>> = {}
   for (const f of factions) seats[f] = botFor(game.seats, f).id
 
-  let outcome: { finished: boolean; reason: string; winner?: FactionId; power: Readonly<Partial<Record<FactionId, number>>>; chapters: number; actions: number }
+  let outcome: { finished: boolean; reason: string; winner?: FactionId; power: Readonly<Partial<Record<FactionId, number>>>; chapters: number; actions: number; leaders?: Readonly<Partial<Record<FactionId, string>>> }
   try {
     const out = runBots(
       startGame(options, reg),
@@ -133,6 +135,7 @@ export function playGame(game: ArenaGame, registry?: RuleRegistry): GameOutcome 
       power: out.result.state.power,
       chapters: out.result.state.chapter,
       actions: out.decisions.length,
+      ...(Object.keys(out.result.state.leaders).length === 0 ? {} : { leaders: out.result.state.leaders }),
     }
   } catch (e) {
     /*

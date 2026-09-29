@@ -11,7 +11,7 @@
  */
 
 import { baselineBot, contestBot, declareBot, feasibilityBot, declareCostBot, easyBot, goalBot, handBot, threatBot, standardBot,
-  mobileBot, guardBot, botForLevel, EXPERIMENTS, loreBot, heuristicBot, heuristicBotWith, rivalBot, rolloutBot, searchBot, trivialBot, weaponBot } from '@arcs/engine'
+  mobileBot, guardBot, botForLevel, EXPERIMENTS, HARD_WEIGHTS, loreBot, heuristicBot, heuristicBotWith, rivalBot, rolloutBot, searchBot, strategyBot, trivialBot, weaponBot } from '@arcs/engine'
 import type { Bot, Weights } from '@arcs/engine'
 
 import { readFileSync } from 'node:fs'
@@ -32,7 +32,10 @@ export type BotSpec =
   | { readonly kind: 'standard' }
   | { readonly kind: 'mobile' }
   | { readonly kind: 'hard' }
+  | { readonly kind: 'hardw'; readonly overlay: Readonly<Record<string, number>> }
   | { readonly kind: 'exp'; readonly name: string }
+  /** A committed strategy (`strategy.ts`): hard's search with a fixed plan holding `commitment` (default 0.85). */
+  | { readonly kind: 'strat'; readonly name: string; readonly commitment?: number }
   | { readonly kind: 'rival' }
   | { readonly kind: 'weapon' }
   | { readonly kind: 'easy' }
@@ -80,11 +83,16 @@ export function buildBot(spec: BotSpec): Bot {
       return standardBot
     case 'hard':
       return botForLevel('hard')
+    case 'hardw':
+      // Today's hard with some weights overridden — how the lab names candidates and assemblies.
+      return searchBot({ width: 3, depth: 14, replies: { roots: 1, deals: 1 }, weights: { ...HARD_WEIGHTS, ...spec.overlay } as Weights })
     case 'exp': {
       const make = EXPERIMENTS[spec.name]
       if (make === undefined) throw new Error(`no experiment named ${spec.name}`)
       return make()
     }
+    case 'strat':
+      return spec.commitment === undefined ? strategyBot(spec.name) : strategyBot(spec.name, spec.commitment)
     case 'mobile':
       return mobileBot
     case 'rival':
@@ -142,7 +150,22 @@ export function parseSpec(name: string): BotSpec {
   if (kind === 'standard') return { kind: 'standard' }
   if (kind === 'mobile') return { kind: 'mobile' }
   if (kind === 'hard') return { kind: 'hard' }
+  // `hardw:garrison=0.25/guildUse=1` — hard's weights with these overridden.
+  if (kind === 'hardw' && rest[0] !== undefined) {
+    const overlay: Record<string, number> = {}
+    for (const kv of rest[0].split('/')) {
+      const [k, v] = kv.split('=')
+      if (k === undefined || v === undefined || Number.isNaN(Number(v))) throw new Error(`bad hardw weight: ${kv}`)
+      overlay[k] = Number(v)
+    }
+    return { kind: 'hardw', overlay }
+  }
   if (kind === 'exp' && rest[0] !== undefined) return { kind: 'exp', name: rest[0] }
+  // `strat:warlord` or `strat:warlord:0.95` — a committed strategy, optionally holding its plan harder.
+  if (kind === 'strat' && rest[0] !== undefined) {
+    if (rest[1] !== undefined && Number.isNaN(Number(rest[1]))) throw new Error(`bad strat commitment: ${rest[1]}`)
+    return rest[1] === undefined ? { kind: 'strat', name: rest[0] } : { kind: 'strat', name: rest[0], commitment: Number(rest[1]) }
+  }
   if (kind === 'rival') return { kind: 'rival' }
   if (kind === 'weapon') return { kind: 'weapon' }
   if (kind === 'easy') return { kind: 'easy' }
@@ -234,6 +257,8 @@ export interface ArenaJob {
    * `--jobs` safe to trust for a real measurement.
    */
   readonly leadersAndLore?: { readonly expansion: boolean; readonly lorePerPlayer: number }
+  /** Work-queue mode: game indices arrive on stdin (see `scripts/arena.ts`). */
+  readonly pull?: boolean
   /** Which games this shard plays: indices `shard`, `shard + jobs`, `shard + 2*jobs`, … */
   readonly shard: number
   readonly jobs: number

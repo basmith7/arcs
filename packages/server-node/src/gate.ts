@@ -11,20 +11,19 @@
  */
 import {
   applyExternal,
-  botForLevel,
   botToAct,
   decodeAction,
   defaultRegistry,
-  encodeAction,
   NO_ASKS,
   replayGame,
-  stepBot,
   takeBackBlock,
 } from '@arcs/engine'
 import type { AskedThisTurn, NewGameOptions, RuleResult } from '@arcs/engine'
 import type { AppendResult } from '@arcs/server'
 
 import type { SqliteStore } from './sqlite-store.js'
+import { localThink } from './thinker.js'
+import type { Think } from './thinker.js'
 
 export interface Push {
   readonly from: number
@@ -52,6 +51,8 @@ export interface GateOptions {
   /** Milliseconds between bot actions so connected clients can follow. Default 1000. */
   readonly pace?: number
   readonly onSettled?: (s: Settled) => void
+  /** Where bot decisions are made. Default in-process; `main.ts` passes a worker (`thinker.ts`). */
+  readonly think?: Think
 }
 
 const CACHE_LIMIT = 100
@@ -79,6 +80,7 @@ export class EngineGate {
   private readonly listeners = new Map<string, Set<(push: Push) => void>>()
   private readonly pace: number
   private readonly onSettled: ((s: Settled) => void) | undefined
+  private readonly think: Think
 
   constructor(
     private readonly store: SqliteStore,
@@ -86,6 +88,7 @@ export class EngineGate {
   ) {
     this.pace = opts.pace ?? 1000
     this.onSettled = opts.onSettled
+    this.think = opts.think ?? localThink(this.registry)
   }
 
   // --- reading --------------------------------------------------------------
@@ -204,10 +207,17 @@ export class EngineGate {
       () =>
         new Promise<void>((resolve) => {
           setTimeout(() => {
-            void this.runBots(gameId, after).then((done) => {
-              this.onSettled?.({ gameId, before, after: done })
-              resolve()
-            })
+            this.runBots(gameId, after).then(
+              (done) => {
+                this.onSettled?.({ gameId, before, after: done })
+                resolve()
+              },
+              (e: unknown) => {
+                // Release the queue: a bot that cannot move must not lock the humans out too.
+                console.error('[gate] bot run failed', gameId, e)
+                resolve()
+              },
+            )
           }, 0)
         }),
     )
@@ -220,7 +230,6 @@ export class EngineGate {
     if (options === undefined) return start
     const bots = this.store.seats(gameId).filter((s) => s.isBot)
     if (bots.length === 0) return start
-    const bot = botForLevel(options.botLevel)
     let result = start
     // `stepBot` resets this itself at a turn boundary; carry it between steps like `stepBots` does.
     let asked: AskedThisTurn = NO_ASKS
@@ -230,9 +239,15 @@ export class EngineGate {
       if (faction === undefined || result.state.isOver) return result
       const seat = bots.find((s) => s.faction === faction)
       if (seat === undefined) return result
-      const step = stepBot(result, bot, faction, this.registry, asked)
-      asked = step.asked
-      const encoded = encodeAction(step.decision.action)
+      // Awaited, so a slow decision holds only this game's queue, not the server.
+      const thought = await this.think({
+        options,
+        journal: result.state.journal,
+        faction,
+        level: options.botLevel,
+        asked,
+      })
+      const encoded = thought.action
       const at = result.state.journal.length
       const stored = await this.store.append(gameId, seat.seatToken, at, encoded)
       if (!stored.ok) {
@@ -248,7 +263,9 @@ export class EngineGate {
         continue
       }
       failedAttempts = 0
-      result = step.result
+      // Only a stored move joins the turn's history; a refused one was never played.
+      asked = thought.asked
+      result = applyExternal(result, decodeAction(encoded), this.registry)
       this.remember(gameId, result)
       this.broadcast(gameId, { from: at, entries: [encoded] })
       await sleep(this.pace)

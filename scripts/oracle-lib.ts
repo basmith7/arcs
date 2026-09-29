@@ -12,6 +12,7 @@
  * function of (journal, candidate, salt, policy, horizon), and results are reassembled by index.
  */
 
+import { shardCommand } from './shard-runner.js'
 import { spawn } from 'node:child_process'
 
 import type { FactionId, NewGameOptions } from '@arcs/engine'
@@ -45,12 +46,13 @@ export async function evaluate(job: OracleJob, cores: number): Promise<OracleCel
   const total = job.candidates.length * job.salts.length
   const shards = Math.max(1, Math.min(cores, total))
   const cells = new Array<OracleCell | undefined>(total)
+  const cmd = shardCommand('oracle-shard')
   await Promise.all(
     [...Array(shards).keys()].map(
       (shard) =>
         new Promise<void>((resolve, reject) => {
           const payload: ShardJob = { ...job, shard, shards }
-          const child = spawn('npx', ['vite-node', 'scripts/oracle-shard.ts'], {
+          const child = spawn(cmd[0], cmd[1], {
             stdio: ['pipe', 'pipe', 'inherit'],
           })
           child.stdin.end(JSON.stringify(payload))
