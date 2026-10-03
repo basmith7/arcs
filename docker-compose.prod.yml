@@ -1,6 +1,6 @@
 # Unraid deployment - pulls the pre-built image from GHCR (built by
-# .github/workflows/docker-publish.yml on a version tag). golfbet's host-wide
-# Watchtower (--label-enable) redeploys it when a new image lands.
+# .github/workflows/docker-publish.yml on a version tag). Deploy
+# with scripts/deploy-now.sh <tag> (Tower's shared deploy-app).
 services:
   app:
     image: ghcr.io/basmith7/arcs:latest
@@ -24,4 +24,3 @@ services:
     labels:
       - "net.unraid.docker.icon=https://raw.githubusercontent.com/basmith7/arcs/main/assets/images/favicon-180.png"
       - "net.unraid.docker.webui=http://[IP]:[PORT:3070]"
-      - "com.centurylinklabs.watchtower.enable=true"
