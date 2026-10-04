@@ -4116,7 +4116,6 @@ html.phone-portrait body {
  * only how it looks.
  */
 .watching button,
-.watching .hand-card,
 .watching .setup-card {
   opacity: 0.45;
   filter: saturate(0.6);

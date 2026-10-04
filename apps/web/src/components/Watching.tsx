@@ -24,9 +24,12 @@
  *
  * With the `watchTurns` setting on — the default — `App` does not render most of these surfaces at
  * all while somebody else is being asked, and the turn feed narrates instead (`seat.ts`'s
- * `watchedActor`). This wrapper still runs, and still matters, for the two things that *are* drawn
- * then: the board and your own hand. It also carries the whole job when the setting is off, which
- * is the older behaviour and the better one for learning the game by watching someone play it.
+ * `watchedActor`). This wrapper still runs, and still matters, for the board, which *is* drawn
+ * then. It also carries the whole job when the setting is off, which is the older behaviour and the
+ * better one for learning the game by watching someone play it.
+ *
+ * Your hand sits outside it on purpose: an inert subtree gets no `:hover` and no taps, so a fan
+ * inside it could not be raised to read on anyone else's turn. Off your turn it draws no plays.
  *
  * ## What this does *not* do
  *
