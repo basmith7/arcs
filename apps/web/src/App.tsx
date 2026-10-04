@@ -38,7 +38,7 @@ import { canAct, hushed, viewFor, watchedActor } from './multiplayer/seat.js'
 import { setSettings, useSettings } from './settings.js'
 import { setupLabel } from './setups.js'
 import { colorOf } from './theme.js'
-import { CLAIM_FAILED, store, useGame, useSeats } from './store.js'
+import { store, useGame, useSeats } from './store.js'
 
 export function App(): JSX.Element {
   const result = useGame()
@@ -221,8 +221,6 @@ export function App(): JSX.Element {
           seats={humanSeats}
           onPick={(faction) => store.claimSeat(faction)}
           onWatch={() => setWatchChosen(true)}
-          error={store.claimError}
-          failed={CLAIM_FAILED}
         />
       ) : null}
       {needsName && seatView.kind === 'seat' ? (

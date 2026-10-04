@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { Session } from '../src/multiplayer/session.js'
 import type { PublicSeat } from '../src/multiplayer/client.js'
-import { CLAIM_FAILED, store } from '../src/store.js'
+import { store } from '../src/store.js'
 
 describe('Session seats', () => {
   it('hands seats to the host on resync and on a seats push', async () => {
@@ -168,19 +168,20 @@ describe('Session seats', () => {
     expect(store.seatView()).toEqual({ kind: 'spectator' })
 
     const claim = store.claimSeat('red')
-    if (seated) {
-      await claim
-      expect(store.seatView()).toEqual({ kind: 'seat', faction: 'red' })
-      expect(store.sessionLink()).toEqual({ gameId: 'g', seatToken: 'red-token' })
-    } else {
-      await expect(claim).rejects.toThrow()
-      expect(store.isSpectator()).toBe(true)
-      expect(store.sessionLink()).toEqual({ gameId: 'g' })
-      expect(store.seats).toEqual(seats)
-      expect(store.claimError).toBe(CLAIM_FAILED)
+    try {
+      if (seated) {
+        await claim
+        expect(store.seatView()).toEqual({ kind: 'seat', faction: 'red' })
+        expect(store.sessionLink()).toEqual({ gameId: 'g', seatToken: 'red-token' })
+      } else {
+        await expect(claim).rejects.toThrow()
+        expect(store.isSpectator()).toBe(true)
+        expect(store.sessionLink()).toEqual({ gameId: 'g' })
+        expect(store.seats).toEqual(seats)
+      }
+    } finally {
+      store.leaveSession()
+      vi.unstubAllGlobals()
     }
-
-    store.leaveSession()
-    vi.unstubAllGlobals()
   })
 })

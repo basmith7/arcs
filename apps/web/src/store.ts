@@ -53,9 +53,6 @@ import {
 } from './notifications.js'
 import type { NotificationCtor } from './notifications.js'
 
-/** What "Who are you?" says when a pick fails, whichever step failed. */
-export const CLAIM_FAILED = "Couldn't take that seat. Try again, or open your own seat link."
-
 type Listener = () => void
 
 /**
@@ -135,11 +132,6 @@ class GameStore {
   private session: Session | null = null
   /** The joined game's seats — faction, optional name, bot flag — as last reported by the server. */
   seats: readonly PublicSeat[] = []
-  /**
-   * Why the last "Who are you?" pick failed after its rejoin had already unmounted the prompt —
-   * the rollback re-mounts it, and this is how the message survives the trip.
-   */
-  claimError: string | null = null
   /**
    * Bumped whenever `seats` changes.
    *
@@ -489,7 +481,15 @@ class GameStore {
   async joinSession(baseUrl: string, link: GameLink): Promise<void> {
     this.leaveSession()
     this.clearBotTimer()
-    const session = new Session(baseUrl, link, {
+    const session = this.openSession(baseUrl, link)
+    this.session = session
+    remember(link)
+    await session.join()
+  }
+
+  /** A session for `link` whose hooks write into this store. Not yet joined, nor `this.session`. */
+  private openSession(baseUrl: string, link: GameLink): Session {
+    return new Session(baseUrl, link, {
       current: () => this.result,
       adopt: (options, result) => {
         this.options = options
@@ -510,9 +510,6 @@ class GameStore {
       },
       turn: (t) => this.notifyTurn(link.gameId, t),
     })
-    this.session = session
-    remember(link)
-    await session.join()
   }
 
   /**
@@ -556,29 +553,31 @@ class GameStore {
   }
 
   /**
-   * Take the seat a tokenless visitor picked in "Who are you?": fetch its token, rejoin as that
-   * seat, and only then put it in the address bar (so the URL in front of them is now their own
-   * link). `joinSession` stashes it, so the bare link works on this browser from now on.
+   * Take the seat a tokenless visitor picked in "Who are you?": fetch its token and join as that
+   * seat, and only once that join has landed drop the watching session, stash the token and put
+   * it in the address bar (so the URL in front of them is now their own link).
    *
-   * `joinSession` tears the watching session down before the new one has read anything, so a
-   * failed rejoin read would otherwise leave a dead board. On failure this rejoins as the
-   * spectator it was and rethrows, so the prompt can say so and be tried again.
+   * Join-then-swap, unlike `joinSession`'s teardown-first: the visitor is still watching a live
+   * game when this throws, so the prompt can say so and be tried again, and a seat that could
+   * not be joined is never remembered.
    */
   async claimSeat(faction: string): Promise<void> {
-    const session = this.session
-    if (session === null) return
-    this.claimError = null
-    const seatToken = await session.claimSeat(faction)
-    const link = { gameId: session.link.gameId, seatToken }
+    const watching = this.session
+    if (watching === null) return
+    const seatToken = await watching.claimSeat(faction)
+    const link = { gameId: watching.link.gameId, seatToken }
+    const seated = this.openSession(watching.baseUrl, link)
     try {
-      await this.joinSession(session.baseUrl, link)
+      await seated.join()
     } catch (e) {
-      // Set before the rollback join, whose emit re-mounts the prompt with this message.
-      this.claimError = CLAIM_FAILED
-      await this.joinSession(session.baseUrl, session.link).catch(() => {})
+      seated.leave()
       throw e
     }
+    watching.leave()
+    this.session = seated
+    remember(link)
     if (typeof window !== 'undefined') window.history.replaceState(null, '', hashFor(link.gameId, seatToken))
+    this.emit()
   }
 
   /** `undefined` when this client holds no seat (hotseat or spectator); otherwise whether it's linked. */
