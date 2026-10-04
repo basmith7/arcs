@@ -32,7 +32,9 @@ export interface SystemInfo {
     /**
      * Well-spread points *inside* this system's region, for laying out pieces and empty
      * building slots. Precomputed from the region bitmap (scripts/compute_placements.py),
-     * ordered most-central first. HRF does the equivalent at runtime via its FitLayer.
+     * ordered most-central first. HRF does the equivalent at runtime via its FitLayer. Planet
+     * systems' points are fleet points instead, laid out by scripts/place_fleets.py: off the
+     * planet disc, nearest the gate ring first.
      */
     readonly placements: readonly (readonly [number, number])[]
   }
