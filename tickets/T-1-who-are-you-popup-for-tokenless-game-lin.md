@@ -5,7 +5,11 @@ status: todo
 labels: []
 depends: []
 created: 2026-10-04T22:29:29Z
-updated: 2026-10-04T22:29:29Z
+updated: 2026-10-04T22:29:31Z
+kind: build
+risk: medium
+riskReason: "Loosens the link-is-credential model: anyone with the game link can take a seat"
+size: medium
 ---
 Tim opened a bare game link on a browser that had never stashed his seat, landed as a spectator and couldn't see his hand.
 
