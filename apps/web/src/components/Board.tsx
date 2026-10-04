@@ -1311,8 +1311,7 @@ function MapFrame(): JSX.Element {
 /** Footprint of whatever is currently rendered at a system. */
 function centreOf(state: GameState, id: string): { cx: number; cy: number; r: number } {
   const info = systemInfo(id)
-  const occupied = slotsAndPieces(state, id, groupPieces(state, id)).length
-  return footprint(info, occupied)
+  return footprint(info, positionsFor(info, slotsAndPieces(state, id, groupPieces(state, id))))
 }
 
 /** One stack of identical pieces: same colour, same type, same damage state. */
@@ -1330,8 +1329,11 @@ interface PieceGroup {
  * Where the i-th thing at a system sits. Beyond the precomputed points we step outward on a
  * small diagonal rather than wrapping — wrapping put two tokens on the identical point.
  */
-function placementFor(s: SystemInfo, i: number): readonly [number, number] {
-  const pts = s.render.placements
+function placementFor(
+  s: SystemInfo,
+  i: number,
+  pts: readonly (readonly [number, number])[] = s.render.placements,
+): readonly [number, number] {
   if (pts.length === 0) return s.render.anchor
   if (i < pts.length) return pts[i]!
   const overflow = i - pts.length + 1
@@ -1344,10 +1346,13 @@ function placementFor(s: SystemInfo, i: number): readonly [number, number] {
  *
  * The physical board prints its building slots **on the planet disc**, so buildings and the
  * empty-slot markers — the contiguous prefix `slotsAndPieces` puts first — are laid out as a
- * centred row on `render.planet`. Ships and agents keep the precomputed `placements`, indexed
- * as if the prefix still occupied the early points, so fleets sit exactly where they always
- * did. Gates have no planet (`planet: null`) and keep the old combined layout — their
- * buildings only exist through Gate Ports/Stations, which invent the position anyway.
+ * centred row on `render.planet`. Gates have no planet (`planet: null`) and keep the old combined
+ * layout — their buildings only exist through Gate Ports/Stations, which invent the position anyway.
+ *
+ * Ships and agents take the precomputed `placements` that clear the disc, most central first.
+ * They used to be indexed as if the building prefix still held the early points, so a two-slot
+ * planet pushed the first fleet to the third point — in 2-Hex, the band's far tip on the gate
+ * border — and in 2-Crescent the indexed point sat on the disc under the buildings.
  */
 function positionsFor(
   s: SystemInfo,
@@ -1361,26 +1366,36 @@ function positionsFor(
   const [px, py, pr] = planet
   // A centred row, spaced one token apart but never wider than the disc allows.
   const spacing = onDisc <= 1 ? 0 : Math.min(92, (2 * pr - 70) / (onDisc - 1))
+  const clear = (p: readonly [number, number]) => Math.hypot(p[0] - px, p[1] - py) > pr + DISC_MARGIN
+  // Off-disc points first; the on-disc ones only if a crowd runs out of open water.
+  const fleet = [
+    ...s.render.placements.filter(clear),
+    ...s.render.placements.filter((p) => !clear(p)),
+  ]
   return items.map((it, i) => {
-    if (!isSlotish(it)) return placementFor(s, i)
+    if (!isSlotish(it)) return placementFor(s, i - onDisc, fleet)
     // The prefix is contiguous, so `i` is also the index within the disc row.
     return [px + (i - (onDisc - 1) / 2) * spacing, py] as const
   })
 }
+
+/** How far past the planet's rim a fleet's point must be, so hulls do not sit on the buildings. */
+const DISC_MARGIN = 20
 
 /**
  * Where a system's pieces actually sit, and how much room they take.
  *
  * The hit ring used to be centred on `render.anchor`, which is the hand-picked *hub* point.
  * Tokens are laid out at `render.placements`, which fan up to ~100px away from it, so the
- * ring sat beside the ships rather than around them. Centring on the placements in use, and
- * sizing to cover them, puts it where the fleet is.
+ * ring sat beside the ships rather than around them. Centring on the positions in use (from
+ * `positionsFor`, so it agrees with the drawing), and sizing to cover them, puts it where the
+ * fleet is.
  */
 function footprint(
   s: SystemInfo,
-  occupied: number,
+  positions: readonly (readonly [number, number])[],
 ): { cx: number; cy: number; r: number } {
-  const pts = s.render.placements.slice(0, Math.max(1, occupied))
+  const pts = positions.length > 0 ? positions : s.render.placements.slice(0, 1)
   if (pts.length === 0) return { cx: s.render.anchor[0], cy: s.render.anchor[1], r: 92 }
   const cx = pts.reduce((n, p) => n + p[0], 0) / pts.length
   const cy = pts.reduce((n, p) => n + p[1], 0) / pts.length
