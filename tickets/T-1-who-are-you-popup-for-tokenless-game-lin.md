@@ -18,5 +18,5 @@ Design (Brian picked "trust the pick"): a visitor with no seat token (none in UR
 ## Done when
 - [x] `POST /games/:id/claim` returns a human seat's token, 403 for a bot seat, 404 for unknown game/faction (tested)
 - [x] Opening `#/g/<id>` with no stashed seat shows the "Who are you?" modal listing human seats
-- [ ] Picking a seat joins as that seat (hand visible, URL carries the seat), and a reload keeps it
+- [x] Picking a seat joins as that seat (hand visible, URL carries the seat), and a reload keeps it
 - [ ] "Just watching" dismisses to spectator mode
