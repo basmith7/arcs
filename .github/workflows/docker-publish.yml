@@ -1,7 +1,7 @@
 name: Build and publish arcs image
 
 # Build only on a version tag (git tag v0.1.0 && git push --tags) or by hand.
-# Watchtower on Tower polls ghcr.io and redeploys once the image lands.
+# Deploy the pushed image with scripts/deploy-now.sh <tag> (nothing redeploys on its own).
 on:
   push:
     tags:

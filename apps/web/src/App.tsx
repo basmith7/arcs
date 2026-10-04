@@ -371,26 +371,33 @@ export function App(): JSX.Element {
           {cont.kind === 'gameOver' ? (
             <AskStrip cont={cont} onNewGame={() => store.reset()} />
           ) : (
-            <Watching canAct={acting}>
+            <>
+              {/*
+                * The hand stays outside `Watching`: an inert subtree never gets `:hover` or taps, so
+                * inside it the fan could not be raised to read while someone else played. It needs
+                * no guard — off your turn `Hand` draws no plays, and `store.mayAct` refuses anyway.
+                */}
               <div className="hand-row">
                 <Hand state={state} cont={cont} tapToSelect={phone} />
               </div>
-              {/*
-                * The three that share the hand's grid area, and none of them mount in watch mode:
-                * the Prelude, the tray and the strip are all menus addressed to somebody else, and
-                * the fan they would cover is the one thing in this band that is still yours.
-                */}
-              {watched !== null ? null : (
-                <>
-                  {/* Shares the hand's grid area, as a sibling: `.hand-row` clips its own children. */}
-                  <PreludeScreen state={state} cont={cont} />
-                  {/* The action phase, on the same terms as the Prelude: over the hand, map still visible. */}
-                  <ActionTray state={state} cont={cont} />
-                  {/* Every decision without a bespoke surface, in the same band — see AskStrip. */}
-                  <AskStrip cont={cont} onNewGame={() => store.reset()} />
-                </>
-              )}
-            </Watching>
+              <Watching canAct={acting}>
+                {/*
+                  * The three that share the hand's grid area, and none of them mount in watch mode:
+                  * the Prelude, the tray and the strip are all menus addressed to somebody else, and
+                  * the fan they would cover is the one thing in this band that is still yours.
+                  */}
+                {watched !== null ? null : (
+                  <>
+                    {/* Shares the hand's grid area, as a sibling: `.hand-row` clips its own children. */}
+                    <PreludeScreen state={state} cont={cont} />
+                    {/* The action phase, on the same terms as the Prelude: over the hand, map still visible. */}
+                    <ActionTray state={state} cont={cont} />
+                    {/* Every decision without a bespoke surface, in the same band — see AskStrip. */}
+                    <AskStrip cont={cont} onNewGame={() => store.reset()} />
+                  </>
+                )}
+              </Watching>
+            </>
           )}
           {phone ? null : <PlayerBoards state={state} current={current} />}
         </section>
