@@ -37,7 +37,8 @@ import { useSyncExternalStore } from 'react'
 import { Session } from './multiplayer/session.js'
 import type { PublicSeat } from './multiplayer/client.js'
 import type { SeatView } from './multiplayer/seat.js'
-import { remember } from './multiplayer/link.js'
+import { hashFor, remember } from './multiplayer/link.js'
+
 import type { GameLink } from './multiplayer/link.js'
 import { eventActor, queueAt } from './turn-events.js'
 import type { TurnEvent } from './turn-events.js'
@@ -480,7 +481,15 @@ class GameStore {
   async joinSession(baseUrl: string, link: GameLink): Promise<void> {
     this.leaveSession()
     this.clearBotTimer()
-    const session = new Session(baseUrl, link, {
+    const session = this.openSession(baseUrl, link)
+    this.session = session
+    remember(link)
+    await session.join()
+  }
+
+  /** A session for `link` whose hooks write into this store. Not yet joined, nor `this.session`. */
+  private openSession(baseUrl: string, link: GameLink): Session {
+    return new Session(baseUrl, link, {
       current: () => this.result,
       adopt: (options, result) => {
         this.options = options
@@ -501,9 +510,6 @@ class GameStore {
       },
       turn: (t) => this.notifyTurn(link.gameId, t),
     })
-    this.session = session
-    remember(link)
-    await session.join()
   }
 
   /**
@@ -544,6 +550,34 @@ class GameStore {
 
   async claimName(name: string, discordId?: string): Promise<void> {
     await this.session?.claimName(name, discordId)
+  }
+
+  /**
+   * Take the seat a tokenless visitor picked in "Who are you?": fetch its token and join as that
+   * seat, and only once that join has landed drop the watching session, stash the token and put
+   * it in the address bar (so the URL in front of them is now their own link).
+   *
+   * Join-then-swap, unlike `joinSession`'s teardown-first: the visitor is still watching a live
+   * game when this throws, so the prompt can say so and be tried again, and a seat that could
+   * not be joined is never remembered.
+   */
+  async claimSeat(faction: string): Promise<void> {
+    const watching = this.session
+    if (watching === null) return
+    const seatToken = await watching.claimSeat(faction)
+    const link = { gameId: watching.link.gameId, seatToken }
+    const seated = this.openSession(watching.baseUrl, link)
+    try {
+      await seated.join()
+    } catch (e) {
+      seated.leave()
+      throw e
+    }
+    watching.leave()
+    this.session = seated
+    remember(link)
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', hashFor(link.gameId, seatToken))
+    this.emit()
   }
 
   /** `undefined` when this client holds no seat (hotseat or spectator); otherwise whether it's linked. */

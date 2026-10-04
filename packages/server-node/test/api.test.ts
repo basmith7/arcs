@@ -140,6 +140,20 @@ describe('route', () => {
     expect(tail.seats[0].name).toBe('Brian')
   })
 
+  it('hands a tokenless visitor the human seat they pick, never a bot seat', async () => {
+    const a = api()
+    const res = await route(post('/games', { options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }), a)
+    const created = (await res!.json()) as Created
+    const claim = (faction: unknown) => route(post(`/games/${created.gameId}/claim`, { faction }), a)
+    const ok = await claim('red')
+    expect(ok?.status).toBe(200)
+    expect(await ok!.json()).toEqual({ seatToken: created.seats[0]!.seatToken })
+    expect((await claim('yellow'))?.status).toBe(403)
+    expect((await claim('purple'))?.status).toBe(404)
+    expect((await claim(7))?.status).toBe(400)
+    expect((await route(post('/games/nope/claim', { faction: 'red' }), a))?.status).toBe(404)
+  })
+
   it('toggles the pings flag, round-tripping through seats, and validates it', async () => {
     const a = api()
     const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }), a))!.json()) as Created

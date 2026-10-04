@@ -103,7 +103,7 @@ export class Session {
   private sending: Promise<unknown> = Promise.resolve()
 
   constructor(
-    baseUrl: string,
+    readonly baseUrl: string,
     readonly link: GameLink,
     private readonly host: SessionHost,
   ) {
@@ -430,6 +430,11 @@ export class Session {
     if (this.link.seatToken === undefined) return
     if (this.inflight !== null) await this.inflight.catch(() => {})
     this.host.seats(await this.client.claimName(this.link.gameId, this.link.seatToken, name, discordId))
+  }
+
+  /** A spectator's "Who are you?" pick: the token for that human seat (`POST /games/:id/claim`). */
+  async claimSeat(faction: string): Promise<string> {
+    return this.client.claimSeat(this.link.gameId, faction)
   }
 
   /** Toggle this client's own seat's Discord turn-ping preference. A spectator does nothing. */
