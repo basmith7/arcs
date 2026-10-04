@@ -5,7 +5,7 @@ status: done
 labels: []
 depends: []
 created: 2026-10-04T22:29:29Z
-updated: 2026-10-04T22:59:17Z
+updated: 2026-10-04T23:00:28Z
 kind: build
 risk: medium
 riskReason: "Loosens the link-is-credential model: anyone with the game link can take a seat"
@@ -17,9 +17,6 @@ merged: 8600945011c3338f7250006aaf20ccd67f837431
 mergedBefore:
   - 5e221a2b48b5d5cd8b3632c4dd4ae4883256a3c7
 mergedAt: 2026-10-04T22:59:09Z
-review:
-  at: 2026-10-04T22:59:17Z
-  agent: arcs-agent-2
 ---
 Tim opened a bare game link on a browser that had never stashed his seat, landed as a spectator and couldn't see his hand.
 
