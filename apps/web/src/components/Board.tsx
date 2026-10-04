@@ -33,6 +33,8 @@ import { colorOf, figureArt } from '../theme.js'
 import { asset } from '../assets.js'
 import { useSettings } from '../settings.js'
 import { declareHint } from '../surfaces.js'
+import { GLYPH } from './SystemName.js'
+import glowBoxes from '../system-glow.json'
 
 interface Props {
   state: GameState
@@ -500,6 +502,43 @@ function LogHighlight({ state }: { state: GameState }): JSX.Element | null {
   )
 }
 
+const GLOW_BOX: Readonly<Record<string, readonly [number, number, number, number]>> =
+  glowBoxes as unknown as Record<string, [number, number, number, number]>
+
+/**
+ * The system under the mouse, lit in its real shape.
+ *
+ * Near a border a fleet can look like it belongs to either band, and a ring around the pieces
+ * (the log's reticle) only repeats where they are — it does not say which band they are in. So
+ * pointing at any piece lights the whole system it stands in, cut from the region bitmap by
+ * `scripts/build_system_glow.py`, and tags it the way the board prints system names.
+ *
+ * Drawn under the pieces and inert to the pointer, so the glow can never steal the hover that
+ * made it.
+ */
+function SystemGlow({ state, id }: { state: GameState; id: string }): JSX.Element | null {
+  const box = GLOW_BOX[id]
+  if (box === undefined) return null
+  const [x, y, w, h] = box
+  const { cx, cy, r } = centreOf(state, id)
+  const m = /^(\d+)-(.+)$/.exec(id)
+  const glyph = m === null ? undefined : GLYPH[m[2]!]
+  // Above the pieces, or below them when that would run off the top of the map.
+  const tagY = cy - r - 40 > 50 ? cy - r - 40 : cy + r + 40
+  return (
+    <g className="system-glow" pointerEvents="none">
+      <image href={asset(`game-assets/system-glow/${id}.webp`)} x={x} y={y} width={w} height={h} />
+      {m !== null && glyph !== undefined ? (
+        <g className="evt-caption" transform={`translate(${cx}, ${tagY}) scale(1.5)`}>
+          <rect x={-46} y={-25} width={92} height={44} rx={22} />
+          <text x={-12} y={9}>{m[1]}</text>
+          <path d={glyph} transform="translate(2, -14) scale(0.28)" />
+        </g>
+      ) : null}
+    </g>
+  )
+}
+
 function TurnEventMark({
   state,
   event,
@@ -608,6 +647,8 @@ export function Board({ state, cont }: Props): JSX.Element {
   const builds = buildPicks(cont)
   // Which system's build popover is open. Reset with the ask, like `from`.
   const [buildAt, setBuildAt] = useState<string | null>(null)
+  // The system whose pieces the mouse is over — see `SystemGlow`.
+  const [pointed, setPointed] = useState<string | null>(null)
   const repairOut =
     cont.kind === 'ask' && repairs.length > 0
       ? cont.actions.find((a) => a.type === 'action/skip')
@@ -773,11 +814,18 @@ export function Board({ state, cont }: Props): JSX.Element {
             <Route key={`route-${to}`} from={centreOf(state, from)} to={centreOf(state, to)} />
           ))}
 
+        {pointed !== null ? <SystemGlow state={state} id={pointed} /> : null}
+
         {systems.map((s) => {
           const items = slotsAndPieces(state, s.id, groupPieces(state, s.id))
           const positions = positionsFor(s, items)
           return (
-            <g key={s.id}>
+            <g
+              key={s.id}
+              // Mouse only: a tap would leave the glow stuck on until the next tap elsewhere.
+              onPointerEnter={(e) => e.pointerType === 'mouse' && setPointed(s.id)}
+              onPointerLeave={() => setPointed((p) => (p === s.id ? null : p))}
+            >
               {items.map((r, i) => {
                 const at = positions[i]!
                 return r.kind === 'slot' ? (

@@ -27,7 +27,7 @@
  * arrowhead does would read as noticeably heavier than its neighbours in a column of them, which is
  * the failure mode of every icon set drawn one icon at a time.
  */
-const GLYPH: Readonly<Record<string, string>> = {
+export const GLYPH: Readonly<Record<string, string>> = {
   // Four points to the corners with the sides drawn back through the middle — the gate's pinch.
   Gate: 'M6,6 Q50,42 94,6 Q58,50 94,94 Q50,58 6,94 Q42,50 6,6 Z',
   // A delta with its base notched, so it reads as an arrowhead rather than as a triangle.
