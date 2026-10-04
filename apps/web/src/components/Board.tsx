@@ -1397,10 +1397,10 @@ function placementFor(
  * centred row on `render.planet`. Gates have no planet (`planet: null`) and keep the old combined
  * layout — their buildings only exist through Gate Ports/Stations, which invent the position anyway.
  *
- * Ships and agents take the precomputed `placements` that clear the disc, most central first.
- * They used to be indexed as if the building prefix still held the early points, so a two-slot
- * planet pushed the first fleet to the third point — in 2-Hex, the band's far tip on the gate
- * border — and in 2-Crescent the indexed point sat on the disc under the buildings.
+ * Ships and agents take the precomputed `placements` in order — for a planet system those are
+ * fleet points from `scripts/place_fleets.py`, off the disc and nearest the gate ring first, so
+ * every system's first fleet sits in the same place relative to the board. Any point that still
+ * lands on the disc is pushed to the back, so hulls never cover the building slots.
  */
 function positionsFor(
   s: SystemInfo,
