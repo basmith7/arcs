@@ -6531,3 +6531,11 @@ p.rules-trail {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* The system under the mouse (`SystemGlow` in Board.tsx): its shape, and the board's name for it. */
+.system-glow image {
+  opacity: 0.9;
+}
+.system-glow .evt-caption path {
+  fill: var(--parchment, #e8dcc0);
+}
