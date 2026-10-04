@@ -1,15 +1,18 @@
 ---
 id: T-1
 title: '"Who are you?" popup for tokenless game links'
-status: todo
+status: doing
 labels: []
 depends: []
 created: 2026-10-04T22:29:29Z
-updated: 2026-10-04T22:36:07Z
+updated: 2026-10-04T22:40:08Z
 kind: build
 risk: medium
 riskReason: "Loosens the link-is-credential model: anyone with the game link can take a seat"
 size: medium
+build:
+  at: 2026-10-04T22:40:08Z
+  agent: arcs-agent-2
 ---
 Tim opened a bare game link on a browser that had never stashed his seat, landed as a spectator and couldn't see his hand.
 
