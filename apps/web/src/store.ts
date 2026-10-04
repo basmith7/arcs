@@ -38,6 +38,7 @@ import { Session } from './multiplayer/session.js'
 import type { PublicSeat } from './multiplayer/client.js'
 import type { SeatView } from './multiplayer/seat.js'
 import { hashFor, remember } from './multiplayer/link.js'
+
 import type { GameLink } from './multiplayer/link.js'
 import { eventActor, queueAt } from './turn-events.js'
 import type { TurnEvent } from './turn-events.js'
@@ -51,6 +52,9 @@ import {
   popTurnNotification,
 } from './notifications.js'
 import type { NotificationCtor } from './notifications.js'
+
+/** What "Who are you?" says when a pick fails, whichever step failed. */
+export const CLAIM_FAILED = "Couldn't take that seat. Try again, or open your own seat link."
 
 type Listener = () => void
 
@@ -131,6 +135,11 @@ class GameStore {
   private session: Session | null = null
   /** The joined game's seats — faction, optional name, bot flag — as last reported by the server. */
   seats: readonly PublicSeat[] = []
+  /**
+   * Why the last "Who are you?" pick failed after its rejoin had already unmounted the prompt —
+   * the rollback re-mounts it, and this is how the message survives the trip.
+   */
+  claimError: string | null = null
   /**
    * Bumped whenever `seats` changes.
    *
@@ -547,17 +556,29 @@ class GameStore {
   }
 
   /**
-   * Take the seat a tokenless visitor picked in "Who are you?": fetch its token, put it in the
-   * address bar (so the URL in front of them is now their own link) and rejoin as that seat.
-   * `joinSession` stashes it, so the bare link works on this browser from now on.
+   * Take the seat a tokenless visitor picked in "Who are you?": fetch its token, rejoin as that
+   * seat, and only then put it in the address bar (so the URL in front of them is now their own
+   * link). `joinSession` stashes it, so the bare link works on this browser from now on.
+   *
+   * `joinSession` tears the watching session down before the new one has read anything, so a
+   * failed rejoin read would otherwise leave a dead board. On failure this rejoins as the
+   * spectator it was and rethrows, so the prompt can say so and be tried again.
    */
   async claimSeat(faction: string): Promise<void> {
     const session = this.session
     if (session === null) return
+    this.claimError = null
     const seatToken = await session.claimSeat(faction)
     const link = { gameId: session.link.gameId, seatToken }
+    try {
+      await this.joinSession(session.baseUrl, link)
+    } catch (e) {
+      // Set before the rollback join, whose emit re-mounts the prompt with this message.
+      this.claimError = CLAIM_FAILED
+      await this.joinSession(session.baseUrl, session.link).catch(() => {})
+      throw e
+    }
     if (typeof window !== 'undefined') window.history.replaceState(null, '', hashFor(link.gameId, seatToken))
-    await this.joinSession(session.baseUrl, link)
   }
 
   /** `undefined` when this client holds no seat (hotseat or spectator); otherwise whether it's linked. */

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { Session } from '../src/multiplayer/session.js'
 import type { PublicSeat } from '../src/multiplayer/client.js'
-import { store } from '../src/store.js'
+import { CLAIM_FAILED, store } from '../src/store.js'
 
 describe('Session seats', () => {
   it('hands seats to the host on resync and on a seats push', async () => {
@@ -134,6 +134,51 @@ describe('Session seats', () => {
     // snapshot is `result`, which a name claim never changes.
     await store.claimName('Brian')
     expect(store.getSeatsSnapshot()).not.toBe(afterJoin)
+
+    store.leaveSession()
+    vi.unstubAllGlobals()
+  })
+
+  /*
+   * "Who are you?": a spectator picks a seat and the store rejoins holding its token. If the rejoin
+   * read fails, the visitor must be left watching a live game, not a torn-down one.
+   */
+  it.each([
+    { rejoin: 200, seated: true },
+    { rejoin: 500, seated: false },
+  ])('claimSeat with the rejoin read answering $rejoin', async ({ rejoin, seated }) => {
+    const seats = [{ faction: 'red', isBot: false }, { faction: 'blue', isBot: true }]
+    const tail = (yourFaction?: string) => ({
+      options: { board: 'Board3MixUp', factions: ['red', 'yellow', 'blue'], seed: 7 },
+      entries: [],
+      length: 0,
+      seats,
+      ...(yourFaction === undefined ? {} : { yourFaction }),
+    })
+    const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/claim')) return ok({ seatToken: 'red-token' })
+      const token = (init?.headers as Record<string, string> | undefined)?.['x-seat-token']
+      if (token === undefined) return ok(tail())
+      return rejoin === 200 ? ok(tail('red')) : new Response('boom', { status: rejoin })
+    })
+    vi.stubGlobal('WebSocket', undefined)
+
+    await store.joinSession('', { gameId: 'g' })
+    expect(store.seatView()).toEqual({ kind: 'spectator' })
+
+    const claim = store.claimSeat('red')
+    if (seated) {
+      await claim
+      expect(store.seatView()).toEqual({ kind: 'seat', faction: 'red' })
+      expect(store.sessionLink()).toEqual({ gameId: 'g', seatToken: 'red-token' })
+    } else {
+      await expect(claim).rejects.toThrow()
+      expect(store.isSpectator()).toBe(true)
+      expect(store.sessionLink()).toEqual({ gameId: 'g' })
+      expect(store.seats).toEqual(seats)
+      expect(store.claimError).toBe(CLAIM_FAILED)
+    }
 
     store.leaveSession()
     vi.unstubAllGlobals()

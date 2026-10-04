@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { PublicSeat } from '../multiplayer/client.js'
 import { colorOf } from '../theme.js'
@@ -10,6 +10,10 @@ interface Props {
   onPick: (faction: string) => Promise<void>
   /** "Just watching", or Escape: stay a spectator for the rest of the session. */
   onWatch: () => void
+  /** Shown on mount: a pick that failed after its rejoin had unmounted this prompt. */
+  error?: string | null
+  /** The message for a pick that fails while this prompt is still up. */
+  failed: string
 }
 
 /**
@@ -17,27 +21,34 @@ interface Props {
  * link the Discord pings post, opened on a new phone. Without it the visitor lands as a spectator
  * and cannot tell why their hand is missing.
  */
-export function WhoAreYou({ seats, onPick, onWatch }: Props): JSX.Element {
+export function WhoAreYou({ seats, onPick, onWatch, error: initialError, failed }: Props): JSX.Element {
   const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(initialError ?? null)
+  // Synchronous, unlike `busy`: a second click or an Escape before React re-renders must not
+  // start a second claim, or dismiss a prompt whose claim is still going to seat them.
+  const inFlight = useRef(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onWatch()
+      if (e.key === 'Escape' && !inFlight.current) onWatch()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onWatch])
 
   async function pick(faction: string): Promise<void> {
-    if (busy !== null) return
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(faction)
     setError(null)
     try {
       await onPick(faction)
-    } catch (e) {
-      setError((e as Error).message)
+    } catch {
+      // Usually unmounted by now (the rollback re-mounts a fresh prompt with `error`); harmless if so.
+      setError(failed)
       setBusy(null)
+    } finally {
+      inFlight.current = false
     }
   }
 

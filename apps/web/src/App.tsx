@@ -38,7 +38,7 @@ import { canAct, hushed, viewFor, watchedActor } from './multiplayer/seat.js'
 import { setSettings, useSettings } from './settings.js'
 import { setupLabel } from './setups.js'
 import { colorOf } from './theme.js'
-import { store, useGame, useSeats } from './store.js'
+import { CLAIM_FAILED, store, useGame, useSeats } from './store.js'
 
 export function App(): JSX.Element {
   const result = useGame()
@@ -180,9 +180,11 @@ export function App(): JSX.Element {
   const myDiscordName = store.mySeatDiscordName()
   const needsName = seatView.kind === 'seat' && myName === undefined && !nameDismissed
   // Seats come with the join read, so an empty list is "not loaded yet" (or upstream's Worker,
-  // which has no claim endpoint) — ask nothing until there is someone to be.
+  // which has no claim endpoint) — ask nothing until there is someone to be. Read off the
+  // server's answer (`seatView`), not the URL, so a stale token that seats nobody asks too.
   const humanSeats = store.seats.filter((s) => !s.isBot)
-  const needsSeat = store.isSpectator() && !watchChosen && humanSeats.length > 0
+  const needsSeat =
+    seatView.kind === 'spectator' && !watchChosen && !state.isOver && humanSeats.length > 0
   const cont = viewFor(engineCont, seatView)
   /*
    * Whether the controls work. Separate from what is *drawn* — a watcher sees the dice and the
@@ -219,6 +221,8 @@ export function App(): JSX.Element {
           seats={humanSeats}
           onPick={(faction) => store.claimSeat(faction)}
           onWatch={() => setWatchChosen(true)}
+          error={store.claimError}
+          failed={CLAIM_FAILED}
         />
       ) : null}
       {needsName && seatView.kind === 'seat' ? (
