@@ -27,6 +27,7 @@ import { SeatBadge } from './components/SeatBadge.js'
 import { RulesModal } from './components/RulesModal.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
+import { WhoAreYou } from './components/WhoAreYou.js'
 import { initAudio } from './audio.js'
 import { enterPhoneCanvas } from './phone-canvas.js'
 import { useNarrow, type Sheet } from './phone.js'
@@ -53,6 +54,8 @@ export function App(): JSX.Element {
   const [logOpen, setLogOpen] = useState(false)
   /** Escape/cancel dismisses the name prompt for the rest of this session; it does not reappear. */
   const [nameDismissed, setNameDismissed] = useState(false)
+  /** "Just watching" in Who-are-you: stay a spectator for this session. */
+  const [watchChosen, setWatchChosen] = useState(false)
   /*
    * The settings dialog. Local state like the log drawer, and mounted on both screens below —
    * the music starts on the title screen, so the volume control has to be reachable there too.
@@ -176,6 +179,10 @@ export function App(): JSX.Element {
   const myName = store.mySeatName()
   const myDiscordName = store.mySeatDiscordName()
   const needsName = seatView.kind === 'seat' && myName === undefined && !nameDismissed
+  // Seats come with the join read, so an empty list is "not loaded yet" (or upstream's Worker,
+  // which has no claim endpoint) — ask nothing until there is someone to be.
+  const humanSeats = store.seats.filter((s) => !s.isBot)
+  const needsSeat = store.isSpectator() && !watchChosen && humanSeats.length > 0
   const cont = viewFor(engineCont, seatView)
   /*
    * Whether the controls work. Separate from what is *drawn* — a watcher sees the dice and the
@@ -207,6 +214,13 @@ export function App(): JSX.Element {
       className={phone ? 'app phone' : 'app'}
       {...(phone && sheet !== null ? { 'data-sheet': sheet } : {})}
     >
+      {needsSeat ? (
+        <WhoAreYou
+          seats={humanSeats}
+          onPick={(faction) => store.claimSeat(faction)}
+          onWatch={() => setWatchChosen(true)}
+        />
+      ) : null}
       {needsName && seatView.kind === 'seat' ? (
         <NamePrompt
           faction={seatView.faction}

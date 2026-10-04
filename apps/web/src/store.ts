@@ -37,7 +37,7 @@ import { useSyncExternalStore } from 'react'
 import { Session } from './multiplayer/session.js'
 import type { PublicSeat } from './multiplayer/client.js'
 import type { SeatView } from './multiplayer/seat.js'
-import { remember } from './multiplayer/link.js'
+import { hashFor, remember } from './multiplayer/link.js'
 import type { GameLink } from './multiplayer/link.js'
 import { eventActor, queueAt } from './turn-events.js'
 import type { TurnEvent } from './turn-events.js'
@@ -544,6 +544,20 @@ class GameStore {
 
   async claimName(name: string, discordId?: string): Promise<void> {
     await this.session?.claimName(name, discordId)
+  }
+
+  /**
+   * Take the seat a tokenless visitor picked in "Who are you?": fetch its token, put it in the
+   * address bar (so the URL in front of them is now their own link) and rejoin as that seat.
+   * `joinSession` stashes it, so the bare link works on this browser from now on.
+   */
+  async claimSeat(faction: string): Promise<void> {
+    const session = this.session
+    if (session === null) return
+    const seatToken = await session.claimSeat(faction)
+    const link = { gameId: session.link.gameId, seatToken }
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', hashFor(link.gameId, seatToken))
+    await this.joinSession(session.baseUrl, link)
   }
 
   /** `undefined` when this client holds no seat (hotseat or spectator); otherwise whether it's linked. */
