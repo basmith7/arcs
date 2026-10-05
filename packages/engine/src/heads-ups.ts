@@ -78,9 +78,13 @@ export interface TurnWindow {
  */
 export function turnWindow(journal: readonly string[], asks: readonly SeatAsk[], faction: FactionId): TurnWindow {
   const n = journal.length
-  const opensAt = (i: number): boolean => asks[i] === 'opener' && (i === 0 || asks[i - 1] !== 'opener')
   const rivalOpens = (i: number): boolean =>
     OPENERS.has(typeOf(journal[i]!)) && factionOf(journal[i]!) !== faction
+  const ownOpens = (i: number): boolean => OPENERS.has(typeOf(journal[i]!)) && factionOf(journal[i]!) === faction
+  // Asked to open, and either newly so or right after its own opening play: a chapter that ends on
+  // a pass asks the passer to lead the next one with no entry in between.
+  const opensAt = (i: number): boolean =>
+    asks[i] === 'opener' && (i === 0 || asks[i - 1] !== 'opener' || ownOpens(i - 1))
   let start = -1
   for (let i = n; i >= 0; i--) {
     if (opensAt(i)) {

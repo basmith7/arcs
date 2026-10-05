@@ -56,6 +56,10 @@ describe('turnWindow (pure): a turn starts where the seat is asked to open one',
     const asks = ['opener', 'none', 'none', 'opener'] as const
     expect(turnWindow(journal, asks, 'red')).toEqual({ inTurn: true, start: 3, since: 1 })
   })
+  it('a chapter ending on a pass hands the next lead straight back: a new turn', () => {
+    const journal = ['turn/pass(faction="red")']
+    expect(turnWindow(journal, ['opener', 'opener'], 'red')).toEqual({ inTurn: true, start: 1, since: 1 })
+  })
   it('a response asked outside its own turn is no turn', () => {
     const journal = ['turn/lead(card="A-1",faction="blue")', 'action/x(faction="blue")']
     expect(turnWindow(journal, ['none', 'none', 'other'], 'red').inTurn).toBe(false)
