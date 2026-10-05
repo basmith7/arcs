@@ -427,7 +427,7 @@ describe('Just (Elder) on Tyrant and Violent (Warrior) on Empath', () => {
       ...state,
       power: { red: 0, yellow: 0, blue: 0 },
       ambitions: [ambition],
-      declared: [{ ambition, marker, round: 0 }],
+      declared: [{ ambition, marker, round: 0, by: 'red' }],
     }
     return advance(staged, { type: 'ambition/score' }, registry).state.power
   }
@@ -515,7 +515,7 @@ describe('Lavish (Fuel Drinker) — Fuel burns when Tycoon is scored', () => {
       ...state,
       power: { red: 0, yellow: 0, blue: 0 },
       ambitions: [declared],
-      declared: [{ ambition: declared, marker: { high: 6, low: 3 }, round: 0 }],
+      declared: [{ ambition: declared, marker: { high: 6, low: 3 }, round: 0, by: 'red' as const }],
     }
     return advance(staged, { type: 'ambition/score' }, registry).state
   }
@@ -1642,7 +1642,7 @@ describe('Academic (Archivist) — the Tycoon twin of Just and Violent', () => {
       ...state,
       power: { red: 0, yellow: 0, blue: 0 },
       ambitions: [ambition],
-      declared: [{ ambition, marker, round: 0 }],
+      declared: [{ ambition, marker, round: 0, by: 'red' }],
     }
     return advance(staged, { type: 'ambition/score' }, registry).state.power
   }
@@ -1676,7 +1676,7 @@ describe('Academic (Archivist) — the Tycoon twin of Just and Violent', () => {
     s = give(s, 'yellow', 'Relic', 1)
     const staged = (st: GameState) => ({
       ...st, power: { red: 0, yellow: 0, blue: 0 },
-      ambitions: ['Keeper' as const], declared: [{ ambition: 'Keeper' as const, marker: { high: 6, low: 3 }, round: 0 }],
+      ambitions: ['Keeper' as const], declared: [{ ambition: 'Keeper' as const, marker: { high: 6, low: 3 }, round: 0, by: 'red' as const }],
     })
     const plain = advance(staged(s), { type: 'ambition/score' }, registry).state.power
     const arch = advance(staged(withLeader(s, 'red', 'leader09')), { type: 'ambition/score' }, registry).state.power

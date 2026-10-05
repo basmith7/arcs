@@ -17,6 +17,7 @@ import {
   slotsOf,
   startGame,
 } from '../src/index.js'
+import { takeAmbitionMarker } from '../src/rules/ambitions.js'
 import type {
   Action,
   Ambition,
@@ -208,7 +209,7 @@ describe('scoring Warlord or Tyrant empties the pile it counted', () => {
 
   const declaring = (state: GameState, ...ambitions: readonly Ambition[]): GameState => ({
     ...state,
-    declared: ambitions.map((ambition) => ({ ambition, marker: { high: 4, low: 2 }, round: 0 })),
+    declared: ambitions.map((ambition) => ({ ambition, marker: { high: 4, low: 2 }, round: 0, by: 'red' as const })),
   })
 
   const pileSizes = (state: GameState, which: 'trophies' | 'captives') =>
@@ -632,7 +633,7 @@ describe('scoring ambitions', () => {
     s = citiesLeft(s, 'yellow', yellowCities)
     return {
       ...s,
-      declared: markers.map((m) => ({ ambition: 'Empath' as const, marker: m, round: 0 })),
+      declared: markers.map((m) => ({ ambition: 'Empath' as const, marker: m, round: 0, by: 'red' as const })),
       power: { red: 0, yellow: 0, blue: 0 },
     }
   }
@@ -666,5 +667,13 @@ describe('scoring ambitions', () => {
     expect(out.state.power['yellow']).toBe(3)
     expect(out.state.power['blue']).toBe(3)
     expect(out.state.log.join(' ')).toContain('tied Empath')
+  })
+})
+
+describe('declarations', () => {
+  it('record who declared them', () => {
+    const { state } = startGame({ board: 'Board3MixUp', factions: THREE, seed: 5 })
+    const after = takeAmbitionMarker({ ...state, ambitionable: [{ high: 5, low: 3 }] }, 'yellow', 'Keeper')
+    expect(after.declared.at(-1)).toMatchObject({ ambition: 'Keeper', by: 'yellow' })
   })
 })

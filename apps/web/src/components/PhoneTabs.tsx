@@ -1,6 +1,6 @@
 /**
  * The phone layout's tab bar: the panels that do not fit beside the map — court, ambitions, the
- * player boards and the log — each opened as a sheet over it. App.tsx keeps every panel mounted
+ * player boards, the log and the Scoreboard — each opened as a sheet over it. App.tsx keeps every panel mounted
  * and marks the open one on `.app[data-sheet]`; phone.css does the showing.
  *
  * Sheets follow the decision. When the ask is the ambition track's, its sheet opens by itself and
@@ -20,6 +20,7 @@ const TABS: readonly (readonly [Sheet, string])[] = [
   ['ambitions', 'Ambitions'],
   ['boards', 'Players'],
   ['log', 'Log'],
+  ['score', 'Scoreboard'],
 ]
 
 interface Props {

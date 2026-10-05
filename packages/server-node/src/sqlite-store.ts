@@ -105,6 +105,14 @@ CREATE TABLE IF NOT EXISTS session (
   account_id    TEXT NOT NULL REFERENCES account(id),
   expires_at    INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS catchup (
+  game_id TEXT NOT NULL,
+  faction TEXT NOT NULL,
+  journal_len INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (game_id, faction, journal_len)
+);
 `
 
 interface SeatDb {
@@ -389,6 +397,35 @@ export class SqliteStore implements GameStore {
       .prepare('SELECT id FROM game ORDER BY created_at')
       .all()
       .map((r) => (r as { id: string }).id)
+  }
+
+  // --- turn catch-up stories (catchup.ts) ----------------------------------
+
+  /** Stores a seat's story for one journal length; the seat's older stories go. */
+  putCatchup(gameId: GameId, faction: string, journalLen: number, text: string, now: number): void {
+    this.db.prepare('DELETE FROM catchup WHERE game_id = ? AND faction = ?').run(gameId, faction)
+    this.db
+      .prepare('INSERT INTO catchup (game_id, faction, journal_len, text, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(gameId, faction, journalLen, text, now)
+  }
+
+  /** Only the story written for exactly this length: a take-back or a later move makes it stale. */
+  getCatchup(gameId: GameId, faction: string, journalLen: number): string | undefined {
+    const row = this.db
+      .prepare('SELECT text FROM catchup WHERE game_id = ? AND faction = ? AND journal_len = ?')
+      .get(gameId, faction, journalLen) as { text: string } | undefined
+    return row?.text
+  }
+
+  /** All of a game's stories, or only those for turns that began after `fromLength` (a take-back). */
+  deleteCatchups(gameId: GameId, fromLength?: number): void {
+    if (fromLength === undefined) this.db.prepare('DELETE FROM catchup WHERE game_id = ?').run(gameId)
+    else this.db.prepare('DELETE FROM catchup WHERE game_id = ? AND journal_len > ?').run(gameId, fromLength)
+  }
+
+  /** The seat a token belongs to in this game, if it does. */
+  seatForToken(gameId: GameId, token: SeatToken): SeatRow | undefined {
+    return this.seatByToken(gameId, token)
   }
 
   // --- private --------------------------------------------------------------

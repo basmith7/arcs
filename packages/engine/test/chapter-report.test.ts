@@ -7,11 +7,11 @@
  * a line that matches nothing is ignored, and the section ends at the next chapter's deal.
  */
 
-import { startGame, defaultRegistry } from '@arcs/engine'
-import type { FactionId, GameState } from '@arcs/engine'
+import { startGame, defaultRegistry } from '../src/index.js'
+import type { FactionId, GameState } from '../src/index.js'
 import { describe, expect, it } from 'vitest'
 
-import { buildChapterReport, chapterEnded, finalChapterReport } from '../src/chapter-report.js'
+import { buildChapterReport, chapterEnded, finalChapterReport } from '../src/index.js'
 
 const registry = defaultRegistry()
 const THREE: readonly FactionId[] = ['red', 'yellow', 'blue']
@@ -35,7 +35,7 @@ function boundary(
     ...s,
     chapter: 2,
     declared: edit.declared ?? [
-      { ambition: 'Tycoon', marker: { high: 5, low: 3 }, round: 2 },
+      { ambition: 'Tycoon', marker: { high: 5, low: 3 }, round: 2, by: 'red' },
     ],
     power: edit.powerBefore ?? { red: 3, yellow: 1, blue: 0 },
   }
@@ -157,8 +157,8 @@ describe('parsing the scoring prose', () => {
   it('stacked declarations keep every marker, and power rows diff before/after', () => {
     const { prev, next } = boundary(['red won Tycoon for 12 power'], {
       declared: [
-        { ambition: 'Tycoon', marker: { high: 5, low: 3 }, round: 1 },
-        { ambition: 'Tycoon', marker: { high: 4, low: 2 }, round: 3 },
+        { ambition: 'Tycoon', marker: { high: 5, low: 3 }, round: 1, by: 'red' as const },
+        { ambition: 'Tycoon', marker: { high: 4, low: 2 }, round: 3, by: 'red' as const },
       ],
       powerBefore: { red: 0, yellow: 2, blue: 2 },
       powerAfter: { red: 12, yellow: 2, blue: 2 },

@@ -46,6 +46,8 @@ export interface AmbitionMarker {
 export interface Declaration {
   readonly ambition: Ambition
   readonly marker: AmbitionMarker
+  /** Who declared it. Replay regenerates state, so saved games need no migration. */
+  readonly by: FactionId
   /**
    * The round (within the chapter) it was declared in. Galactic Bards' window is "an ambition has
    * not been declared yet **this round**" (bc25, printed text), so the gate needs to tell this

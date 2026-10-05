@@ -24,7 +24,7 @@ import { store, useInterlude } from '../store.js'
 import { colorOf, figureArt, textOn } from '../theme.js'
 import { LeaderArt, cardName } from './LeaderCardReader.js'
 import { FactionChip, roman } from './ChapterInterlude.js'
-import type { GameHistory } from '../chapter-report.js'
+import type { GameHistory } from '../game-history.js'
 
 const RESOURCES = ['Material', 'Fuel', 'Weapon', 'Relic', 'Psionic'] as const
 

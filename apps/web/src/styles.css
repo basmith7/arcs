@@ -407,6 +407,15 @@ html.phone-portrait body {
     display: none;
   }
 }
+/*
+ * With the Scoreboard button the toolbar reaches the centre below ~1600px. A seated player's badge
+ * already says "your turn" / "waiting for …", so the centre slot gives way there first.
+ */
+@media (max-width: 1600px) {
+  .topbar:has(.seat-badge) .turn-badge {
+    display: none;
+  }
+}
 
 .topbar {
   position: relative;
@@ -6242,6 +6251,91 @@ html.phone-portrait body {
 .settings-modal {
   width: min(420px, 100%);
 }
+
+/* --- scoreboard dialog -----------------------------------------------------
+ *
+ * The Settings console, wider: four player cards two to a row, then the ambition race. The phone
+ * sheet reuses the same `.sb` content one card to a row (phone.css).
+ */
+.scoreboard-modal {
+  width: min(760px, 100%);
+  max-height: min(86vh, 900px);
+  overflow-y: auto;
+}
+.sb {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 12.5px;
+}
+.sb-projection {
+  margin: 0;
+  padding: 8px 10px;
+  font-weight: 600;
+  line-height: 1.45;
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+  background: rgba(201, 169, 97, 0.08);
+}
+.sb-label {
+  color: var(--gold);
+}
+.sb-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+.sb-player {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.sb-name {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+.sb-power {
+  font-size: 12px;
+  color: var(--gold);
+}
+.sb-player dl {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 3px 8px;
+  margin: 0;
+}
+.sb-player dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.sb-player dd {
+  margin: 0;
+}
+.sb-race ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sb-race li {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 8px;
+  padding: 3px 0;
+}
+.sb-ambition {
+  font-weight: 600;
+}
+.sb-marker,
+.sb-quiet {
+  color: var(--muted);
+  font-weight: 400;
+}
 .set-section + .set-section {
   margin-top: 16px;
   padding-top: 14px;
@@ -6686,6 +6780,71 @@ a.da-ghost {
   align-items: center;
   gap: 8px;
   padding: 4px 0;
+}
+
+/* --- turn catch-up card ----------------------------------------------------
+ *
+ * Floats over the foot of the map on your turn, like the turn feed does on everyone else's, so it
+ * never moves the map or the decision below it. The story lands under the bullets, in space held
+ * for it (`.cu-story-slot`) while it is being written.
+ */
+.cu-card {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 60;
+  width: min(380px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  background: rgba(10, 12, 18, 0.94);
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+.cu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.cu-title {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.cu-list {
+  margin: 0;
+  padding-left: 18px;
+}
+.cu-list li + li {
+  margin-top: 3px;
+}
+.cu-quiet {
+  margin: 0;
+  color: var(--muted);
+}
+.cu-story,
+.cu-story-slot {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(201, 169, 97, 0.2);
+}
+.cu-story p {
+  margin: 6px 0 0;
+}
+.cu-story summary {
+  cursor: pointer;
+  color: var(--gold);
+}
+.cu-story-slot {
+  /* About the three lines a short story takes, so its arrival does not push anything. */
+  min-height: 4.4em;
 }
 
 /* --- who are you (tokenless game link) ----------------------------------- */

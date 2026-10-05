@@ -60,6 +60,11 @@ export interface SessionHost {
   seats(seats: readonly PublicSeat[]): void
   /** A turn notice pushed for some seat. Carries no journal entries of its own. */
   turn?(t: { faction: string; chapter: number; length: number }): void
+  /**
+   * This seat's turn catch-up story: pushed when the server has written it, or fetched on load.
+   * `enabled` (fetched only) says whether the server writes stories at all.
+   */
+  catchup?(c: { length: number; story: string | null; enabled?: boolean }): void
 }
 
 export class Session {
@@ -260,6 +265,12 @@ export class Session {
       return
     }
 
+    const catchup = (push as { catchup?: unknown }).catchup
+    if (typeof catchup === 'object' && catchup !== null && typeof (catchup as { story?: unknown }).story === 'string') {
+      this.host.catchup?.(catchup as { length: number; story: string })
+      return
+    }
+
     const turn = push.turn
     if (typeof turn === 'object' && turn !== null && typeof (turn as { faction?: unknown }).faction === 'string') {
       this.host.turn?.(turn as { faction: string; chapter: number; length: number })
@@ -317,6 +328,20 @@ export class Session {
     this.lockedSeat = tail.lockedSeat ?? null
     this.host.adopt(options, replayGame(options, [...tail.entries]))
     this.host.seats(tail.seats ?? [])
+    void this.fetchCatchup()
+  }
+
+  /**
+   * A story written before this page loaded (or while the socket was down). Best effort: an older
+   * server without the endpoint, or a spectator, simply has none.
+   */
+  private async fetchCatchup(): Promise<void> {
+    if (this.link.seatToken === undefined || this.host.catchup === undefined) return
+    try {
+      this.host.catchup(await this.client.catchup(this.link.gameId, this.link.seatToken))
+    } catch {
+      /* no story is the normal case */
+    }
   }
 
   /** Ask for anything new and apply it. Called on a timer; safe to call by hand. */

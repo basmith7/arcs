@@ -21,10 +21,18 @@ import {
   undo as engineUndo,
   decodeAction,
   takeBackBlock,
+  buildChapterReport,
+  chapterEnded,
+  replayGame,
+  seatFacts,
+  seatTurn,
 } from '@arcs/engine'
 import type {
   Action,
   AskedThisTurn,
+  ChapterReport,
+  SeatFacts,
+  TurnWindow,
   FactionId,
   GameState,
   NewGameOptions,
@@ -42,9 +50,9 @@ import { hashFor, remember } from './multiplayer/link.js'
 import type { GameLink } from './multiplayer/link.js'
 import { eventActor, queueAt } from './turn-events.js'
 import type { TurnEvent } from './turn-events.js'
-import { buildChapterReport, buildGameHistory, chapterEnded } from './chapter-report.js'
+import { buildGameHistory } from './game-history.js'
 import { clearAutosave, readAutosave, saveAutosave } from './persist.js'
-import type { ChapterReport, GameHistory } from './chapter-report.js'
+import type { GameHistory } from './game-history.js'
 import {
   canPopNotification,
   flashTitleUntilSeen,
@@ -495,6 +503,8 @@ class GameStore {
         this.options = options
         this.result = result
         this.generation += 1
+        // A take-back: a story for a turn past the new end is about moves that no longer exist.
+        if (this.catchup !== null && this.catchup.length > result.state.journal.length) this.catchup = null
         this.turnEvents = []
         this.clearInterlude()
         this.emit()
@@ -509,6 +519,13 @@ class GameStore {
         this.emit()
       },
       turn: (t) => this.notifyTurn(link.gameId, t),
+      catchup: (c) => {
+        const had = this.catchup
+        // A fetch answered before the story was written must not wipe the one pushed since.
+        const story = c.story ?? (had !== null && had.length === c.length ? had.story : null)
+        this.catchup = { length: c.length, story, enabled: c.enabled ?? had?.enabled ?? true }
+        this.emit()
+      },
     })
   }
 
@@ -535,6 +552,7 @@ class GameStore {
     this.session = null
     this.seats = []
     this.seatsVersion += 1
+    this.catchup = null
   }
 
   seatName(faction: string): string | undefined {
@@ -645,6 +663,69 @@ class GameStore {
     } catch {
       /* no storage, no persisted preference — the toggle still works for this tab */
     }
+  }
+
+  // --- turn catch-up (components/CatchUp.tsx) --------------------------------
+
+  /** The server's story for this seat, and whether it writes stories at all. */
+  private catchup: { length: number; story: string | null; enabled: boolean } | null = null
+  private turnMemo: { key: string; turn: TurnWindow | null } | null = null
+  private factsMemo: { key: string; facts: SeatFacts | null } | null = null
+
+  /** The story for exactly this turn start: a take-back or a later turn never shows a stale one. */
+  catchupStory(length: number): string | null {
+    return this.catchup !== null && this.catchup.length === length ? this.catchup.story : null
+  }
+
+  /** Whether the server writes stories (false until it has said so, and on an older server). */
+  catchupEnabled(): boolean {
+    return this.catchup?.enabled ?? false
+  }
+
+  /*
+   * Both below run in render, on the seat's own turn. The catch-up is a nicety: any failure in it
+   * (an engine path these facts were never tested on) must cost the card, never the turn — so it
+   * is caught, logged once and remembered as "no card" for that key.
+   */
+
+  /** A seat's turn window (engine `seatTurn`), replayed once per journal length. */
+  seatTurn(faction: FactionId): TurnWindow | null {
+    if (this.result === null || this.options === null) return null
+    const journal = this.result.state.journal
+    const key = `${this.generation}:${faction}:${journal.length}`
+    if (this.turnMemo?.key !== key) {
+      let turn: TurnWindow | null = null
+      try {
+        turn = seatTurn(this.options, journal, faction, this.registry)
+      } catch (e) {
+        console.error('[catchup] turn window failed', e)
+      }
+      this.turnMemo = { key, turn }
+    }
+    return this.turnMemo.turn
+  }
+
+  /**
+   * A seat's catch-up facts: from the end of its previous turn to the start of this one — what
+   * the story was written from, so the bullets do not shift as the seat plays its own turn.
+   */
+  seatFacts(faction: FactionId): SeatFacts | null {
+    const turn = this.seatTurn(faction)
+    if (turn === null || this.result === null || this.options === null) return null
+    const key = `${this.generation}:${faction}:${turn.since}:${turn.start}`
+    if (this.factsMemo?.key !== key) {
+      let facts: SeatFacts | null = null
+      try {
+        const journal = this.result.state.journal
+        const before = replayGame(this.options, journal.slice(0, turn.since), this.registry).state
+        const now = replayGame(this.options, journal.slice(0, turn.start), this.registry).state
+        facts = seatFacts(before, now, faction, this.registry)
+      } catch (e) {
+        console.error('[catchup] facts failed', e)
+      }
+      this.factsMemo = { key, facts }
+    }
+    return this.factsMemo.facts
   }
 
   /** The joined game's link, or `null` when playing locally. */

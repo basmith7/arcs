@@ -73,7 +73,7 @@ describe('committed strategies', () => {
     const s: GameState = {
       ...fresh(),
       ambitionable: [],
-      declared: [{ ambition: 'Keeper', marker: { high: 5, low: 3 }, round: 1 }],
+      declared: [{ ambition: 'Keeper', marker: { high: 5, low: 3 }, round: 1, by: 'red' as const }],
     }
     const intent = committedIntent(['Keeper', 'Empath'])(observe(s, 'red'), 'red')
     expect(intent.pursuing.get('Keeper')).toBeCloseTo(0.85, 10)
@@ -84,7 +84,7 @@ describe('committed strategies', () => {
     const s: GameState = {
       ...fresh(),
       ambitionable: [],
-      declared: [{ ambition: 'Tycoon', marker: { high: 5, low: 3 }, round: 1 }],
+      declared: [{ ambition: 'Tycoon', marker: { high: 5, low: 3 }, round: 1, by: 'red' as const }],
     }
     const o = observe(s, 'red')
     const intent = committedIntent(['Warlord', 'Tyrant'])(o, 'red')

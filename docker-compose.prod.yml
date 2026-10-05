@@ -20,6 +20,8 @@ services:
       PRESENCE_ACTIVE_MS: "${PRESENCE_ACTIVE_MS:-}"
       PING_GRACE_MS: "${PING_GRACE_MS:-}"
       LEAVE_GRACE_MS: "${LEAVE_GRACE_MS:-}"
+      # Turn catch-up stories (packages/server-node/src/catchup.ts); empty = bullets only.
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
     volumes:
       - /mnt/cache/appdata/arcs:/data
     restart: unless-stopped

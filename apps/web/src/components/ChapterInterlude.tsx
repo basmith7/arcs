@@ -22,7 +22,7 @@ import { asset } from '../assets.js'
 import { store, useInterlude } from '../store.js'
 import { colorOf, textOn } from '../theme.js'
 import { LeaderArt } from './LeaderCardReader.js'
-import type { AmbitionResult, ChapterReport } from '../chapter-report.js'
+import type { AmbitionResult, ChapterReport } from '@arcs/engine'
 
 /** How long an all-bot game lingers on the screen before play resumes on its own. */
 const ALL_BOT_LINGER_MS = 8000

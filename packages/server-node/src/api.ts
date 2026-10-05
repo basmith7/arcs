@@ -4,7 +4,7 @@
  * their wire shapes (docs/17 section 4b); this adds bots on create, `seats` on read, a name claim,
  * `403 wrong-turn`, and `/healthz`.
  */
-import { startGame } from '@arcs/engine'
+import { seatTurn, startGame } from '@arcs/engine'
 import type { FactionId, NewGameOptions, RuleResult } from '@arcs/engine'
 
 import type { Auth } from './auth.js'
@@ -21,6 +21,8 @@ export interface Api {
   readonly bot?: DiscordBot
   /** When unset, Discord login is disabled: `/me` reports it and `/auth/*` 404s. */
   readonly auth?: Auth
+  /** Whether turn catch-up stories are written (a DeepSeek key is configured); the page holds space for one. */
+  readonly catchupEnabled?: boolean
 }
 
 export interface PublicSeat {
@@ -245,6 +247,7 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const live = /^\/games\/([^/]+)\/live$/.exec(path)
   const sit = /^\/games\/([^/]+)\/sit$/.exec(path)
   const release = /^\/games\/([^/]+)\/release$/.exec(path)
+  const catchup = /^\/games\/([^/]+)\/catchup$/.exec(path)
 
   if (live !== null) return bad(426, 'expected a websocket upgrade')
 
@@ -266,6 +269,27 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
       ...(locked
         ? { lockedSeat: { faction: presentedSeat!.faction, owner: presentedSeat!.ownerName ?? '' } }
         : {}),
+    })
+  }
+
+  // --- GET /games/:id/catchup — this seat's turn story, if one is written ---
+  if (catchup !== null && request.method === 'GET') {
+    const gameId = decodeURIComponent(catchup[1]!)
+    const token = request.headers.get('x-seat-token') ?? undefined
+    const seat = token === undefined ? undefined : store.seatForToken(gameId, token)
+    if (seat === undefined) return bad(403, 'seat token does not belong to this game')
+    // The story is the seat's own; a locked seat's link only watches.
+    const locked = lockedFor(gameId, token!)
+    if (locked) return locked
+    // Keyed by where the seat's turn began, so the story holds through the turn's own moves.
+    const options = store.options(gameId) as NewGameOptions | undefined
+    const turn =
+      options === undefined ? undefined : seatTurn(options, store.journal(gameId), seat.faction as FactionId)
+    const length = turn?.start ?? 0
+    return json({
+      length,
+      story: turn?.inTurn === true ? (store.getCatchup(gameId, seat.faction, length) ?? null) : null,
+      enabled: api.catchupEnabled ?? false,
     })
   }
 
