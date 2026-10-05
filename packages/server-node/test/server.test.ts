@@ -12,7 +12,7 @@ import { EngineGate } from '../src/gate.js'
 import { Presence } from '../src/presence.js'
 import { createArcsServer } from '../src/server.js'
 import { SqliteStore } from '../src/sqlite-store.js'
-import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING } from './fixtures.js'
+import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING, cookieOf, discordFake, signIn } from './fixtures.js'
 
 const closers: (() => void)[] = []
 afterEach(() => {
@@ -331,5 +331,59 @@ describe('createArcsServer', () => {
     await new Promise((r) => setTimeout(r, 25))
     expect(presence.isActive(created.gameId, seatToken)).toBe(false)
     expect(left).toEqual([`${created.gameId}/${seatToken}`])
+  })
+
+  it('a claimed seat gets presence only for the owner, not an anonymous connection', async () => {
+    const fetchFake = discordFake()
+    const auth = new Auth(new SqliteStore(':memory:'), {
+      clientId: 'id',
+      clientSecret: 's',
+      publicOrigin: 'http://127.0.0.1',
+      fetch: fetchFake.f,
+    })
+    const signedIn = await signIn(auth, '#/g/abc', 'http://127.0.0.1')
+    const cookie = cookieOf(signedIn!, 'arcs_session')!
+    const presence = new Presence()
+    const { base, ws } = await listen(undefined, presence, auth)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string; seats: { seatToken: string }[] }
+    const seatToken = created.seats[0]!.seatToken
+    await fetch(`${base}/games/${created.gameId}/claim`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: `arcs_session=${cookie}` },
+      body: JSON.stringify({ seatToken }),
+    })
+
+    const anon = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`)
+    await new Promise<void>((r) => anon.once('open', r))
+    closers.push(() => anon.close())
+    expect(presence.isActive(created.gameId, seatToken)).toBe(false)
+
+    const owned = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`, { headers: { cookie: `arcs_session=${cookie}` } })
+    await new Promise<void>((r) => owned.once('open', r))
+    closers.push(() => owned.close())
+    expect(presence.isActive(created.gameId, seatToken)).toBe(true)
+  })
+
+  it('without Discord configured, a claimed-but-unauthenticated connection still gets presence', async () => {
+    const presence = new Presence()
+    const { base, ws } = await listen(undefined, presence)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string; seats: { seatToken: string }[] }
+    const seatToken = created.seats[0]!.seatToken
+    const sock = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`)
+    await new Promise<void>((r) => sock.once('open', r))
+    closers.push(() => sock.close())
+    expect(presence.isActive(created.gameId, seatToken)).toBe(true)
   })
 })

@@ -14,6 +14,7 @@ import { WebSocketServer } from 'ws'
 import { publicSeats, route } from './api.js'
 import type { Api } from './api.js'
 import { Presence } from './presence.js'
+import { seatAccess } from './seat-access.js'
 
 export interface ServerOptions {
   readonly api: Api
@@ -191,10 +192,12 @@ export function createArcsServer(opts: ServerOptions): http.Server {
         return
       }
       const seatParam = new URL(req.url ?? '/', 'http://x').searchParams.get('seat') ?? undefined
-      const seat =
-        seatParam !== undefined && api.store.seats(gameId).some((s) => s.seatToken === seatParam)
-          ? seatParam
-          : undefined
+      // Mirrors `lockedFor` in api.ts: a seat claimed by someone else gets no presence for this
+      // connection. When auth is disabled (`api.auth` undefined), every seat is unlocked, same as
+      // before claims existed.
+      const account = api.auth?.accountOf(new Request('http://x/', { headers: { cookie: req.headers.cookie ?? '' } }))
+      const row = seatParam === undefined ? undefined : api.store.seatByToken(gameId, seatParam)
+      const seat = row !== undefined && seatAccess(row, account?.id) === 'ok' ? seatParam : undefined
       wss.handleUpgrade(req, socket, head, (ws) => {
         let sockets = gameSockets.get(gameId)
         if (sockets === undefined) {
