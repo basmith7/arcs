@@ -6,12 +6,13 @@ priority: medium
 labels: []
 depends: []
 created: 2026-10-05T06:33:56Z
-updated: 2026-10-05T06:53:42Z
+updated: 2026-10-05T06:58:25Z
 kind: build
 risk: medium
 riskReason: New AI dependency and per-seat private text on the live server; scoreboard itself is read-only
 size: large
 spec: docs/superpowers/specs/2026-10-04-scoreboard-catchup-design.md
+plan: docs/superpowers/plans/2026-10-04-scoreboard-catchup.md
 ---
 A shared live Scoreboard (dialog on desktop, fifth tab on phone) and a per-seat AI catch-up when your turn comes (hero framing, heads-ups, never advice). Spec approved by Brian 2026-10-04: docs/superpowers/specs/2026-10-04-scoreboard-catchup-design.md. Spike: scripts/recap.ts on idea/agent-3.
 
