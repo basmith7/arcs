@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import { Auth } from '../src/auth.js'
 import { EngineGate } from '../src/gate.js'
-import { route } from '../src/api.js'
+import { gameStatus, route } from '../src/api.js'
 import type { Api } from '../src/api.js'
+import type { RuleResult } from '@arcs/engine'
 import { SqliteStore } from '../src/sqlite-store.js'
 import { cookieOf, discordFake, ONE_HUMAN, RED_FIRST_LEAD, signIn, THREE_PLAYER } from './fixtures.js'
 
@@ -305,6 +306,12 @@ describe('seat locks', () => {
     expect(games[0]).toMatchObject({ gameId, faction: 'red', seatToken: red, yourTurn: true, over: false, length: 0 })
     expect(games[0].won).toBeUndefined()
     expect((await route(get('/me/games'), a))!.status).toBe(401)
+  })
+
+  it('gameStatus reports won from the tie-broken winner', () => {
+    const over = { state: { isOver: true, winners: ['red'] } } as unknown as RuleResult
+    expect(gameStatus(over, 'red')).toEqual({ yourTurn: false, over: true, won: true })
+    expect(gameStatus(over, 'blue')).toEqual({ yourTurn: false, over: true, won: false })
   })
 
   it('with auth disabled, a seat with account_id set still behaves as unlocked', async () => {
