@@ -1,6 +1,5 @@
 import { useState } from 'react'
 
-import { useAccount } from '../account.js'
 import { isValidDiscordId, isValidName } from '../seat-form.js'
 import { store } from '../store.js'
 import type { GameLink } from '../multiplayer/link.js'
@@ -176,8 +175,12 @@ export function NotificationsSection(): JSX.Element {
 }
 
 export function GameSection({ faction, link }: { faction: string; link: GameLink | null }): JSX.Element {
-  const { account } = useAccount()
-  const mine = account !== null && store.mySeatOwner() === account.displayName
+  /*
+   * Owned and not locked against this session: the server only lets the owning session hold an
+   * owned seat unlocked, so this is "mine" without comparing names, which can collide.
+   */
+  const mine =
+    store.seatView().kind === 'seat' && store.mySeatOwner() !== undefined && store.lockedSeat() === null
   const seatUrl =
     link === null || typeof location === 'undefined'
       ? ''
