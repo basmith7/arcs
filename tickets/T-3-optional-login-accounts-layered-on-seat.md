@@ -25,7 +25,7 @@ Branch: idea/agent-5 (16 commits on main 35111fc)
 - [x] With the Discord env vars unset, the app behaves exactly as v0.11.1 and shows no sign-in button.
 - [ ] Sign in with Discord creates an account and session and returns to the page it started from.
 - [x] Opening a seat link never claims it; a signed-in player's "Sit here as @name" tap does, and from then on pings mention their account's Discord id.
-- [ ] A claimed seat's link, used signed out or by another account, watches only and shows the locked banner; /actions, /undo and /seat return 403 seat-locked.
+- [x] A claimed seat's link, used signed out or by another account, watches only and shows the locked banner; /actions, /undo and /seat return 403 seat-locked.
 - [ ] My Games lists the account's games with your-turn and Won/Lost, and opening one on another device plays the seat.
 - [ ] Add games from this browser claims only the ticked games.
 - [ ] Release seat (after a confirm) unlocks it for link play again.
