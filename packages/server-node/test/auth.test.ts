@@ -2,28 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import { Auth } from '../src/auth.js'
 import { SqliteStore } from '../src/sqlite-store.js'
+import { cookieOf, discordFake, signIn } from './fixtures.js'
 
 const ORIGIN = 'https://arcs.test'
-function discordFake(user = { id: '111111111111111111', username: 'bri', global_name: 'Brian' }) {
-  const calls: string[] = []
-  const f = (async (url: string | URL | Request) => {
-    const u = String(url)
-    calls.push(u)
-    if (u.endsWith('/oauth2/token')) return Response.json({ access_token: 'at', token_type: 'Bearer' })
-    if (u.endsWith('/users/@me')) return Response.json(user)
-    return new Response('no', { status: 404 })
-  }) as typeof fetch
-  return { f, calls }
-}
-const cookieOf = (res: Response, name: string): string | undefined =>
-  res.headers.getSetCookie().find((c) => c.startsWith(`${name}=`))?.split(';')[0]!.slice(name.length + 1)
-
-async function signIn(auth: Auth, ret = '#/g/abc') {
-  const start = await auth.route(new Request(`${ORIGIN}/auth/discord?return=${encodeURIComponent(ret)}`))
-  const oauth = cookieOf(start!, 'arcs_oauth')!
-  const state = new URL(start!.headers.get('location')!).searchParams.get('state')!
-  return auth.route(new Request(`${ORIGIN}/auth/discord/callback?code=c&state=${state}`, { headers: { cookie: `arcs_oauth=${oauth}` } }))
-}
 
 describe('Auth', () => {
   it('signs in: account, session cookie, back to the return hash', async () => {

@@ -10,6 +10,7 @@ import type { FactionId, NewGameOptions } from '@arcs/engine'
 import type { Auth } from './auth.js'
 import type { DiscordBot } from './discord.js'
 import type { EngineGate } from './gate.js'
+import { seatAccess } from './seat-access.js'
 import type { SqliteStore } from './sqlite-store.js'
 
 export interface Api {
@@ -32,6 +33,8 @@ export interface PublicSeat {
   readonly discordName?: string
   /** Present for human seats: whether they get a Discord turn ping. */
   readonly pings?: boolean
+  /** Display name of the account that has claimed this seat, when one has. */
+  readonly owner?: string
 }
 
 // Accepts a bare snowflake or a `<@id>`/`<@!id>` mention and normalises to the bare digits.
@@ -100,6 +103,7 @@ export function publicSeats(store: SqliteStore, gameId: string): PublicSeat[] {
     ...(s.discordId === undefined ? {} : { discordLinked: true }),
     ...(s.discordName === undefined ? {} : { discordName: s.discordName }),
     ...(s.isBot ? {} : { pings: s.pings }),
+    ...(s.ownerName === undefined ? {} : { owner: s.ownerName }),
   }))
 }
 
@@ -131,6 +135,15 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const url = new URL(request.url)
   const path = url.pathname.replace(/\/+$/, '') || '/'
   const { store, gate, bot } = api
+  const account = api.auth?.accountOf(request)
+
+  // Shared by /actions, /undo and /seat: a 403 when the seat is claimed by someone else.
+  const lockedFor = (gameId: string, token: string): Response | undefined => {
+    const s = store.seatByToken(gameId, token)
+    return s !== undefined && seatAccess(s, account?.id) === 'locked'
+      ? json({ error: 'seat-locked', owner: s.ownerName ?? '' }, 403)
+      : undefined
+  }
 
   if (path === '/healthz') return new Response('ok', { status: 200, headers: CORS })
   if (path === '/me' && request.method === 'GET' && api.auth === undefined) return json({ account: null, enabled: false })
@@ -180,6 +193,8 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const seat = /^\/games\/([^/]+)\/seat$/.exec(path)
   const undo = /^\/games\/([^/]+)\/undo$/.exec(path)
   const live = /^\/games\/([^/]+)\/live$/.exec(path)
+  const claim = /^\/games\/([^/]+)\/claim$/.exec(path)
+  const release = /^\/games\/([^/]+)\/release$/.exec(path)
 
   if (live !== null) return bad(426, 'expected a websocket upgrade')
 
@@ -190,9 +205,17 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     const since = sinceRaw === null ? 0 : Number(sinceRaw)
     if (!Number.isInteger(since) || since < 0) return bad(400, 'since must be a non-negative integer')
     const presented = request.headers.get('x-seat-token') ?? undefined
-    const tail = await store.read(gameId, since, presented)
+    const presentedSeat = presented === undefined ? undefined : store.seatByToken(gameId, presented)
+    const locked = presentedSeat !== undefined && seatAccess(presentedSeat, account?.id) === 'locked'
+    const tail = await store.read(gameId, since, locked ? undefined : presented)
     if (tail === undefined) return bad(404, 'no such game')
-    return json({ ...tail, seats: publicSeats(store, gameId) })
+    return json({
+      ...tail,
+      seats: publicSeats(store, gameId),
+      ...(locked
+        ? { lockedSeat: { faction: presentedSeat!.faction, owner: presentedSeat!.ownerName ?? '' } }
+        : {}),
+    })
   }
 
   // --- POST /games/:id/actions --------------------------------------------
@@ -205,6 +228,8 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     if (!Number.isInteger(b.expectedLength) || (b.expectedLength as number) < 0) {
       return bad(400, 'expectedLength must be a non-negative integer')
     }
+    const locked = lockedFor(gameId, b.seatToken)
+    if (locked) return locked
     const result = await gate.append(gameId, b.seatToken, b.expectedLength as number, b.action)
     if (result.ok) return json(result)
     switch (result.reason) {
@@ -234,6 +259,8 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     if (!Number.isInteger(b.expectedLength) || (b.expectedLength as number) < 0) {
       return bad(400, 'expectedLength must be a non-negative integer')
     }
+    const locked = lockedFor(gameId, b.seatToken)
+    if (locked) return locked
     const result = await gate.takeBack(gameId, b.seatToken, b.expectedLength as number)
     if (result.ok) return json(result)
     switch (result.reason) {
@@ -259,6 +286,8 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     if (typeof b.seatToken !== 'string') return bad(400, 'seatToken is required')
     if (b.pings !== undefined && typeof b.pings !== 'boolean') return bad(400, 'bad-pings')
     if (b.name === undefined && b.pings === undefined) return bad(400, 'bad-body')
+    const locked = lockedFor(gameId, b.seatToken)
+    if (locked) return locked
     if (store.options(gameId) === undefined) return bad(404, 'no such game')
 
     if (b.name !== undefined) {
@@ -303,6 +332,50 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
       if (seats === undefined) return bad(403, 'seat token does not belong to this game')
     }
 
+    api.onSeatsChanged?.(gameId)
+    return json({ seats: publicSeats(store, gameId) })
+  }
+
+  // --- POST /games/:id/claim -----------------------------------------------
+  if (claim !== null && request.method === 'POST') {
+    const gameId = decodeURIComponent(claim[1]!)
+    const b = await body<{ seatToken?: unknown; name?: unknown }>(request)
+    if (b === undefined) return bad(400, 'body must be JSON')
+    if (typeof b.seatToken !== 'string') return bad(400, 'seatToken is required')
+    if (account === undefined) return bad(401, 'signed-out')
+    const seat = store.seatByToken(gameId, b.seatToken)
+    if (seat === undefined) return bad(403, 'seat token does not belong to this game')
+    if (seat.isBot) return bad(403, 'bot-seat')
+    const locked = lockedFor(gameId, b.seatToken)
+    if (locked) return locked
+
+    let name: string
+    if (b.name !== undefined) {
+      name = typeof b.name === 'string' ? b.name.trim() : ''
+      if (name.length === 0 || name.length > NAME_MAX) return bad(400, `name must be 1-${NAME_MAX} characters`)
+    } else {
+      name = seat.name ?? account.displayName.slice(0, NAME_MAX)
+    }
+
+    store.claim(gameId, b.seatToken, account.id, name)
+    api.onSeatsChanged?.(gameId)
+    return json({ seats: publicSeats(store, gameId) })
+  }
+
+  // --- POST /games/:id/release ----------------------------------------------
+  if (release !== null && request.method === 'POST') {
+    const gameId = decodeURIComponent(release[1]!)
+    const b = await body<{ seatToken?: unknown }>(request)
+    if (b === undefined) return bad(400, 'body must be JSON')
+    if (typeof b.seatToken !== 'string') return bad(400, 'seatToken is required')
+    if (account === undefined) return bad(401, 'signed-out')
+    const seat = store.seatByToken(gameId, b.seatToken)
+    if (seat === undefined) return bad(403, 'seat token does not belong to this game')
+    if (seat.accountId === undefined) return bad(403, 'not-claimed')
+    const locked = lockedFor(gameId, b.seatToken)
+    if (locked) return locked
+
+    store.release(gameId, b.seatToken)
     api.onSeatsChanged?.(gameId)
     return json({ seats: publicSeats(store, gameId) })
   }
