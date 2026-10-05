@@ -6,10 +6,10 @@ priority: medium
 labels: []
 depends: []
 created: 2026-10-05T06:33:56Z
-updated: 2026-10-05T08:25:04Z
+updated: 2026-10-05T08:25:05Z
 kind: build
-risk: medium
-riskReason: New AI dependency and per-seat private text on the live server; scoreboard itself is read-only
+risk: high
+riskReason: "diff: touches scripts/recap.ts (scripts); creates a table; 3112 changed lines"
 size: large
 spec: docs/superpowers/specs/2026-10-04-scoreboard-catchup-design.md
 plan: docs/superpowers/plans/2026-10-04-scoreboard-catchup.md
