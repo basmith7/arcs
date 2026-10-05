@@ -26,6 +26,8 @@ export interface PublicSeat {
   readonly discordName?: string
   /** Present for human seats: whether they get a Discord turn ping. */
   readonly pings?: boolean
+  /** The claiming account's display name, present only when the seat is locked to one. */
+  readonly owner?: string
 }
 
 export interface GameTail {
@@ -41,6 +43,25 @@ export interface GameTail {
   readonly yourFaction?: string
   /** Present on the self-hosted server; absent on upstream's Worker. */
   readonly seats?: readonly PublicSeat[]
+  /**
+   * Set instead of `yourFaction` when the seat token names a seat someone else has claimed: who
+   * holds it, so the UI can say so rather than silently falling back to watching.
+   */
+  readonly lockedSeat?: { readonly faction: string; readonly owner: string }
+}
+
+/** One of this account's games, as `GET /me/games` lists it. */
+export interface MyGame {
+  readonly gameId: string
+  readonly seatToken: string
+  readonly faction: string
+  readonly createdAt: number
+  readonly updatedAt: number
+  readonly length: number
+  readonly yourTurn: boolean
+  readonly over: boolean
+  readonly won?: boolean
+  readonly seats: readonly PublicSeat[]
 }
 
 export interface CreateExtra {
@@ -184,6 +205,40 @@ export class MultiplayerClient {
     if (!res.ok) throw new ApiError(res.status, `undo -> ${res.status} ${await res.text().catch(() => '')}`)
     const body = (await res.json()) as { length: number }
     return { ok: true, length: body.length }
+  }
+
+  /** Who's signed in, and whether this server even has Discord login configured. */
+  async me(): Promise<{ account: { displayName: string; discordName: string } | null; enabled: boolean }> {
+    return this.json('/me')
+  }
+
+  /** Every game this account holds a seat in, newest activity first per the server's own ordering. */
+  async myGames(): Promise<readonly MyGame[]> {
+    const body = await this.json<{ games: readonly MyGame[] }>('/me/games')
+    return body.games
+  }
+
+  /**
+   * Claim a seat for the signed-in account, so it shows as locked to anyone else and lists under
+   * "My games". `name` only matters the first time — the server keeps the name a seat already has.
+   */
+  async claim(gameId: string, seatToken: string, name?: string): Promise<readonly PublicSeat[]> {
+    const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/claim`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ seatToken, ...(name === undefined ? {} : { name }) }),
+    })
+    return body.seats
+  }
+
+  /** Release a seat this account claimed, so anyone holding the token may claim it again. */
+  async release(gameId: string, seatToken: string): Promise<readonly PublicSeat[]> {
+    const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/release`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ seatToken }),
+    })
+    return body.seats
   }
 
   async append(

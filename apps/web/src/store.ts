@@ -571,6 +571,28 @@ class GameStore {
     await this.session?.setPings(pings)
   }
 
+  /** The owning account's display name for this client's own seat, if it has been claimed. */
+  mySeatOwner(): string | undefined {
+    const view = this.seatView()
+    if (view.kind !== 'seat') return undefined
+    return this.seats.find((s) => s.faction === view.faction)?.owner
+  }
+
+  /** Who holds this game's locked seat, if the session's token names one it does not own. */
+  lockedSeat(): { faction: string; owner: string } | null {
+    return this.session?.lockedSeat ?? null
+  }
+
+  /** Claim this client's seat for the signed-in account. */
+  async claimSeat(name?: string): Promise<void> {
+    await this.session?.claim(name)
+  }
+
+  /** Release this client's seat. */
+  async releaseSeat(): Promise<void> {
+    await this.session?.release()
+  }
+
   /** The browser-notification preference, persisted across sessions. Off by default. */
   browserNotifications(): boolean {
     if (typeof localStorage === 'undefined') return false

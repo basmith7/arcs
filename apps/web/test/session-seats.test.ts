@@ -79,6 +79,29 @@ describe('Session seats', () => {
     vi.unstubAllGlobals()
   })
 
+  it('sets lockedSeat from the tail, and isSpectator follows the absence of yourFaction', async () => {
+    const tail = {
+      options: { board: 'Board3MixUp', factions: ['red', 'yellow', 'blue'], seed: 7 },
+      entries: [],
+      length: 0,
+      lockedSeat: { faction: 'red', owner: 'Brian' },
+      seats: [{ faction: 'red', isBot: false, owner: 'Brian' }],
+    }
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(tail), { status: 200, headers: { 'content-type': 'application/json' } }))
+    vi.stubGlobal('WebSocket', undefined)
+    const session = new Session('', { gameId: 'g', seatToken: 't' }, {
+      current: () => null,
+      adopt: () => {},
+      applyRemote: () => {},
+      seats: () => {},
+    })
+    await session.resync()
+    expect(session.isSpectator).toBe(true)
+    expect(session.lockedSeat).toEqual({ faction: 'red', owner: 'Brian' })
+    session.leave()
+    vi.unstubAllGlobals()
+  })
+
   it('sends discordId in the claim body and threads discordLinked back into seats', async () => {
     const claimedSeats: PublicSeat[] = [{ faction: 'red', name: 'Brian', isBot: false, discordLinked: true }]
     let capturedBody: unknown
