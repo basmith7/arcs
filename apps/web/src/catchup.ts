@@ -2,7 +2,7 @@
  * The turn catch-up's page-side rules (spec 2026-10-04-scoreboard-catchup-design.md): who gets the
  * card, and remembering that it was dismissed. The dismissal lives under its own localStorage key,
  * not in Settings — it is a fact about one turn of one game, not a preference — and holds one
- * journal length per game, so the next turn's card shows again by itself.
+ * turn start per game and seat, so the next turn's card shows again by itself.
  */
 
 import type { Continue } from '@arcs/engine'
@@ -29,16 +29,18 @@ function write(all: Record<string, number>): void {
   }
 }
 
-export function catchupDismissed(gameId: string, length: number): boolean {
-  return read()[gameId] === length
+const seatKey = (gameId: string, faction: string): string => `${gameId}:${faction}`
+
+export function catchupDismissed(gameId: string, faction: string, turn: number): boolean {
+  return read()[seatKey(gameId, faction)] === turn
 }
 
-export function dismissCatchup(gameId: string, length: number): void {
-  write({ ...read(), [gameId]: length })
+export function dismissCatchup(gameId: string, faction: string, turn: number): void {
+  write({ ...read(), [seatKey(gameId, faction)]: turn })
 }
 
-export function reopenCatchup(gameId: string): void {
-  const { [gameId]: _, ...rest } = read()
+export function reopenCatchup(gameId: string, faction: string): void {
+  const { [seatKey(gameId, faction)]: _, ...rest } = read()
   write(rest)
 }
 

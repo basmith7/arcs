@@ -346,8 +346,10 @@ export class SqliteStore implements GameStore {
     return row?.text
   }
 
-  deleteCatchups(gameId: GameId): void {
-    this.db.prepare('DELETE FROM catchup WHERE game_id = ?').run(gameId)
+  /** All of a game's stories, or only those for turns that began after `fromLength` (a take-back). */
+  deleteCatchups(gameId: GameId, fromLength?: number): void {
+    if (fromLength === undefined) this.db.prepare('DELETE FROM catchup WHERE game_id = ?').run(gameId)
+    else this.db.prepare('DELETE FROM catchup WHERE game_id = ? AND journal_len > ?').run(gameId, fromLength)
   }
 
   /** The seat a token belongs to in this game, if it does. */

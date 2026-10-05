@@ -223,7 +223,7 @@ export function App(): JSX.Element {
       ? store.seatTurn(seatView.faction)
       : null
   const catchupFaction = catchupTurn?.inTurn === true && seatView.kind === 'seat' ? seatView.faction : null
-  const catchupClosed = catchupFaction !== null && catchupDismissed(gameId!, catchupTurn!.start)
+  const catchupClosed = catchupFaction !== null && catchupDismissed(gameId!, catchupFaction, catchupTurn!.start)
 
   // A new decision, for the phone map to frame its targets by (MapZoom).
   const mapFocus =
@@ -303,7 +303,7 @@ export function App(): JSX.Element {
               className="ghost"
               style={{ whiteSpace: 'nowrap' }}
               onClick={() => {
-                reopenCatchup(gameId!)
+                reopenCatchup(gameId!, catchupFaction)
                 setCatchupTick((n) => n + 1)
               }}
             >

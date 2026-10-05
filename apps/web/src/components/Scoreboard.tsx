@@ -104,7 +104,16 @@ export function Scoreboard({ facts, name }: { facts: GameFacts; name: (f: Factio
 
 /** The Scoreboard for a state, with the table's names. Shared by the dialog and the phone sheet. */
 export function ScoreboardPanel({ state }: { state: GameState }): JSX.Element {
-  const facts = useMemo(() => gameFacts(state, registry), [state])
+  const facts = useMemo(() => {
+    // A view, not a decision: a failure here costs the Scoreboard, never the game screen.
+    try {
+      return gameFacts(state, registry)
+    } catch (e) {
+      console.error('[scoreboard] facts failed', e)
+      return null
+    }
+  }, [state])
+  if (facts === null) return <p className="sb-quiet">The scoreboard could not be worked out for this position.</p>
   return <Scoreboard facts={facts} name={(f) => store.seatName(f) ?? f} />
 }
 

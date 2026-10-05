@@ -101,7 +101,7 @@ export function CatchUpSlot({
       name={(f) => store.seatName(f) ?? f}
       collapsed={phone}
       onDismiss={() => {
-        dismissCatchup(gameId, turn)
+        dismissCatchup(gameId, faction, turn)
         onDismiss(turn)
       }}
     />

@@ -54,22 +54,22 @@ score no ambition.`
 
 const CHECK_SYSTEM = `You check a short game recap against the facts it was written from. Reply PASS if every factual claim in it is supported by the facts and no sentence advises a game action (a move, a card to play, a plan to follow). A closing line that roots for the player without stating a game fact is fine: it is neither a claim nor advice. Otherwise reply FAIL: followed by the first unsupported or advising sentence.`
 
-/** The facts as the writer sees them: names in place of faction ids, the hand marked private. */
-function factSheet(facts: SeatFacts, name: (f: FactionId) => string): string {
-  const named = (t: string): string => withNames(t, facts.factions.map((f) => f.faction), name)
+/**
+ * The facts as the writer and checker see them: players by colour only, the hand marked private.
+ * Names are the players' own choice and reach every other seat's prompts, so they stay out; the
+ * checked story gets them afterwards (`withNames`).
+ */
+function factSheet(facts: SeatFacts): string {
   return JSON.stringify(
     {
-      since: facts.since.map(named),
-      headsUps: facts.headsUps.map((h) => named(h.text)),
-      standings: facts.factions.map((f) => ({ player: name(f.faction), colour: f.faction, ...f })),
-      ambitions: facts.ambitions.map((a) => ({
-        ...a,
-        holdings: a.holdings.map((h) => ({ player: name(h.faction), value: h.value })),
-      })),
+      since: facts.since,
+      headsUps: facts.headsUps.map((h) => h.text),
+      standings: facts.factions,
+      ambitions: facts.ambitions,
       ifChapterEndedNow:
         facts.ifChapterEndedNow?.results.map((r) => ({
           ambition: r.ambition,
-          wouldScore: r.awards.map((a) => ({ player: name(a.faction), place: a.place, power: a.power })),
+          wouldScore: r.awards.map((a) => ({ player: a.faction, place: a.place, power: a.power })),
         })) ?? null,
       'your hand — private to you': facts.hand,
     },
@@ -78,15 +78,15 @@ function factSheet(facts: SeatFacts, name: (f: FactionId) => string): string {
   )
 }
 
-export function storyPrompt(facts: SeatFacts, name: (f: FactionId) => string): { system: string; user: string } {
-  return {
-    system: STORY_SYSTEM,
-    user: `The hero is ${name(facts.self)}, playing ${facts.self}.\n\n${factSheet(facts, name)}`,
-  }
+const hero = (facts: SeatFacts): string =>
+  `The hero is the ${facts.self} player; "you" in the story is them. Call every player by colour.`
+
+export function storyPrompt(facts: SeatFacts): { system: string; user: string } {
+  return { system: STORY_SYSTEM, user: `${hero(facts)}\n\n${factSheet(facts)}` }
 }
 
-export function checkPrompt(facts: SeatFacts, name: (f: FactionId) => string, story: string): { system: string; user: string } {
-  return { system: CHECK_SYSTEM, user: `${factSheet(facts, name)}\n---\n${story}` }
+export function checkPrompt(facts: SeatFacts, story: string): { system: string; user: string } {
+  return { system: CHECK_SYSTEM, user: `${hero(facts)}\n\n${factSheet(facts)}\n---\n${story}` }
 }
 
 export class CatchupWriter {
@@ -142,7 +142,8 @@ export class CatchupWriter {
       if (seatAsk(after.continue, faction) !== 'opener') continue
       const seat = this.store.seats(gameId).find((s) => s.faction === faction)
       if (seat === undefined || seat.isBot) continue
-      const key = `${gameId}:${faction}:${length}`
+      // With the last move: a take-back and a different redo at the same length is a new hand-off.
+      const key = `${gameId}:${faction}:${length}:${after.state.journal[length - 1] ?? ''}`
       if (this.inFlight.has(key) || this.store.getCatchup(gameId, faction, length) !== undefined) continue
       this.inFlight.add(key)
       this.chain = this.chain.then(() =>
@@ -162,7 +163,8 @@ export class CatchupWriter {
    */
   private stillCurrent(options: NewGameOptions, gameId: string, faction: FactionId, journal: readonly string[]): boolean {
     const live = this.opts.current(gameId)?.state.journal
-    if (live === undefined || live[journal.length - 1] !== journal[journal.length - 1]) return false
+    if (live === undefined || live.length < journal.length) return false
+    for (let i = journal.length - 1; i >= 0; i--) if (live[i] !== journal[i]) return false
     const now = seatTurn(options, live, faction, this.registry)
     return now.inTurn && now.start === journal.length
   }
@@ -176,6 +178,9 @@ export class CatchupWriter {
     const { since } = seatTurn(options, journal, faction, this.registry)
     const before = replayGame(options, journal.slice(0, since), this.registry).state
     const facts = seatFacts(before, after.state, faction, this.registry)
+    // Nothing happened since its last turn (a first turn, or a chapter ending on its own pass):
+    // a story about nothing only invites invention. The bullets still show.
+    if (facts.since.length === 0) return
     const names = new Map(this.store.seats(gameId).map((s) => [s.faction, s.name ?? s.faction]))
     const name = (f: FactionId): string => names.get(f) ?? f
 
@@ -191,18 +196,24 @@ export class CatchupWriter {
     let story: string | undefined
     const refusals: string[] = []
     for (let attempt = 0; attempt < 2 && story === undefined; attempt++) {
-      const prompt = storyPrompt(facts, name)
+      const prompt = storyPrompt(facts)
       const last = refusals.at(-1)
       if (last !== undefined) prompt.user += `\n\nA checker rejected your previous draft: ${last}\nWrite it again without that.`
       const draft = await ask(this.opts.writerModel, prompt, true)
-      const verdict = await ask(this.opts.checkerModel, checkPrompt(facts, name, draft), true)
       const words = draft.split(/\s+/).length
-      if (words > MAX_WORDS) refusals.push(`${words} words`)
-      else if (/^\W*PASS\b/i.test(verdict)) story = draft
-      else refusals.push(verdict.slice(0, 160).replace(/\s+/g, ' '))
+      if (words > MAX_WORDS) {
+        refusals.push(`it ran to ${words} words`)
+        continue
+      }
+      const verdict = await ask(this.opts.checkerModel, checkPrompt(facts, draft), true)
+      // A bare PASS only: "PASS, though…" is a hedge, and hedges are how advice slips through.
+      if (/^\W*PASS\W*$/i.test(verdict)) story = draft
+      else refusals.push(verdict.slice(0, 300).replace(/\s+/g, ' '))
     }
+    if (story !== undefined) story = withNames(story, facts.factions.map((f) => f.faction), name)
     if (story === undefined) {
-      console.log(`[catchup] bullets only for ${gameId} ${faction}: ${refusals.join(' | ')}`)
+      // The refusals can quote the story, and the story can name this seat's hand: count only.
+      console.log(`[catchup] bullets only for ${gameId} ${faction}: ${refusals.length} drafts refused`)
       return
     }
     if (!this.stillCurrent(options, gameId, faction, journal)) return

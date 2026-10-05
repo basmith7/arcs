@@ -255,12 +255,15 @@ export function seatTurn(
 ): TurnWindow {
   let result = startGame(options, registry)
   const asks: SeatAsk[] = []
+  const chapters: number[] = []
   for (const encoded of journal) {
     asks.push(seatAsk(result.continue, faction))
+    chapters.push(result.state.chapter)
     result = applyExternal(result, decodeAction(encoded), registry)
   }
   asks.push(seatAsk(result.continue, faction))
-  return turnWindow(journal, asks, faction)
+  chapters.push(result.state.chapter)
+  return turnWindow(journal, asks, faction, chapters)
 }
 
 /** Step back one external action by replaying the journal minus its last entry. */

@@ -46,19 +46,20 @@ describe('CatchUp card', () => {
 
 describe('dismissal', () => {
   afterEach(() => vi.unstubAllGlobals())
-  it('is remembered per game and journal length, and can be undone', () => {
+  it('is remembered per game, seat and turn, and can be undone', () => {
     const mem = new Map<string, string>()
     vi.stubGlobal('localStorage', {
       getItem: (k: string) => mem.get(k) ?? null,
       setItem: (k: string, v: string) => void mem.set(k, v),
       removeItem: (k: string) => void mem.delete(k),
     })
-    dismissCatchup('g', 71)
-    expect(catchupDismissed('g', 71)).toBe(true)
-    expect(catchupDismissed('g', 72)).toBe(false)
-    expect(catchupDismissed('h', 71)).toBe(false)
-    reopenCatchup('g')
-    expect(catchupDismissed('g', 71)).toBe(false)
+    dismissCatchup('g', 'red', 71)
+    expect(catchupDismissed('g', 'red', 71)).toBe(true)
+    expect(catchupDismissed('g', 'red', 72)).toBe(false)
+    expect(catchupDismissed('h', 'red', 71)).toBe(false)
+    expect(catchupDismissed('g', 'blue', 71)).toBe(false) // two seats in one browser
+    reopenCatchup('g', 'red')
+    expect(catchupDismissed('g', 'red', 71)).toBe(false)
   })
 })
 

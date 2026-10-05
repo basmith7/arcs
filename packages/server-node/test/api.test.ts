@@ -237,12 +237,15 @@ describe('POST /games/:id/undo', () => {
     expect(stale?.status).toBe(409)
 
     a.store.putCatchup(id, 'yellow', 1, 'about the move being taken back', 1)
+    a.store.putCatchup(id, 'red', 0, "red's own turn, still current", 1)
     const ok = await route(post(`/games/${id}/undo`, { seatToken: token('red'), expectedLength: 1 }), a)
     expect(ok?.status).toBe(200)
     expect(await ok!.json()).toEqual({ ok: true, length: 0 })
     expect(a.store.journal(id)).toEqual([])
     // A story written about the taken-back move must not survive to be served after a redo.
     expect(a.store.getCatchup(id, 'yellow', 1)).toBeUndefined()
+    // …while a story for a turn that began at or before the cut is still good.
+    expect(a.store.getCatchup(id, 'red', 0)).toBe("red's own turn, still current")
   })
 })
 

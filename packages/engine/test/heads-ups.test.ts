@@ -60,6 +60,11 @@ describe('turnWindow (pure): a turn starts where the seat is asked to open one',
     const journal = ['turn/pass(faction="red")']
     expect(turnWindow(journal, ['opener', 'opener'], 'red')).toEqual({ inTurn: true, start: 1, since: 1 })
   })
+  it('a turn never spans a chapter: a 2-player mulligan after your last play is not your turn', () => {
+    const journal = ['turn/lead(card="A-1",faction="red")']
+    expect(turnWindow(journal, ['opener', 'other'], 'red', [1, 2]).inTurn).toBe(false)
+    expect(turnWindow(journal, ['opener', 'other'], 'red', [1, 1]).inTurn).toBe(true)
+  })
   it('a response asked outside its own turn is no turn', () => {
     const journal = ['turn/lead(card="A-1",faction="blue")', 'action/x(faction="blue")']
     expect(turnWindow(journal, ['none', 'none', 'other'], 'red').inTurn).toBe(false)
@@ -82,6 +87,11 @@ describe('heads-ups (red, at the start of its round-3 turn)', () => {
 
   it('overtake-risk fires when a rival one Tax behind can tax your resource', () => {
     expect(facts.headsUps).toContainEqual({ kind: 'overtake-risk', text: 'blue is one Tax from tying you on Keeper.' })
+  })
+  it('overtake-risk does not fire when the supply has none of the resource to tax', () => {
+    const contents = new Map([...now.resources.contents].map(([k, v]) => [k, k === 'supply:Relic' ? [] : v]))
+    const dry: GameState = { ...now, resources: { ...now.resources, contents } }
+    expect(kinds(seatFacts(before, dry, 'red', reg), 'overtake-risk')).toEqual([])
   })
   it('overtake-risk does not fire when you do not lead', () => {
     const tied = give(now, 'Relic', 'cityslot:blue:1')

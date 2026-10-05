@@ -71,12 +71,19 @@ export interface TurnWindow {
 
 /**
  * The turn window, from the journal and what the seat was asked before each entry (`asks[i]`,
- * with `asks[journal.length]` what it is asked now — `seatTurn` replays to get them). A turn
+ * with `asks[journal.length]` what it is asked now — `seatTurn` replays to get them; `chapters`
+ * likewise). A turn
  * starts where the seat is asked to open one. Not runs of one faction's entries (a seat ending
  * one round and leading the next has its turns side by side) and not the round number (a pass
  * ends the round without the engine bumping it).
  */
-export function turnWindow(journal: readonly string[], asks: readonly SeatAsk[], faction: FactionId): TurnWindow {
+export function turnWindow(
+  journal: readonly string[],
+  asks: readonly SeatAsk[],
+  faction: FactionId,
+  /** The chapter before each entry, and now (same indexing as `asks`): a turn never spans one. */
+  chapters?: readonly number[],
+): TurnWindow {
   const n = journal.length
   const rivalOpens = (i: number): boolean =>
     OPENERS.has(typeOf(journal[i]!)) && factionOf(journal[i]!) !== faction
@@ -94,7 +101,7 @@ export function turnWindow(journal: readonly string[], asks: readonly SeatAsk[],
   }
   let inTurn = false
   if (start >= 0) {
-    inTurn = asks[n] !== 'none'
+    inTurn = asks[n] !== 'none' && (chapters === undefined || chapters[start] === chapters[n])
     for (let i = start; i < n && inTurn; i++) if (rivalOpens(i)) inTurn = false
   } else {
     start = n
@@ -179,13 +186,17 @@ export function seatFacts(before: GameState, now: GameState, faction: FactionId,
     for (const rival of rivals) {
       const theirs = metric(now, rival, a)
       if (theirs < lead - 1) continue
-      const how = rs.some((r) => (of(facts, rival)?.taxBase[r] ?? 0) > 0)
+      // A Tax needs a city on such a world and a token of it left in the supply to take.
+      const taxable = (r: Resource): boolean =>
+        (of(facts, rival)?.taxBase[r] ?? 0) > 0 && (now.resources.contents.get(`supply:${r}`)?.length ?? 0) > 0
+      const how = rs.some(taxable)
         ? 'Tax'
         : canSecure(now, rival, rs)
           ? 'Secure'
           : undefined
       if (how === undefined) continue
-      list.push({ kind: 'overtake-risk', text: `${rival} is one ${how} from ${theirs + 1 > lead ? 'overtaking' : 'tying'} you on ${a}.` })
+      // You lead strictly and they are at most one behind, so one more ties you.
+      list.push({ kind: 'overtake-risk', text: `${rival} is one ${how} from tying you on ${a}.` })
     }
   }
 
@@ -235,5 +246,6 @@ export function seatFacts(before: GameState, now: GameState, faction: FactionId,
 /** A heads-up (or any fact text) with the table's faction ids replaced by player names. */
 export function withNames(text: string, factions: readonly FactionId[], name: (f: FactionId) => string): string {
   if (factions.length === 0) return text
-  return text.replace(new RegExp(`\\b(${factions.join('|')})\\b`, 'g'), (f) => name(f as FactionId))
+  // Case-blind: a story may open a sentence with a colour ("Yellow seized…").
+  return text.replace(new RegExp(`\\b(${factions.join('|')})\\b`, 'gi'), (f) => name(f.toLowerCase() as FactionId))
 }
