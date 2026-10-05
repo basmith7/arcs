@@ -138,7 +138,10 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const account = api.auth?.accountOf(request)
 
   // Shared by /actions, /undo and /seat: a 403 when the seat is claimed by someone else.
+  // When auth is disabled no seat is ever locked, so every seat behaves as it did before claims
+  // existed.
   const lockedFor = (gameId: string, token: string): Response | undefined => {
+    if (api.auth === undefined) return undefined
     const s = store.seatByToken(gameId, token)
     return s !== undefined && seatAccess(s, account?.id) === 'locked'
       ? json({ error: 'seat-locked', owner: s.ownerName ?? '' }, 403)
@@ -206,7 +209,8 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     if (!Number.isInteger(since) || since < 0) return bad(400, 'since must be a non-negative integer')
     const presented = request.headers.get('x-seat-token') ?? undefined
     const presentedSeat = presented === undefined ? undefined : store.seatByToken(gameId, presented)
-    const locked = presentedSeat !== undefined && seatAccess(presentedSeat, account?.id) === 'locked'
+    const locked =
+      api.auth !== undefined && presentedSeat !== undefined && seatAccess(presentedSeat, account?.id) === 'locked'
     const tail = await store.read(gameId, since, locked ? undefined : presented)
     if (tail === undefined) return bad(404, 'no such game')
     return json({

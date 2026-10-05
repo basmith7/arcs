@@ -295,4 +295,19 @@ describe('seat locks', () => {
     expect(res.status).toBe(403)
     expect(await res.json()).toEqual({ error: 'bot-seat' })
   })
+
+  it('with auth disabled, a seat with account_id set still behaves as unlocked', async () => {
+    const a = api()
+    const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }, nextIp()), a))!.json()) as Created
+    const red = created.seats.find((s) => s.faction === 'red')!.seatToken
+    const account = a.store.upsertAccount({ discordId: '1', discordName: 'bri', displayName: 'Brian' })
+    a.store.claim(created.gameId, red, account.id, 'Brian')
+
+    const res = await route(post(`/games/${created.gameId}/actions`, { seatToken: red, expectedLength: 0, action: RED_FIRST_LEAD }), a)
+    expect(res!.status).toBe(200)
+
+    const tail = await (await route(get(`/games/${created.gameId}`, { 'x-seat-token': red }), a))!.json()
+    expect(tail.yourFaction).toBe('red')
+    expect(tail.lockedSeat).toBeUndefined()
+  })
 })
