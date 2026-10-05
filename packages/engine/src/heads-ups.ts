@@ -70,50 +70,43 @@ export interface TurnWindow {
 }
 
 /**
- * The turn window, from the journal and the round each entry was played in (`rounds[i]`, as
- * `journalRounds` gives it). Turns are told apart by round and by the play that opens them, not
- * by runs of one faction's entries: a seat that ends one round and leads the next has its two
- * turns side by side, and a seat answering inside someone else's turn is not on its own.
+ * The turn window, from the journal and what the seat was asked before each entry (`asks[i]`,
+ * with `asks[journal.length]` what it is asked now — `seatTurn` replays to get them). A turn
+ * starts where the seat is asked to open one. Not runs of one faction's entries (a seat ending
+ * one round and leading the next has its turns side by side) and not the round number (a pass
+ * ends the round without the engine bumping it).
  */
-export function turnWindow(
-  journal: readonly string[],
-  rounds: readonly string[],
-  current: string,
-  asked: SeatAsk,
-  faction: FactionId,
-): TurnWindow {
-  const opens = (i: number, mine: boolean): boolean =>
-    OPENERS.has(typeOf(journal[i]!)) && (factionOf(journal[i]!) === faction) === mine
+export function turnWindow(journal: readonly string[], asks: readonly SeatAsk[], faction: FactionId): TurnWindow {
+  const n = journal.length
+  const opensAt = (i: number): boolean => asks[i] === 'opener' && (i === 0 || asks[i - 1] !== 'opener')
+  const rivalOpens = (i: number): boolean =>
+    OPENERS.has(typeOf(journal[i]!)) && factionOf(journal[i]!) !== faction
   let start = -1
-  for (let i = journal.length - 1; i >= 0 && rounds[i] === current; i--) {
-    if (opens(i, true)) {
+  for (let i = n; i >= 0; i--) {
+    if (opensAt(i)) {
       start = i
       break
     }
   }
-  let inTurn: boolean
+  let inTurn = false
   if (start >= 0) {
-    // Opened this round: still its turn while it is asked and nobody else has opened since.
-    let overtaken = false
-    for (let i = start + 1; i < journal.length; i++) if (opens(i, false)) overtaken = true
-    inTurn = asked !== 'none' && !overtaken
+    inTurn = asks[n] !== 'none'
+    for (let i = start; i < n && inTurn; i++) if (rivalOpens(i)) inTurn = false
   } else {
-    start = journal.length
-    inTurn = asked === 'opener'
+    start = n
   }
-  let previous = -1
-  for (let i = start - 1; i >= 0; i--) {
-    if (opens(i, true)) {
-      previous = i
-      break
-    }
-  }
+  // Since the end of the previous turn: the first rival opening after it began.
   let since = 0
-  if (previous >= 0) {
-    since = previous + 1
-    for (let i = previous; i < start; i++) {
-      if (rounds[i] === rounds[previous] && factionOf(journal[i]!) === faction) since = i + 1
+  for (let p = start - 1; p >= 0; p--) {
+    if (!opensAt(p)) continue
+    since = start
+    for (let i = p + 1; i < start; i++) {
+      if (rivalOpens(i)) {
+        since = i
+        break
+      }
     }
+    break
   }
   return { inTurn, start, since }
 }

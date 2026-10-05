@@ -36,25 +36,29 @@ describe('seatTurn: where a seat\'s turn began, and what happened since its last
   })
 })
 
-describe('turnWindow (pure): turns told apart by round and opening action, not by runs of a faction', () => {
-  // Red ends round 1 and leads round 2: its two turns sit side by side in the journal.
-  const journal = [
-    'turn/lead(card="A-1",faction="blue")',
-    'action/x(faction="blue")',
-    'turn/surpass(card="A-7",faction="red")',
-    'action/x(faction="red")',
-    'turn/lead(card="B-2",faction="red")',
-    'action/x(faction="red")',
-  ]
-  const rounds = ['1.1', '1.1', '1.1', '1.1', '1.2', '1.2']
-  it('splits adjacent turns at the round boundary', () => {
-    expect(turnWindow(journal, rounds, '1.2', 'other', 'red')).toEqual({ inTurn: true, start: 4, since: 4 })
+describe('turnWindow (pure): a turn starts where the seat is asked to open one', () => {
+  // asks[i]: what red was asked before entry i; the last one is what it is asked now.
+  it('splits adjacent turns: red ends one round and leads the next', () => {
+    const journal = [
+      'turn/lead(card="A-1",faction="blue")',
+      'action/x(faction="blue")',
+      'turn/surpass(card="A-7",faction="red")',
+      'action/x(faction="red")',
+      'turn/lead(card="B-2",faction="red")',
+      'action/x(faction="red")',
+    ]
+    const asks = ['none', 'none', 'opener', 'other', 'opener', 'other', 'other'] as const
+    expect(turnWindow(journal, asks, 'red')).toEqual({ inTurn: true, start: 4, since: 4 })
+    expect(turnWindow(journal.slice(0, 4), asks.slice(0, 5), 'red')).toEqual({ inTurn: true, start: 4, since: 4 })
   })
-  it('opens a window at the ask to lead, before the seat has acted', () => {
-    expect(turnWindow(journal.slice(0, 4), rounds.slice(0, 4), '1.2', 'opener', 'red')).toEqual({ inTurn: true, start: 4, since: 4 })
+  it('a pass is a turn of its own, even though the engine keeps the round number', () => {
+    const journal = ['turn/pass(faction="red")', 'turn/lead(card="A-1",faction="blue")', 'action/x(faction="blue")']
+    const asks = ['opener', 'none', 'none', 'opener'] as const
+    expect(turnWindow(journal, asks, 'red')).toEqual({ inTurn: true, start: 3, since: 1 })
   })
   it('a response asked outside its own turn is no turn', () => {
-    expect(turnWindow(journal.slice(0, 2), rounds.slice(0, 2), '1.1', 'other', 'red').inTurn).toBe(false)
+    const journal = ['turn/lead(card="A-1",faction="blue")', 'action/x(faction="blue")']
+    expect(turnWindow(journal, ['none', 'none', 'other'], 'red').inTurn).toBe(false)
   })
 })
 

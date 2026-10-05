@@ -45,7 +45,8 @@ Write at most 80 words of plain text: two or three sentences on what happened si
 turn, then one line of your own rooting for them — a statement about them, never a command. The
 heads-ups are shown to the player as bullets right above your text: do not repeat them, though the
 story may lead up to them.
-Use only the facts provided. Never invent moves, cards or numbers. Never tell the player what to
+Use only the facts provided, keeping the log's own verbs (built, moved, influenced, secured,
+declared, seized) and its order of events. Never invent moves, cards or numbers. Never tell the player what to
 do, suggest a move, or say "you should"/"consider". Do not guess what any rival holds in hand.
 Arcs basics: taxing a city gains its planet's resource; Relics score Keeper, Material and Fuel
 score Tycoon, Psionics score Empath; a secured Guild card counts as one of its resource; Weapons
@@ -154,10 +155,24 @@ export class CatchupWriter {
     }
   }
 
+  /**
+   * Whether the turn this story is for is still the seat's current one. It may have started
+   * playing it; anything else — its turn over, or a take-back that rewrote the hand-off (same
+   * length, different last move) — and the story is about a turn that no longer exists.
+   */
+  private stillCurrent(options: NewGameOptions, gameId: string, faction: FactionId, journal: readonly string[]): boolean {
+    const live = this.opts.current(gameId)?.state.journal
+    if (live === undefined || live[journal.length - 1] !== journal[journal.length - 1]) return false
+    const now = seatTurn(options, live, faction, this.registry)
+    return now.inTurn && now.start === journal.length
+  }
+
   private async write(chat: Chat, gameId: string, faction: FactionId, seatToken: string, after: RuleResult): Promise<void> {
     const options = this.store.options(gameId) as NewGameOptions | undefined
     if (options === undefined) return
     const journal = after.state.journal
+    // Checked before the calls too: a turn already gone is not worth paying DeepSeek for.
+    if (!this.stillCurrent(options, gameId, faction, journal)) return
     const { since } = seatTurn(options, journal, faction, this.registry)
     const before = replayGame(options, journal.slice(0, since), this.registry).state
     const facts = seatFacts(before, after.state, faction, this.registry)
@@ -190,13 +205,7 @@ export class CatchupWriter {
       console.log(`[catchup] bullets only for ${gameId} ${faction}: ${refusals.join(' | ')}`)
       return
     }
-    // The seat may have started its turn meanwhile. Anything else — its turn over, or a take-back
-    // that rewrote the hand-off (same length, different last move) — and the story is about a turn
-    // that no longer exists.
-    const live = this.opts.current(gameId)?.state.journal
-    if (live === undefined || live[journal.length - 1] !== journal[journal.length - 1]) return
-    const now = seatTurn(options, live, faction, this.registry)
-    if (!now.inTurn || now.start !== journal.length) return
+    if (!this.stillCurrent(options, gameId, faction, journal)) return
     this.store.putCatchup(gameId, faction, journal.length, story, this.now())
     const push: CatchupPush = { catchup: { length: journal.length, story } }
     this.presence.send(gameId, seatToken, push)
