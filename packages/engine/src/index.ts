@@ -52,6 +52,7 @@ export * from './lore.js'
 export * from './guild-actions.js'
 export * from './control.js'
 export * from './dice.js'
+export * from './chapter-report.js'
 export {
   CITIES_PER_FACTION,
   SHIPS_PER_FACTION,

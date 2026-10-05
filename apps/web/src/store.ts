@@ -21,10 +21,13 @@ import {
   undo as engineUndo,
   decodeAction,
   takeBackBlock,
+  buildChapterReport,
+  chapterEnded,
 } from '@arcs/engine'
 import type {
   Action,
   AskedThisTurn,
+  ChapterReport,
   FactionId,
   GameState,
   NewGameOptions,
@@ -41,9 +44,9 @@ import { remember } from './multiplayer/link.js'
 import type { GameLink } from './multiplayer/link.js'
 import { eventActor, queueAt } from './turn-events.js'
 import type { TurnEvent } from './turn-events.js'
-import { buildChapterReport, buildGameHistory, chapterEnded } from './chapter-report.js'
+import { buildGameHistory } from './game-history.js'
 import { clearAutosave, readAutosave, saveAutosave } from './persist.js'
-import type { ChapterReport, GameHistory } from './chapter-report.js'
+import type { GameHistory } from './game-history.js'
 import {
   canPopNotification,
   flashTitleUntilSeen,

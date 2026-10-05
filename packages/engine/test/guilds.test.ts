@@ -878,7 +878,7 @@ describe('Galactic Bards (bc25) — a free declaration before the seize', () => 
       ...base,
       roundPlays: [played],
       ambitionable: [{ high: 5, low: 3 }],
-      declared: [{ ambition: 'Tycoon' as const, marker: { high: 9, low: 4 }, round: base.round }],
+      declared: [{ ambition: 'Tycoon' as const, marker: { high: 9, low: 4 }, round: base.round, by: 'red' as const }],
     }
     const c = advance(
       stoppable(state),
@@ -895,7 +895,7 @@ describe('Galactic Bards (bc25) — a free declaration before the seize', () => 
       ...base,
       roundPlays: [played],
       ambitionable: [{ high: 5, low: 3 }],
-      declared: [{ ambition: 'Tycoon' as const, marker: { high: 9, low: 4 }, round: base.round - 1 }],
+      declared: [{ ambition: 'Tycoon' as const, marker: { high: 9, low: 4 }, round: base.round - 1, by: 'red' as const }],
     }
     const c = advance(
       stoppable(state),
@@ -914,7 +914,7 @@ describe('Galactic Bards (bc25) — a free declaration before the seize', () => 
       ...base,
       roundPlays: [{ faction: 'red' as const, cardId: 'Aggression-7', kind: 'pivot' as const }],
       ambitionable: [{ high: 5, low: 3 }],
-      declared: [{ ambition: 'Tycoon' as const, marker: { high: 9, low: 4 }, round: base.round - 1 }],
+      declared: [{ ambition: 'Tycoon' as const, marker: { high: 9, low: 4 }, round: base.round - 1, by: 'red' as const }],
     }
     const c = advance(
       stoppable(state),
@@ -1418,7 +1418,7 @@ describe("the Cartels' supply clauses (bc03 / bc06)", () => {
       ...state,
       power: { red: 0, yellow: 0, blue: 0 },
       ambitions: ['Keeper'],
-      declared: [{ ambition: 'Keeper', marker: { high: 6, low: 3 }, round: 0 }],
+      declared: [{ ambition: 'Keeper', marker: { high: 6, low: 3 }, round: 0, by: 'red' as const }],
     }
     const after = advance(staged, { type: 'ambition/score' }, registry).state
     const fuelOf = (s: GameState, f: 'red' | 'yellow' | 'blue') =>
@@ -1446,7 +1446,7 @@ describe("the Cartels' supply clauses (bc03 / bc06)", () => {
       ...state,
       power: { red: 0, yellow: 0, blue: 0 },
       ambitions: ['Keeper'],
-      declared: [{ ambition: 'Keeper', marker: { high: 6, low: 3 }, round: 0 }],
+      declared: [{ ambition: 'Keeper', marker: { high: 6, low: 3 }, round: 0, by: 'red' as const }],
     }
     const after = advance(staged, { type: 'ambition/score' }, registry).state
     const count = (f: 'red' | 'yellow', r: Resource) =>
