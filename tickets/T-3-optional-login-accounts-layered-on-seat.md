@@ -27,7 +27,7 @@ Branch: idea/agent-5 (16 commits on main 35111fc)
 - [x] Opening a seat link never claims it; a signed-in player's "Sit here as @name" tap does, and from then on pings mention their account's Discord id.
 - [x] A claimed seat's link, used signed out or by another account, watches only and shows the locked banner; /actions, /undo and /seat return 403 seat-locked.
 - [x] My Games lists the account's games with your-turn and Won/Lost, and opening one on another device plays the seat.
-- [ ] Add games from this browser claims only the ticked games.
+- [x] Add games from this browser claims only the ticked games.
 - [ ] Release seat (after a confirm) unlocks it for link play again.
 - [ ] My Games rows and Back work through the hash; a failed sign-in returns to the starting page with a notice.
 - [ ] Tests pass; screenshots taken; verified live on arcs.basmith.net.
