@@ -41,8 +41,8 @@ const bot =
 const discordStatus =
   bot === undefined ? 'off' : DISCORD_CHANNEL_ID !== undefined ? 'lookup+channel' : 'lookup'
 
-// `/auth/*` 404s, and every seat reads as unclaimed — the store's `accounts: loginOn` above, plus `lockedFor`).
-// `/auth/*` 404s, and every seat behaves as unclaimed-and-unlocked — see `api.ts`'s `lockedFor`).
+// Discord login is optional: unset client id/secret disables it entirely (`/me` reports it,
+// `/auth/*` 404s, and every seat reads as unclaimed — the store's `accounts: loginOn` above).
 const auth =
   DISCORD_CLIENT_ID !== undefined && DISCORD_CLIENT_SECRET !== undefined
     ? new Auth(store, { clientId: DISCORD_CLIENT_ID, clientSecret: DISCORD_CLIENT_SECRET, publicOrigin: PUBLIC_ORIGIN })
