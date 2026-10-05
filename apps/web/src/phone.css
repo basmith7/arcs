@@ -614,3 +614,13 @@ html.phone-hand-grid .hand.tap .hand-card {
 .mz:has(.board-hint) .mz-scroll {
   padding-bottom: 64px;
 }
+
+/* --- account strips: full width, wrapping, between the topbar and the map/dock --- */
+.app.phone .sit-bar,
+.app.phone .locked-banner,
+.app.phone .signin-notice {
+  width: 100%;
+  flex-wrap: wrap;
+  font-size: 12px;
+  padding: 5px 10px;
+}

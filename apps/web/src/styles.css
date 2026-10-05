@@ -6532,3 +6532,65 @@ p.rules-trail {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* --- account: the Sit here bar, the locked-seat banner, the failed sign-in notice ---------------
+ *
+ * Slim strips under the topbar in the ask strip's gold, the notice in `.name-error`'s red. None of
+ * them is a decision, so none is modal: the board stays usable under them.
+ */
+.sit-bar,
+.locked-banner,
+.signin-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--gold-dim);
+  color: var(--text);
+}
+.sit-bar > span,
+.locked-banner > span,
+.signin-notice > span {
+  flex: 1;
+  min-width: 0;
+}
+.sit-bar .primary {
+  color: #14100a;
+  background: var(--gold);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+}
+.locked-banner {
+  border-bottom-color: var(--gold);
+}
+.signin-notice {
+  border-bottom-color: #e0604e;
+  color: #e0604e;
+}
+.sit-bar .ghost,
+.locked-banner .ghost,
+.signin-notice .ghost {
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 9px;
+  text-decoration: none;
+}
+/* On the title screen there is no topbar to sit under, so the notice floats at the top. */
+.newgame-wrap > .signin-notice {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+/* The sign-in and My games links wear the button classes; drop the link underline. */
+.newgame-load a.ghost,
+a.da-ghost {
+  text-decoration: none;
+  font-size: inherit;
+}
