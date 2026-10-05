@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 
 import { App } from './App.js'
 import { loadAccount, setSigninFailed } from './account.js'
+import { MyGames } from './components/MyGames.js'
 import { MULTIPLAYER_URL } from './multiplayer/config.js'
 import { parseLink, recall } from './multiplayer/link.js'
 import { store } from './store.js'
@@ -40,8 +41,16 @@ if (MULTIPLAYER_URL !== null) void loadAccount(MULTIPLAYER_URL)
  * Read once per boot: a hash change reloads (above), so this is also how following a link in-page
  * enters a game.
  */
+/*
+ * `#/me` is the My Games page: no game to join and no autosave to restore. Without a server there
+ * is nothing to list, so a no-server build falls through to the ordinary boot.
+ */
+const myGames = window.location.hash === '#/me' && MULTIPLAYER_URL !== null
+
 const link = parseLink(window.location.hash)
-if (link !== null && link !== undefined && MULTIPLAYER_URL !== null) {
+if (myGames) {
+  // Nothing to load: MyGames fetches its own list.
+} else if (link !== null && link !== undefined && MULTIPLAYER_URL !== null) {
   const seatToken = link.seatToken ?? recall(link.gameId)
   void store.joinSession(MULTIPLAYER_URL, seatToken === undefined ? link : { ...link, seatToken })
 } else if (link === null || link === undefined) {
@@ -56,6 +65,6 @@ if (link !== null && link !== undefined && MULTIPLAYER_URL !== null) {
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    {myGames ? <MyGames /> : <App />}
   </React.StrictMode>,
 )

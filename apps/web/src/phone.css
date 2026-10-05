@@ -624,3 +624,23 @@ html.phone-hand-grid .hand.tap .hand-card {
   font-size: 12px;
   padding: 5px 10px;
 }
+
+/*
+ * My Games (`#/me`) sits outside `.app`, so it keys on the window width rather than `.phone`:
+ * full-width rows and 44px tap targets.
+ */
+@media (max-width: 599px) {
+  .mg-list,
+  .mg-import {
+    width: 100%;
+  }
+  .mg-row,
+  .mg-import label {
+    min-height: 44px;
+  }
+  .mg-head a,
+  .mg-import button,
+  .mg-import-open {
+    min-height: 44px;
+  }
+}

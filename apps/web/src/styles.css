@@ -6594,3 +6594,91 @@ a.da-ghost {
   text-decoration: none;
   font-size: inherit;
 }
+
+/* My Games (`#/me`, MyGames.tsx): the lobby's shell with a list of the account's games. */
+.mg-head {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.mg-head a.ghost {
+  text-decoration: none;
+}
+.mg-note,
+.mg-updated {
+  color: var(--muted);
+  text-align: center;
+}
+.mg-updated {
+  font-size: 12px;
+  margin: 0 0 6px;
+}
+.mg-list {
+  list-style: none;
+  margin: 0 auto 16px;
+  padding: 0;
+  width: min(560px, 100%);
+}
+.mg-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+}
+.mg-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.mg-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+.mg-names {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-turn {
+  color: var(--muted);
+  font-size: 12px;
+}
+.mg-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 9px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mg-pill.yours {
+  border-color: var(--accent, #d9a441);
+  background: var(--accent, #d9a441);
+  color: #111;
+  font-weight: 600;
+}
+.mg-import-open {
+  display: block;
+  margin: 0 auto;
+}
+.mg-import,
+.mg-taken {
+  margin: 0 auto 16px;
+  width: min(560px, 100%);
+}
+.mg-import ul,
+.mg-taken ul {
+  list-style: none;
+  padding: 0;
+}
+.mg-import label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
