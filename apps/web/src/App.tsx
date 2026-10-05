@@ -25,6 +25,7 @@ import { PlayerBoards } from './components/PlayerBoards.js'
 import { NamePrompt } from './components/NamePrompt.js'
 import { SeatBadge } from './components/SeatBadge.js'
 import { RulesModal } from './components/RulesModal.js'
+import { ScoreboardModal, ScoreboardPanel } from './components/Scoreboard.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
 import { initAudio } from './audio.js'
@@ -75,6 +76,7 @@ export function App(): JSX.Element {
    * to start a game is exactly the person who wants to read the rulebook first.
    */
   const [rulesOpen, setRulesOpen] = useState(false)
+  const [scoreOpen, setScoreOpen] = useState(false)
   /*
    * The music. Mounted here rather than in `main.tsx` so it lives exactly as long as the app
    * does, and started before the early return: the title screen is where most first clicks
@@ -272,6 +274,12 @@ export function App(): JSX.Element {
               Log
             </button>
           )}
+          {/* A phone has it as a bottom tab: views live in the tabs, the menu holds actions. */}
+          {phone ? null : (
+            <button className="ghost" onClick={() => setScoreOpen(true)}>
+              Scoreboard
+            </button>
+          )}
           <button className="ghost" onClick={() => setRulesOpen(true)}>
             Rules
           </button>
@@ -323,6 +331,8 @@ export function App(): JSX.Element {
                     <AmbitionTrack state={state} cont={boardCont} />
                   ) : sheet === 'boards' ? (
                     <PlayerBoards state={state} current={current} />
+                  ) : sheet === 'score' ? (
+                    <ScoreboardPanel state={state} />
                   ) : (
                     <LogPanel log={state.log} />
                   )}
@@ -425,6 +435,9 @@ export function App(): JSX.Element {
 
       {/* Rules: not a decision either, and a spectator has eyes. */}
       {rulesOpen ? <RulesModal onClose={() => setRulesOpen(false)} /> : null}
+
+      {/* The Scoreboard: public facts only, the same for every seat and spectator. */}
+      {scoreOpen && !phone ? <ScoreboardModal state={state} onClose={() => setScoreOpen(false)} /> : null}
 
       {/* Settings: not a decision, so outside `Watching` — a spectator has ears. */}
       {settingsOpen ? (

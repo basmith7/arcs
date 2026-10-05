@@ -407,6 +407,15 @@ html.phone-portrait body {
     display: none;
   }
 }
+/*
+ * With the Scoreboard button the toolbar reaches the centre below ~1600px. A seated player's badge
+ * already says "your turn" / "waiting for …", so the centre slot gives way there first.
+ */
+@media (max-width: 1600px) {
+  .topbar:has(.seat-badge) .turn-badge {
+    display: none;
+  }
+}
 
 .topbar {
   position: relative;
@@ -6242,6 +6251,91 @@ html.phone-portrait body {
  */
 .settings-modal {
   width: min(420px, 100%);
+}
+
+/* --- scoreboard dialog -----------------------------------------------------
+ *
+ * The Settings console, wider: four player cards two to a row, then the ambition race. The phone
+ * sheet reuses the same `.sb` content one card to a row (phone.css).
+ */
+.scoreboard-modal {
+  width: min(760px, 100%);
+  max-height: min(86vh, 900px);
+  overflow-y: auto;
+}
+.sb {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 12.5px;
+}
+.sb-projection {
+  margin: 0;
+  padding: 8px 10px;
+  font-weight: 600;
+  line-height: 1.45;
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+  background: rgba(201, 169, 97, 0.08);
+}
+.sb-label {
+  color: var(--gold);
+}
+.sb-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+.sb-player {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.sb-name {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+.sb-power {
+  font-size: 12px;
+  color: var(--gold);
+}
+.sb-player dl {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 3px 8px;
+  margin: 0;
+}
+.sb-player dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.sb-player dd {
+  margin: 0;
+}
+.sb-race ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sb-race li {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 8px;
+  padding: 3px 0;
+}
+.sb-ambition {
+  font-weight: 600;
+}
+.sb-marker,
+.sb-quiet {
+  color: var(--muted);
+  font-weight: 400;
 }
 .set-section + .set-section {
   margin-top: 16px;

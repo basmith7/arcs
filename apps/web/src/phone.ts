@@ -28,4 +28,4 @@ export function useNarrow(): boolean {
 }
 
 /** The sheets the phone layout's tab bar opens over the map. */
-export type Sheet = 'court' | 'ambitions' | 'boards' | 'log'
+export type Sheet = 'court' | 'ambitions' | 'boards' | 'log' | 'score'
