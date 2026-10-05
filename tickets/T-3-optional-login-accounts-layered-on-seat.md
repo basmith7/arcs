@@ -32,5 +32,5 @@ Branch: idea/agent-5 (16 commits on main 35111fc)
 - [x] My Games lists the account's games with your-turn and Won/Lost, and opening one on another device plays the seat.
 - [x] Add games from this browser claims only the ticked games.
 - [x] Release seat (after a confirm) unlocks it for link play again.
-- [ ] My Games rows and Back work through the hash; a failed sign-in returns to the starting page with a notice.
+- [x] My Games rows and Back work through the hash; a failed sign-in returns to the starting page with a notice.
 - [ ] Tests pass; screenshots taken; verified live on arcs.basmith.net.
