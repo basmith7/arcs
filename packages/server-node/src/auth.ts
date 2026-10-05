@@ -118,7 +118,6 @@ export class Auth {
       client_id: this.clientId,
       redirect_uri: `${this.publicOrigin}/auth/discord/callback`,
       state,
-      prompt: 'none',
     }).toString()
     const headers = new Headers({ location: authorize.toString() })
     headers.append('set-cookie', setCookie(OAUTH_COOKIE, oauth, OAUTH_MAX_AGE_SEC, this.secure))

@@ -169,6 +169,7 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
         return {
           ...row,
           length: store.journalLength(row.gameId),
+          chapter: result.state.chapter,
           ...gameStatus(result, row.faction),
           seats: publicSeats(store, row.gameId),
         }

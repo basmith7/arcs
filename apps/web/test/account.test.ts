@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getAccount, loadAccount, signInHref } from '../src/account.js'
+import { getAccount, loadAccount, signInHref, signOut } from '../src/account.js'
 import { rememberedSeats } from '../src/multiplayer/link.js'
 
 function fakeStorage(entries: Record<string, string>): Storage {
@@ -50,6 +50,16 @@ describe('account', () => {
 
   it('builds the sign-in href with the return hash encoded', () => {
     expect(signInHref('', '#/g/a/s/b')).toBe('/auth/discord?return=%23%2Fg%2Fa%2Fs%2Fb')
+  })
+
+  it('still reloads the page when the logout request throws', async () => {
+    vi.stubGlobal('fetch', async () => {
+      throw new Error('network down')
+    })
+    const reload = vi.fn()
+    vi.stubGlobal('location', { reload })
+    await expect(signOut('')).rejects.toThrow('network down')
+    expect(reload).toHaveBeenCalledOnce()
   })
 })
 

@@ -85,6 +85,9 @@ export function signInHref(baseUrl: string, hash: string): string {
  * signed in — claimed seats, `/me/games` — without hand-tracking it all here.
  */
 export async function signOut(baseUrl: string): Promise<void> {
-  await fetch(`${baseUrl}/auth/logout`, { method: 'POST' })
-  if (typeof location !== 'undefined') location.reload()
+  try {
+    await fetch(`${baseUrl}/auth/logout`, { method: 'POST' })
+  } finally {
+    if (typeof location !== 'undefined') location.reload()
+  }
 }

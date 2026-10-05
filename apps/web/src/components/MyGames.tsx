@@ -96,7 +96,7 @@ export function MyGames(): JSX.Element {
           <a className="ghost" href="#/">
             New game
           </a>
-          <SignInButton />
+          <SignInButton hideMyGames />
         </div>
         {body}
         {taken.length > 0 ? (
@@ -125,27 +125,23 @@ function GameList({
   onAdded: (refused: readonly string[]) => void
 }): JSX.Element {
   const local = rememberedSeats().filter((r) => !games.some((g) => g.gameId === r.gameId))
-  const latest = games.reduce((m, g) => Math.max(m, g.updatedAt), 0)
   return (
     <>
       {games.length === 0 ? (
         <p className="mg-note">No games yet. Start one, or open a game link and tap Sit here.</p>
       ) : (
-        <>
-          <p className="mg-updated">Updated {ago(latest)}</p>
-          <ul className="mg-list">
-            {games.map((g) => (
-              <li key={g.gameId}>
-                <a className="mg-row" href={hashFor(g.gameId, g.seatToken)}>
-                  <span className="mg-dot" style={{ background: colorOf(g.faction) }} />
-                  <span className="mg-names">{g.seats.map((s) => s.name ?? s.faction).join(', ')}</span>
-                  <span className="mg-turn">Turn {g.length}</span>
-                  {pill(g)}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul className="mg-list">
+          {games.map((g) => (
+            <li key={g.gameId}>
+              <a className="mg-row" href={hashFor(g.gameId, g.seatToken)}>
+                <span className="mg-dot" style={{ background: colorOf(g.faction) }} />
+                <span className="mg-names">{g.seats.map((s) => s.name ?? s.faction).join(', ')}</span>
+                <span className="mg-turn">{g.over ? ago(g.updatedAt) : `Chapter ${g.chapter} · ${ago(g.updatedAt)}`}</span>
+                {pill(g)}
+              </a>
+            </li>
+          ))}
+        </ul>
       )}
       {local.length > 0 ? <AddFromBrowser client={client} local={local} onAdded={onAdded} /> : null}
     </>

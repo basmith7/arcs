@@ -303,7 +303,7 @@ describe('seat locks', () => {
     const res = (await route(get('/me/games', { cookie: me }), a))!
     const { games } = await res.json()
     expect(games).toHaveLength(1)
-    expect(games[0]).toMatchObject({ gameId, faction: 'red', seatToken: red, yourTurn: true, over: false, length: 0 })
+    expect(games[0]).toMatchObject({ gameId, faction: 'red', seatToken: red, yourTurn: true, over: false, length: 0, chapter: 1 })
     expect(games[0].won).toBeUndefined()
     expect((await route(get('/me/games'), a))!.status).toBe(401)
   })

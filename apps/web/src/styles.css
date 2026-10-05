@@ -6274,6 +6274,17 @@ html.phone-portrait body {
   opacity: 0.45;
   cursor: default;
 }
+/* "My games" / "Sign out": two same-sized buttons, not the label/control/readout grid — the grid's
+   92px first column was wrapping "My games" and stretching it taller than "Sign out". */
+.set-row-actions {
+  display: flex;
+  gap: 8px;
+  cursor: default;
+}
+.set-row-actions .da-ghost {
+  flex: none;
+  white-space: nowrap;
+}
 .set-label {
   font-size: 13px;
   color: var(--text);
@@ -6605,14 +6616,9 @@ a.da-ghost {
 .mg-head a.ghost {
   text-decoration: none;
 }
-.mg-note,
-.mg-updated {
+.mg-note {
   color: var(--muted);
   text-align: center;
-}
-.mg-updated {
-  font-size: 12px;
-  margin: 0 0 6px;
 }
 .mg-list {
   list-style: none;

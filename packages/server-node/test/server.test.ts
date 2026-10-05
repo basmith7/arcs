@@ -372,7 +372,7 @@ describe('createArcsServer', () => {
 
   it('without Discord configured, a claimed-but-unauthenticated connection still gets presence', async () => {
     const presence = new Presence()
-    const { base, ws } = await listen(undefined, presence)
+    const { base, ws, store } = await listen(undefined, presence)
     const created = (await (
       await fetch(`${base}/games`, {
         method: 'POST',
@@ -381,6 +381,10 @@ describe('createArcsServer', () => {
       })
     ).json()) as { gameId: string; seats: { seatToken: string }[] }
     const seatToken = created.seats[0]!.seatToken
+    // Claim the seat directly against the store (bypassing the HTTP /claim route, which needs
+    // `auth`) so the row has an `account_id` even though this server has login off.
+    const account = store.upsertAccount({ discordId: 'd1', discordName: 'bri', displayName: 'Brian' })
+    store.claim(created.gameId, seatToken, account.id, 'Brian')
     const sock = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`)
     await new Promise<void>((r) => sock.once('open', r))
     closers.push(() => sock.close())

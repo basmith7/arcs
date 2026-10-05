@@ -58,6 +58,7 @@ export interface MyGame {
   readonly createdAt: number
   readonly updatedAt: number
   readonly length: number
+  readonly chapter: number
   readonly yourTurn: boolean
   readonly over: boolean
   readonly won?: boolean

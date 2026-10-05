@@ -15,14 +15,17 @@ function signInLink(): string {
   return signInHref(MULTIPLAYER_URL!, location.hash)
 }
 
-export function SignInButton(): JSX.Element | null {
+export function SignInButton({ hideMyGames = false }: { hideMyGames?: boolean } = {}): JSX.Element | null {
   const { enabled, account } = useAccount()
   if (!enabled) return null
-  return account === null ? (
-    <a className="ghost" href={signInLink()}>
-      Sign in with Discord
-    </a>
-  ) : (
+  if (account === null)
+    return (
+      <a className="ghost" href={signInLink()}>
+        Sign in with Discord
+      </a>
+    )
+  if (hideMyGames) return null
+  return (
     <a className="ghost" href="#/me">
       My games
     </a>
@@ -46,7 +49,7 @@ export function AccountSection(): JSX.Element | null {
           <p className="set-row">
             Signed in as {account.displayName} (@{account.discordName})
           </p>
-          <p className="set-row">
+          <p className="set-row set-row-actions">
             <a className="da-ghost" href="#/me">
               My games
             </a>

@@ -197,7 +197,8 @@ export function createArcsServer(opts: ServerOptions): http.Server {
       // before claims existed.
       const account = api.auth?.accountOf(new Request('http://x/', { headers: { cookie: req.headers.cookie ?? '' } }))
       const row = seatParam === undefined ? undefined : api.store.seatByToken(gameId, seatParam)
-      const seat = row !== undefined && seatAccess(row, account?.id) === 'ok' ? seatParam : undefined
+      const seat =
+        row !== undefined && (api.auth === undefined || seatAccess(row, account?.id) === 'ok') ? seatParam : undefined
       wss.handleUpgrade(req, socket, head, (ws) => {
         let sockets = gameSockets.get(gameId)
         if (sockets === undefined) {
