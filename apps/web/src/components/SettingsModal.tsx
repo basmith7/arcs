@@ -20,6 +20,7 @@ import { createPortal } from 'react-dom'
 import { useModalDrag } from '../modal-drag.js'
 import type { GameLink } from '../multiplayer/link.js'
 import { setSettings, useSettings } from '../settings.js'
+import { AccountSection } from './AccountBits.js'
 import { GameSection, NotificationsSection, PlayerSection } from './settings-sections.js'
 
 function SliderRow({
@@ -120,6 +121,8 @@ export function SettingsModal({
             ✕
           </button>
         </div>
+
+        <AccountSection />
 
         {seat === undefined ? null : (
           <>

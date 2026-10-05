@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
+import { Auth } from '../src/auth.js'
 import { EngineGate } from '../src/gate.js'
-import { route } from '../src/api.js'
+import { gameStatus, route } from '../src/api.js'
 import type { Api } from '../src/api.js'
+import type { RuleResult } from '@arcs/engine'
 import { SqliteStore } from '../src/sqlite-store.js'
-import { ONE_HUMAN, RED_FIRST_LEAD, THREE_PLAYER } from './fixtures.js'
+import { cookieOf, discordFake, ONE_HUMAN, RED_FIRST_LEAD, signIn, THREE_PLAYER } from './fixtures.js'
 
 const BASE = 'https://arcs.test'
 const post = (path: string, body: unknown, headers: Record<string, string> = {}): Request =>
@@ -15,9 +17,9 @@ const post = (path: string, body: unknown, headers: Record<string, string> = {})
   })
 const get = (path: string, headers: Record<string, string> = {}): Request => new Request(`${BASE}${path}`, { headers })
 
-function api(): Api {
-  const store = new SqliteStore(':memory:')
-  return { store, gate: new EngineGate(store, { pace: 0 }) }
+function api(auth?: Auth): Api {
+  const store = new SqliteStore(':memory:', { accounts: auth !== undefined })
+  return { store, gate: new EngineGate(store, { pace: 0 }), ...(auth === undefined ? {} : { auth }) }
 }
 
 interface Created {
@@ -272,5 +274,123 @@ describe('GET /games/:id/catchup', () => {
     // A story keyed to a turn that is not the seat's current one is never served.
     const yellow = created.seats.find((s) => s.faction === 'yellow')!.seatToken
     expect(await (await at({ 'x-seat-token': yellow }))!.json()).toEqual({ length: 1, story: null, enabled: false })
+  })
+})
+
+describe('seat locks', () => {
+  // Each setup() creates a game; give each its own IP so the module-level create rate limit
+  // (10 per unknown-IP bucket, shared by every test in this file) doesn't trip across this many tests.
+  let ip = 0
+  const nextIp = () => ({ 'x-forwarded-for': `10.9.0.${++ip}` })
+
+  async function setup() {
+    const store = new SqliteStore(':memory:')
+    const auth = new Auth(store, { clientId: 'i', clientSecret: 's', publicOrigin: BASE, fetch: discordFake().f })
+    const other = new Auth(store, { clientId: 'i', clientSecret: 's', publicOrigin: BASE,
+      fetch: discordFake({ id: '333333333333333333', username: 'eve', global_name: 'Eve' }).f })
+    const a: Api = { store, gate: new EngineGate(store, { pace: 0 }), auth }
+    const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }, nextIp()), a))!.json()) as Created
+    const red = created.seats.find((s) => s.faction === 'red')!.seatToken
+    const me = `arcs_session=${cookieOf((await signIn(auth))!, 'arcs_session')}`
+    const eve = `arcs_session=${cookieOf((await signIn(other))!, 'arcs_session')}`
+    return { a, gameId: created.gameId, red, me, eve }
+  }
+
+  it.each([
+    // claimed?  who        expected status of the first red action
+    [false, 'none', 200],
+    [false, 'me', 200],
+    [true, 'me', 200],
+    [true, 'none', 403],
+    [true, 'eve', 403],
+  ] as const)('claimed=%s as %s → %s', async (claimed, who, status) => {
+    const { a, gameId, red, me, eve } = await setup()
+    if (claimed) expect((await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: me }), a))!.status).toBe(200)
+    const cookie = who === 'me' ? { cookie: me } : who === 'eve' ? { cookie: eve } : {}
+    const res = (await route(post(`/games/${gameId}/actions`, { seatToken: red, expectedLength: 0, action: RED_FIRST_LEAD }, cookie), a))!
+    expect(res.status).toBe(status)
+    if (status === 403) expect(await res.json()).toEqual({ error: 'seat-locked', owner: 'Brian' })
+  })
+
+  it('a locked link reads as a watcher with lockedSeat; undo and seat are refused', async () => {
+    const { a, gameId, red, me } = await setup()
+    await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: me }), a)
+    const tail = await (await route(get(`/games/${gameId}`, { 'x-seat-token': red }), a))!.json()
+    expect(tail.yourFaction).toBeUndefined()
+    expect(tail.lockedSeat).toEqual({ faction: 'red', owner: 'Brian' })
+    expect(tail.seats[0]).toMatchObject({ faction: 'red', name: 'Brian', owner: 'Brian', discordLinked: true })
+    expect((await route(post(`/games/${gameId}/undo`, { seatToken: red, expectedLength: 0 }), a))!.status).toBe(403)
+    expect((await route(post(`/games/${gameId}/seat`, { seatToken: red, name: 'Mallory' }), a))!.status).toBe(403)
+    expect((await route(get(`/games/${gameId}/catchup`, { 'x-seat-token': red }), a))!.status).toBe(403)
+  })
+
+  it('claim is refused signed out, on a bot seat and on someone else’s seat; release unlocks', async () => {
+    const { a, gameId, red, me, eve } = await setup()
+    expect((await route(post(`/games/${gameId}/sit`, { seatToken: red }), a))!.status).toBe(401)
+    await route(post(`/games/${gameId}/sit`, { seatToken: red, name: 'Bri' }, { cookie: me }), a)
+    expect((await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: eve }), a))!.status).toBe(403)
+    expect((await route(post(`/games/${gameId}/release`, { seatToken: red }, { cookie: eve }), a))!.status).toBe(403)
+    expect((await route(post(`/games/${gameId}/release`, { seatToken: red }, { cookie: me }), a))!.status).toBe(200)
+    const res = await route(post(`/games/${gameId}/actions`, { seatToken: red, expectedLength: 0, action: RED_FIRST_LEAD }), a)
+    expect(res!.status).toBe(200)
+  })
+
+  it('Who are you? refuses a locked seat to anyone but its owner', async () => {
+    const { a, gameId, red, me, eve } = await setup()
+    await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: me }), a)
+    const pick = (cookie: Record<string, string>) => route(post(`/games/${gameId}/claim`, { faction: 'red' }, cookie), a)
+    const refused = (await pick({ cookie: eve }))!
+    expect(refused.status).toBe(403)
+    expect(await refused.json()).toEqual({ error: 'seat-locked', owner: 'Brian' })
+    expect((await pick({}))!.status).toBe(403)
+    expect(await (await pick({ cookie: me }))!.json()).toEqual({ seatToken: red })
+  })
+
+  it('a bot seat cannot be claimed', async () => {
+    const { a, me } = await setup()
+    const created = (await (await route(post('/games', { options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }, nextIp()), a))!.json()) as Created
+    const botToken = a.store.seats(created.gameId).find((s) => s.isBot)!.seatToken
+    const res = (await route(post(`/games/${created.gameId}/sit`, { seatToken: botToken }, { cookie: me }), a))!
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: 'bot-seat' })
+  })
+
+  it('lists my games with whose turn and the result', async () => {
+    const { a, gameId, red, me } = await setup() // reuse the seat-locks setup; red leads first
+    await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: me }), a)
+    // A second seat in the same game (hotseat) still lists the game once, as the seat whose turn it is.
+    const blue = a.store.seats(gameId).find((s) => s.faction === 'blue')!.seatToken
+    await route(post(`/games/${gameId}/sit`, { seatToken: blue }, { cookie: me }), a)
+    const res = (await route(get('/me/games', { cookie: me }), a))!
+    const { games } = await res.json()
+    expect(games).toHaveLength(1)
+    expect(games[0]).toMatchObject({ gameId, faction: 'red', seatToken: red, yourTurn: true, over: false, length: 0, chapter: 1 })
+    expect(games[0].won).toBeUndefined()
+    expect((await route(get('/me/games'), a))!.status).toBe(401)
+  })
+
+  it('gameStatus reports won from the tie-broken winner', () => {
+    const over = { state: { isOver: true, winners: ['red'] } } as unknown as RuleResult
+    expect(gameStatus(over, 'red')).toEqual({ yourTurn: false, over: true, won: true })
+    expect(gameStatus(over, 'blue')).toEqual({ yourTurn: false, over: true, won: false })
+  })
+
+  it('with auth disabled, a seat with account_id set still behaves as unlocked', async () => {
+    const a = api()
+    const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }, nextIp()), a))!.json()) as Created
+    const red = created.seats.find((s) => s.faction === 'red')!.seatToken
+    const account = a.store.upsertAccount({ discordId: '1', discordName: 'bri', displayName: 'Brian' })
+    a.store.claim(created.gameId, red, account.id, 'Brian')
+
+    const res = await route(post(`/games/${created.gameId}/actions`, { seatToken: red, expectedLength: 0, action: RED_FIRST_LEAD }), a)
+    expect(res!.status).toBe(200)
+
+    const tail = await (await route(get(`/games/${created.gameId}`, { 'x-seat-token': red }), a))!.json()
+    expect(tail.yourFaction).toBe('red')
+    expect(tail.lockedSeat).toBeUndefined()
+    // No owner and no account-derived Discord link: the client sees the plain link seat it was.
+    const seat = tail.seats.find((s: { faction: string }) => s.faction === 'red')
+    expect(seat.owner).toBeUndefined()
+    expect(seat.discordLinked).toBeUndefined()
   })
 })

@@ -12,6 +12,8 @@ import type { GameLink } from '../multiplayer/link.js'
 export function PlayerSection({ faction }: { faction: string }): JSX.Element {
   const discordLinked = store.mySeatDiscordLinked()
   const discordName = store.mySeatDiscordName()
+  // A claimed seat pings its owner's Discord account; there is no id to paste or unlink.
+  const owned = store.mySeatOwner() !== undefined
   const [name, setName] = useState(store.mySeatName() ?? '')
   const [discordId, setDiscordId] = useState('')
   const [busy, setBusy] = useState(false)
@@ -75,7 +77,12 @@ export function PlayerSection({ faction }: { faction: string }): JSX.Element {
       <button className="da-ghost" onClick={() => void saveName()} disabled={!validName || busy}>
         Save
       </button>
-      {discordLinked === true ? (
+      {owned ? (
+        <p className="set-row">
+          <span className="set-label">Discord</span>
+          <span className="set-value">@{discordName ?? 'linked'} (from sign-in)</span>
+        </p>
+      ) : discordLinked === true ? (
         <p className="set-row">
           <span className="set-label">Discord</span>
           <span className="set-value">@{discordName ?? 'linked'}</span>
@@ -168,6 +175,12 @@ export function NotificationsSection(): JSX.Element {
 }
 
 export function GameSection({ faction, link }: { faction: string; link: GameLink | null }): JSX.Element {
+  /*
+   * Owned and not locked against this session: the server only lets the owning session hold an
+   * owned seat unlocked, so this is "mine" without comparing names, which can collide.
+   */
+  const mine =
+    store.seatView().kind === 'seat' && store.mySeatOwner() !== undefined && store.lockedSeat() === null
   const seatUrl =
     link === null || typeof location === 'undefined'
       ? ''
@@ -197,6 +210,20 @@ export function GameSection({ faction, link }: { faction: string; link: GameLink
             onFocus={(e) => e.currentTarget.select()}
           />
         </label>
+      ) : null}
+      {mine ? (
+        <p className="set-row">
+          <button
+            className="da-ghost"
+            onClick={() => {
+              if (window.confirm("Anyone with this seat's link will be able to play it. Release?")) {
+                void store.releaseSeat()
+              }
+            }}
+          >
+            Release seat
+          </button>
+        </p>
       ) : null}
     </section>
   )

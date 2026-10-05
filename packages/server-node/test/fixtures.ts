@@ -5,6 +5,32 @@ import { join } from 'node:path'
 import { applyExternal, defaultRegistry, encodeAction, startGame } from '@arcs/engine'
 import type { NewGameOptions } from '@arcs/engine'
 
+import type { Auth } from '../src/auth.js'
+
+/** A fake Discord OAuth `fetch`, returning the given user from `/users/@me`. */
+export function discordFake(user = { id: '111111111111111111', username: 'bri', global_name: 'Brian' }) {
+  const calls: string[] = []
+  const f = (async (url: string | URL | Request) => {
+    const u = String(url)
+    calls.push(u)
+    if (u.endsWith('/oauth2/token')) return Response.json({ access_token: 'at', token_type: 'Bearer' })
+    if (u.endsWith('/users/@me')) return Response.json(user)
+    return new Response('no', { status: 404 })
+  }) as typeof fetch
+  return { f, calls }
+}
+
+export const cookieOf = (res: Response, name: string): string | undefined =>
+  res.headers.getSetCookie().find((c) => c.startsWith(`${name}=`))?.split(';')[0]!.slice(name.length + 1)
+
+/** Drives a full OAuth round trip against `auth` and returns the callback's redirect response. */
+export async function signIn(auth: Auth, ret = '#/g/abc', origin = 'https://arcs.test'): Promise<Response | undefined> {
+  const start = await auth.route(new Request(`${origin}/auth/discord?return=${encodeURIComponent(ret)}`))
+  const oauth = cookieOf(start!, 'arcs_oauth')!
+  const state = new URL(start!.headers.get('location')!).searchParams.get('state')!
+  return auth.route(new Request(`${origin}/auth/discord/callback?code=c&state=${state}`, { headers: { cookie: `arcs_oauth=${oauth}` } }))
+}
+
 /** Three players, base game, fixed seed. Red leads first (verified by probe). */
 export const THREE_PLAYER: NewGameOptions = {
   board: 'Board3MixUp',

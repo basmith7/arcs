@@ -9,10 +9,16 @@ interface Props {
   onDismiss?: () => void
   /** Prefills the form for a seated player reopening the prompt to change their name. */
   initialName?: string
+  /*
+   * The signed-in display name, when there is one. Sitting as yourself is then one button, with the
+   * name field kept below it for a player who wants the table to call them something else. The
+   * Discord id field goes: sign-in already says who to ping.
+   */
+  signedInAs?: string
 }
 
 /** Asked once, the first time a seat link is opened with no name on the server. */
-export function NamePrompt({ faction, onSubmit, onDismiss, initialName }: Props): JSX.Element {
+export function NamePrompt({ faction, onSubmit, onDismiss, initialName, signedInAs }: Props): JSX.Element {
   const [name, setName] = useState(initialName ?? '')
   const [discordId, setDiscordId] = useState('')
   const [busy, setBusy] = useState(false)
@@ -21,7 +27,7 @@ export function NamePrompt({ faction, onSubmit, onDismiss, initialName }: Props)
   const trimmedDiscordId = discordId.trim()
   const validName = isValidName(name)
   const validDiscordId = isValidDiscordId(discordId)
-  const valid = validName && validDiscordId
+  const valid = validName && (signedInAs !== undefined || validDiscordId)
 
   // Scoped to this component's lifetime, so a stray Escape elsewhere (closing the log, say) never
   // dismisses a prompt that was not on screen to begin with — only mounts while `needsName` is true.
@@ -34,12 +40,14 @@ export function NamePrompt({ faction, onSubmit, onDismiss, initialName }: Props)
     return () => window.removeEventListener('keydown', onKey)
   }, [onDismiss])
 
-  async function submit(): Promise<void> {
-    if (!valid || busy) return
+  async function submit(asSelf = false): Promise<void> {
+    if ((!asSelf && !valid) || busy) return
     setBusy(true)
     setError(null)
     try {
-      await onSubmit(trimmed, trimmedDiscordId.length === 0 ? undefined : trimmedDiscordId)
+      if (asSelf) await onSubmit(signedInAs!)
+      else if (signedInAs !== undefined) await onSubmit(trimmed)
+      else await onSubmit(trimmed, trimmedDiscordId.length === 0 ? undefined : trimmedDiscordId)
     } catch (e) {
       setError((e as Error).message)
       setBusy(false)
@@ -56,29 +64,38 @@ export function NamePrompt({ faction, onSubmit, onDismiss, initialName }: Props)
         }}
       >
         <h2 id="name-title">You are {faction}</h2>
+        {signedInAs !== undefined ? (
+          <button autoFocus className="primary" type="button" disabled={busy} onClick={() => void submit(true)}>
+            Sit here as @{signedInAs}
+          </button>
+        ) : null}
         <p>What should the table call you?</p>
         <input
-          autoFocus
+          autoFocus={signedInAs === undefined}
           maxLength={24}
           value={name}
           placeholder="Your name"
           onChange={(e) => setName(e.target.value)}
         />
-        <label htmlFor="discord-id-input">Discord user ID (optional)</label>
-        <input
-          id="discord-id-input"
-          value={discordId}
-          placeholder="123456789012345678 or @mention"
-          onChange={(e) => setDiscordId(e.target.value)}
-        />
-        <p className="name-help">
-          Optional. Leave this blank and the table will try to match your name to a member of the
-          Discord server; paste your Discord user ID if the tag comes out wrong or missing.
-        </p>
-        {!validDiscordId ? <p className="name-error">That doesn't look like a Discord user ID</p> : null}
+        {signedInAs === undefined ? (
+          <>
+            <label htmlFor="discord-id-input">Discord user ID (optional)</label>
+            <input
+              id="discord-id-input"
+              value={discordId}
+              placeholder="123456789012345678 or @mention"
+              onChange={(e) => setDiscordId(e.target.value)}
+            />
+            <p className="name-help">
+              Optional. Leave this blank and the table will try to match your name to a member of the
+              Discord server; paste your Discord user ID if the tag comes out wrong or missing.
+            </p>
+            {!validDiscordId ? <p className="name-error">That doesn't look like a Discord user ID</p> : null}
+          </>
+        ) : null}
         {error === null ? null : <p className="name-error">{error}</p>}
         <button className="primary" type="submit" disabled={!valid || busy}>
-          {busy ? 'Saving…' : 'Sit down'}
+          {busy ? 'Saving…' : signedInAs !== undefined ? 'Sit here' : 'Sit down'}
         </button>
       </form>
     </div>

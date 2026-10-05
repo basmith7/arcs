@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { Auth } from './auth.js'
 import { CatchupWriter } from './catchup.js'
 import { deepseekChat } from './deepseek.js'
 import { DiscordBot } from './discord.js'
@@ -21,6 +22,8 @@ const BOT_PACE_MS = Number(process.env['BOT_PACE_MS'] ?? 1000)
 const DISCORD_BOT_TOKEN = process.env['DISCORD_BOT_TOKEN'] || undefined
 const DISCORD_GUILD_ID = process.env['DISCORD_GUILD_ID'] || undefined
 const DISCORD_CHANNEL_ID = process.env['DISCORD_CHANNEL_ID'] || undefined
+const DISCORD_CLIENT_ID = process.env['DISCORD_CLIENT_ID'] || undefined
+const DISCORD_CLIENT_SECRET = process.env['DISCORD_CLIENT_SECRET'] || undefined
 const PRESENCE_ACTIVE_MS = Number(process.env['PRESENCE_ACTIVE_MS'] || 120_000)
 const PING_GRACE_MS = Number(process.env['PING_GRACE_MS'] || 600_000)
 const LEAVE_GRACE_MS = Number(process.env['LEAVE_GRACE_MS'] || 60_000)
@@ -33,7 +36,8 @@ process.on('uncaughtException', (e) => console.error('[fatal]', e))
 process.on('unhandledRejection', (e) => console.error('[unhandled]', e))
 
 mkdirSync(dirname(DATABASE_PATH), { recursive: true })
-const store = new SqliteStore(DATABASE_PATH)
+const loginOn = DISCORD_CLIENT_ID !== undefined && DISCORD_CLIENT_SECRET !== undefined
+const store = new SqliteStore(DATABASE_PATH, { accounts: loginOn })
 
 const bot =
   DISCORD_BOT_TOKEN !== undefined && DISCORD_GUILD_ID !== undefined
@@ -42,6 +46,13 @@ const bot =
 
 const discordStatus =
   bot === undefined ? 'off' : DISCORD_CHANNEL_ID !== undefined ? 'lookup+channel' : 'lookup'
+
+// Discord login is optional: unset client id/secret disables it entirely (`/me` reports it,
+// `/auth/*` 404s, and every seat reads as unclaimed — the store's `accounts: loginOn` above).
+const auth =
+  DISCORD_CLIENT_ID !== undefined && DISCORD_CLIENT_SECRET !== undefined
+    ? new Auth(store, { clientId: DISCORD_CLIENT_ID, clientSecret: DISCORD_CLIENT_SECRET, publicOrigin: PUBLIC_ORIGIN })
+    : undefined
 
 const presence = new Presence({ activeMs: PRESENCE_ACTIVE_MS })
 const notifier = new Notifier(store, {
@@ -75,7 +86,13 @@ const gate = new EngineGate(store, {
   },
 })
 const server = createArcsServer({
-  api: { store, gate, catchupEnabled: DEEPSEEK_API_KEY !== undefined, ...(bot === undefined ? {} : { bot }) },
+  api: {
+    store,
+    gate,
+    catchupEnabled: DEEPSEEK_API_KEY !== undefined,
+    ...(bot === undefined ? {} : { bot }),
+    ...(auth === undefined ? {} : { auth }),
+  },
   staticDir: STATIC_DIR,
   presence,
 })
@@ -83,7 +100,7 @@ const server = createArcsServer({
 void gate.resumeAll()
 server.listen(PORT, '0.0.0.0', () => {
   console.log(
-    `arcs server on :${PORT}  db=${DATABASE_PATH}  static=${STATIC_DIR}  origin=${PUBLIC_ORIGIN}  discord=${discordStatus}`,
+    `arcs server on :${PORT}  db=${DATABASE_PATH}  static=${STATIC_DIR}  origin=${PUBLIC_ORIGIN}  discord=${discordStatus}  login=${auth === undefined ? 'off' : 'discord'}`,
   )
   console.log(`catch-up stories: ${DEEPSEEK_API_KEY === undefined ? 'off (no DEEPSEEK_API_KEY)' : `on (${CATCHUP_WRITER_MODEL}, checked by ${CATCHUP_CHECKER_MODEL})`}`)
 })

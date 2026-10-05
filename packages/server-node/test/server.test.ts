@@ -7,25 +7,26 @@ import type { AddressInfo } from 'node:net'
 import WebSocket from 'ws'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { Auth } from '../src/auth.js'
 import { EngineGate } from '../src/gate.js'
 import { Presence } from '../src/presence.js'
 import { createArcsServer } from '../src/server.js'
 import { SqliteStore } from '../src/sqlite-store.js'
-import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING } from './fixtures.js'
+import { ONE_HUMAN, RED_FIRST_LEAD, RED_OPENING, cookieOf, discordFake, signIn } from './fixtures.js'
 
 const closers: (() => void)[] = []
 afterEach(() => {
   for (const c of closers.splice(0)) c()
 })
 
-async function listen(heartbeatMs?: number, presence?: Presence) {
+async function listen(heartbeatMs?: number, presence?: Presence, auth?: Auth) {
   const staticDir = mkdtempSync(join(tmpdir(), 'arcs-static-'))
   writeFileSync(join(staticDir, 'index.html'), '<html>arcs</html>')
   writeFileSync(join(staticDir, 'app.js'), 'console.log(1)')
   const store = new SqliteStore(':memory:')
   const gate = new EngineGate(store, { pace: 0 })
   const server = createArcsServer({
-    api: { store, gate },
+    api: { store, gate, ...(auth === undefined ? {} : { auth }) },
     staticDir,
     ...(heartbeatMs === undefined ? {} : { heartbeatMs }),
     ...(presence === undefined ? {} : { presence }),
@@ -45,6 +46,33 @@ describe('createArcsServer', () => {
     expect(await (await fetch(`${base}/anything/else`)).text()).toBe('<html>arcs</html>')
     expect((await fetch(`${base}/games/nope`)).status).toBe(404)
     expect((await fetch(`${base}/../etc/passwd`)).status).not.toBe(500)
+  })
+
+  it('carries both the session and the clearing oauth cookie on a Discord sign-in callback', async () => {
+    const fetchFake = (async (url: string | URL | Request) => {
+      const u = String(url)
+      if (u.endsWith('/oauth2/token')) return Response.json({ access_token: 'at', token_type: 'Bearer' })
+      if (u.endsWith('/users/@me')) return Response.json({ id: '111111111111111111', username: 'bri', global_name: 'Brian' })
+      return new Response('no', { status: 404 })
+    }) as typeof fetch
+    const auth = new Auth(new SqliteStore(':memory:'), {
+      clientId: 'id',
+      clientSecret: 's',
+      publicOrigin: 'http://127.0.0.1',
+      fetch: fetchFake,
+    })
+    const { base } = await listen(undefined, undefined, auth)
+    const start = await fetch(`${base}/auth/discord`, { redirect: 'manual' })
+    const oauth = start.headers.getSetCookie().find((c) => c.startsWith('arcs_oauth='))!.split(';')[0]!
+    const state = new URL(start.headers.get('location')!).searchParams.get('state')!
+    const callback = await fetch(`${base}/auth/discord/callback?code=c&state=${state}`, {
+      redirect: 'manual',
+      headers: { cookie: oauth },
+    })
+    const cookies = callback.headers.getSetCookie()
+    expect(cookies.length).toBe(2)
+    expect(cookies.some((c) => c.startsWith('arcs_session='))).toBe(true)
+    expect(cookies.some((c) => c.startsWith('arcs_oauth=') && c.includes('Max-Age=0'))).toBe(true)
   })
 
   it('pushes every append, including bot moves, over the live socket', async () => {
@@ -303,5 +331,63 @@ describe('createArcsServer', () => {
     await new Promise((r) => setTimeout(r, 25))
     expect(presence.isActive(created.gameId, seatToken)).toBe(false)
     expect(left).toEqual([`${created.gameId}/${seatToken}`])
+  })
+
+  it('a claimed seat gets presence only for the owner, not an anonymous connection', async () => {
+    const fetchFake = discordFake()
+    const auth = new Auth(new SqliteStore(':memory:'), {
+      clientId: 'id',
+      clientSecret: 's',
+      publicOrigin: 'http://127.0.0.1',
+      fetch: fetchFake.f,
+    })
+    const signedIn = await signIn(auth, '#/g/abc', 'http://127.0.0.1')
+    const cookie = cookieOf(signedIn!, 'arcs_session')!
+    const presence = new Presence()
+    const { base, ws } = await listen(undefined, presence, auth)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string; seats: { seatToken: string }[] }
+    const seatToken = created.seats[0]!.seatToken
+    await fetch(`${base}/games/${created.gameId}/sit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: `arcs_session=${cookie}` },
+      body: JSON.stringify({ seatToken }),
+    })
+
+    const anon = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`)
+    await new Promise<void>((r) => anon.once('open', r))
+    closers.push(() => anon.close())
+    expect(presence.isActive(created.gameId, seatToken)).toBe(false)
+
+    const owned = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`, { headers: { cookie: `arcs_session=${cookie}` } })
+    await new Promise<void>((r) => owned.once('open', r))
+    closers.push(() => owned.close())
+    expect(presence.isActive(created.gameId, seatToken)).toBe(true)
+  })
+
+  it('without Discord configured, a claimed-but-unauthenticated connection still gets presence', async () => {
+    const presence = new Presence()
+    const { base, ws, store } = await listen(undefined, presence)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string; seats: { seatToken: string }[] }
+    const seatToken = created.seats[0]!.seatToken
+    // Claim the seat directly against the store (bypassing the HTTP /sit route, which needs
+    // `auth`) so the row has an `account_id` even though this server has login off.
+    const account = store.upsertAccount({ discordId: 'd1', discordName: 'bri', displayName: 'Brian' })
+    store.claim(created.gameId, seatToken, account.id, 'Brian')
+    const sock = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`)
+    await new Promise<void>((r) => sock.once('open', r))
+    closers.push(() => sock.close())
+    expect(presence.isActive(created.gameId, seatToken)).toBe(true)
   })
 })

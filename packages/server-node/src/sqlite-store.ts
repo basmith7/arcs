@@ -27,6 +27,23 @@ export interface SeatRow {
   readonly discordId?: string
   readonly discordName?: string
   readonly pings: boolean
+  readonly accountId?: string
+  readonly ownerName?: string
+}
+
+export interface Account {
+  readonly id: string
+  readonly discordId: string
+  readonly discordName: string
+  readonly displayName: string
+}
+
+export interface AccountSeat {
+  readonly gameId: string
+  readonly seatToken: string
+  readonly faction: string
+  readonly createdAt: number
+  readonly updatedAt: number
 }
 
 /**
@@ -54,7 +71,8 @@ CREATE TABLE IF NOT EXISTS game (
   created_at INTEGER NOT NULL,
   webhook_url TEXT,
   last_notified_length INTEGER NOT NULL DEFAULT -1,
-  last_notified_at INTEGER NOT NULL DEFAULT 0
+  last_notified_at INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS seat (
   game_id TEXT NOT NULL,
@@ -66,6 +84,7 @@ CREATE TABLE IF NOT EXISTS seat (
   discord_id TEXT,
   discord_name TEXT,
   pings INTEGER NOT NULL DEFAULT 1,
+  account_id TEXT,
   PRIMARY KEY (game_id, ord)
 );
 CREATE TABLE IF NOT EXISTS journal (
@@ -73,6 +92,18 @@ CREATE TABLE IF NOT EXISTS journal (
   idx INTEGER NOT NULL,
   action TEXT NOT NULL,
   PRIMARY KEY (game_id, idx)
+);
+CREATE TABLE IF NOT EXISTS account (
+  id            TEXT PRIMARY KEY,
+  discord_id    TEXT NOT NULL UNIQUE,
+  discord_name  TEXT NOT NULL,
+  display_name  TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS session (
+  token_hash    TEXT PRIMARY KEY,
+  account_id    TEXT NOT NULL REFERENCES account(id),
+  expires_at    INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS catchup (
   game_id TEXT NOT NULL,
@@ -92,7 +123,35 @@ interface SeatDb {
   discord_id: string | null
   discord_name: string | null
   pings: number
+  account_id: string | null
+  owner_name: string | null
 }
+
+interface AccountDb {
+  id: string
+  discord_id: string
+  discord_name: string
+  display_name: string
+}
+
+// Shared by `seats()` and `seatByToken`: a claimed seat (account_id set) reads its Discord id and
+// name through the account, not the seat's own (possibly stale) columns; `owner_name` surfaces the
+// account's display name so a watcher can see who holds a seat.
+const SEAT_SELECT = `
+SELECT s.faction, s.token, s.name, s.is_bot, s.pings, s.account_id,
+  CASE WHEN s.account_id IS NULL THEN s.discord_id ELSE a.discord_id END AS discord_id,
+  CASE WHEN s.account_id IS NULL THEN s.discord_name ELSE a.discord_name END AS discord_name,
+  a.display_name AS owner_name
+FROM seat s LEFT JOIN account a ON a.id = s.account_id
+`
+
+// With login off, a seat claimed earlier reads as the plain link seat it was before: its own Discord
+// columns, no account, no owner — so Unlink, the pasted-id form and pings all act on the seat.
+const SEAT_SELECT_NO_ACCOUNTS = `
+SELECT s.faction, s.token, s.name, s.is_bot, s.pings, NULL AS account_id,
+  s.discord_id, s.discord_name, NULL AS owner_name
+FROM seat s
+`
 
 // Vite 5 (which vitest runs on) does not know `node:sqlite` as a builtin and would try to resolve a
 // bare `sqlite` package, so the module is reached through `createRequire` — the same trick as
@@ -105,26 +164,35 @@ export class SqliteStore implements GameStore {
   private readonly db: Db
   private readonly watchers = new Map<GameId, Set<OnAppend>>()
 
-  constructor(path: string) {
+  private readonly seatSelect: string
+
+  /** `accounts` is whether Discord login is on; off, seat reads ignore claims (SEAT_SELECT_NO_ACCOUNTS). */
+  constructor(path: string, { accounts = true }: { accounts?: boolean } = {}) {
+    this.seatSelect = accounts ? SEAT_SELECT : SEAT_SELECT_NO_ACCOUNTS
     this.db = new DatabaseSync(path)
     if (path !== ':memory:') this.db.exec('PRAGMA journal_mode = WAL')
     this.db.exec('PRAGMA foreign_keys = ON')
     this.db.exec(SCHEMA)
-    this.migrateSeatColumns()
+    this.migrate()
   }
 
   /**
-   * Production databases predate `discord_id`/`discord_name` on `seat`. `CREATE TABLE IF NOT
-   * EXISTS` never adds columns to an existing table, so an old file needs an explicit `ALTER TABLE`
-   * on open, guarded by `PRAGMA table_info` so a fresh database (which already has the columns from
-   * `SCHEMA`) is left alone.
+   * Production databases predate `discord_id`/`discord_name`/`account_id` on `seat` and
+   * `updated_at` on `game`. `CREATE TABLE IF NOT EXISTS` never adds columns to an existing table,
+   * so an old file needs explicit `ALTER TABLE`s on open, each guarded by `PRAGMA table_info` so a
+   * fresh database (which already has the columns from `SCHEMA`) is left alone.
    */
-  private migrateSeatColumns(): void {
+  private migrate(): void {
     const columns = this.db.prepare('PRAGMA table_info(seat)').all() as { name: string }[]
     const have = new Set(columns.map((c) => c.name))
     if (!have.has('discord_id')) this.db.exec('ALTER TABLE seat ADD COLUMN discord_id TEXT')
     if (!have.has('discord_name')) this.db.exec('ALTER TABLE seat ADD COLUMN discord_name TEXT')
     if (!have.has('pings')) this.db.exec('ALTER TABLE seat ADD COLUMN pings INTEGER NOT NULL DEFAULT 1')
+    if (!have.has('account_id')) this.db.exec('ALTER TABLE seat ADD COLUMN account_id TEXT')
+    const gameCols = new Set((this.db.prepare('PRAGMA table_info(game)').all() as { name: string }[]).map((c) => c.name))
+    if (!gameCols.has('updated_at')) this.db.exec('ALTER TABLE game ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0')
+    // Every open, not just the one that added the column, so a crash between the two finishes here.
+    this.db.exec('UPDATE game SET updated_at = created_at WHERE updated_at = 0')
   }
 
   close(): void {
@@ -143,9 +211,10 @@ export class SqliteStore implements GameStore {
     const seats = factions.map((faction) => ({ faction, seatToken: randomId() }))
     this.db.exec('BEGIN IMMEDIATE')
     try {
+      const now = Date.now()
       this.db
-        .prepare('INSERT INTO game (id, options, created_at, webhook_url) VALUES (?, ?, ?, ?)')
-        .run(gameId, JSON.stringify(options), Date.now(), extra.webhookUrl ?? null)
+        .prepare('INSERT INTO game (id, options, created_at, updated_at, webhook_url) VALUES (?, ?, ?, ?, ?)')
+        .run(gameId, JSON.stringify(options), now, now, extra.webhookUrl ?? null)
       const insert = this.db.prepare(
         'INSERT INTO seat (game_id, ord, faction, token, is_bot) VALUES (?, ?, ?, ?, ?)',
       )
@@ -201,6 +270,7 @@ export class SqliteStore implements GameStore {
       this.db
         .prepare('INSERT INTO journal (game_id, idx, action) VALUES (?, ?, ?)')
         .run(gameId, length, action)
+      this.db.prepare('UPDATE game SET updated_at = ? WHERE id = ?').run(Date.now(), gameId)
       this.db.exec('COMMIT')
     } catch (e) {
       this.db.exec('ROLLBACK')
@@ -230,6 +300,7 @@ export class SqliteStore implements GameStore {
       this.db
         .prepare('UPDATE game SET last_notified_length = MIN(last_notified_length, ?) WHERE id = ?')
         .run(length - 1, gameId)
+      this.db.prepare('UPDATE game SET updated_at = ? WHERE id = ?').run(Date.now(), gameId)
       this.db.exec('COMMIT')
       return { ok: true, length: length - 1 }
     } catch (e) {
@@ -254,7 +325,7 @@ export class SqliteStore implements GameStore {
 
   seats(gameId: GameId): SeatRow[] {
     return this.db
-      .prepare('SELECT faction, token, name, is_bot, discord_id, discord_name, pings FROM seat WHERE game_id = ? ORDER BY ord')
+      .prepare(`${this.seatSelect} WHERE s.game_id = ? ORDER BY s.ord`)
       .all(gameId)
       .map((r) => toSeat(r as unknown as SeatDb))
   }
@@ -366,12 +437,101 @@ export class SqliteStore implements GameStore {
     return row.n
   }
 
-  private seatByToken(gameId: GameId, token: SeatToken): SeatRow | undefined {
+  seatByToken(gameId: GameId, token: SeatToken): SeatRow | undefined {
     const row = this.db
-      .prepare('SELECT faction, token, name, is_bot, discord_id, discord_name, pings FROM seat WHERE game_id = ? AND token = ?')
+      .prepare(`${this.seatSelect} WHERE s.game_id = ? AND s.token = ?`)
       .get(gameId, token) as unknown as SeatDb | undefined
     return row === undefined ? undefined : toSeat(row)
   }
+
+  // --- accounts, sessions, claims --------------------------------------------
+
+  upsertAccount(p: { discordId: string; discordName: string; displayName: string }): Account {
+    this.db
+      .prepare(
+        `INSERT INTO account (id, discord_id, discord_name, display_name, created_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(discord_id) DO UPDATE SET discord_name = excluded.discord_name, display_name = excluded.display_name`,
+      )
+      .run(randomId(), p.discordId, p.discordName, p.displayName, Date.now())
+    const row = this.db.prepare('SELECT id, discord_id, discord_name, display_name FROM account WHERE discord_id = ?').get(
+      p.discordId,
+    ) as unknown as AccountDb
+    return toAccount(row)
+  }
+
+  createSession(accountId: string, tokenHash: string, expiresAt: number): void {
+    this.db
+      .prepare('INSERT INTO session (token_hash, account_id, expires_at) VALUES (?, ?, ?)')
+      .run(tokenHash, accountId, expiresAt)
+  }
+
+  sessionAccount(tokenHash: string, now: number): { account: Account; expiresAt: number } | undefined {
+    const row = this.db
+      .prepare(
+        `SELECT a.id, a.discord_id, a.discord_name, a.display_name, s.expires_at
+         FROM session s JOIN account a ON a.id = s.account_id WHERE s.token_hash = ?`,
+      )
+      .get(tokenHash) as (AccountDb & { expires_at: number }) | undefined
+    if (row === undefined) return undefined
+    if (row.expires_at <= now) {
+      this.db.prepare('DELETE FROM session WHERE token_hash = ?').run(tokenHash)
+      return undefined
+    }
+    return { account: toAccount(row), expiresAt: row.expires_at }
+  }
+
+  extendSession(tokenHash: string, expiresAt: number): void {
+    this.db.prepare('UPDATE session SET expires_at = ? WHERE token_hash = ?').run(expiresAt, tokenHash)
+  }
+
+  deleteSession(tokenHash: string): void {
+    this.db.prepare('DELETE FROM session WHERE token_hash = ?').run(tokenHash)
+  }
+
+  sweepSessions(now: number): void {
+    this.db.prepare('DELETE FROM session WHERE expires_at <= ?').run(now)
+  }
+
+  claim(gameId: GameId, seatToken: SeatToken, accountId: string, name: string): SeatRow[] | undefined {
+    const seat = this.seatByToken(gameId, seatToken)
+    if (seat === undefined) return undefined
+    this.db
+      .prepare('UPDATE seat SET account_id = ?, name = ? WHERE game_id = ? AND token = ?')
+      .run(accountId, name, gameId, seatToken)
+    return this.seats(gameId)
+  }
+
+  release(gameId: GameId, seatToken: SeatToken): SeatRow[] | undefined {
+    const seat = this.seatByToken(gameId, seatToken)
+    if (seat === undefined) return undefined
+    this.db.prepare('UPDATE seat SET account_id = NULL WHERE game_id = ? AND token = ?').run(gameId, seatToken)
+    return this.seats(gameId)
+  }
+
+  accountSeats(accountId: string): AccountSeat[] {
+    return this.db
+      .prepare(
+        `SELECT s.game_id, s.token, s.faction, g.created_at, g.updated_at FROM seat s
+         JOIN game g ON g.id = s.game_id WHERE s.account_id = ? ORDER BY g.updated_at DESC, g.created_at DESC`,
+      )
+      .all(accountId)
+      .map(
+        (r) => {
+          const row = r as { game_id: string; token: string; faction: string; created_at: number; updated_at: number }
+          return {
+            gameId: row.game_id,
+            seatToken: row.token,
+            faction: row.faction,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+          }
+        },
+      )
+  }
+}
+
+function toAccount(r: AccountDb): Account {
+  return { id: r.id, discordId: r.discord_id, discordName: r.discord_name, displayName: r.display_name }
 }
 
 function toSeat(r: SeatDb): SeatRow {
@@ -383,5 +543,7 @@ function toSeat(r: SeatDb): SeatRow {
     ...(r.discord_id === null ? {} : { discordId: r.discord_id }),
     ...(r.discord_name === null ? {} : { discordName: r.discord_name }),
     pings: r.pings !== 0,
+    ...(r.account_id === null ? {} : { accountId: r.account_id }),
+    ...(r.owner_name === null ? {} : { ownerName: r.owner_name }),
   }
 }

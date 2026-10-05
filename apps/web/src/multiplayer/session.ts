@@ -81,6 +81,12 @@ export class Session {
    * refuse to act for anyone else.
    */
   private seatFaction: string | null = null
+  /**
+   * Set when the server says this token's seat belongs to a different account. There is no
+   * `yourFaction` to go with it — the token still names a seat, but not one this client may act for
+   * — so the session reads as spectating until it is released or a claim transfers it.
+   */
+  lockedSeat: { faction: string; owner: string } | null = null
   /** The poll currently in flight, if any — awaited by `claimName` so a stale read cannot clobber a claim. */
   private inflight: Promise<void> | null = null
   /** The live socket, or `null` while falling back to polling. */
@@ -116,7 +122,7 @@ export class Session {
   }
 
   get isSpectator(): boolean {
-    return this.link.seatToken === undefined
+    return this.link.seatToken === undefined || this.lockedSeat !== null
   }
 
   /** Which faction you are, or `null` if you are watching (or have not loaded yet). */
@@ -319,6 +325,7 @@ export class Session {
     const options = tail.options as NewGameOptions
     this.options = options
     this.seatFaction = tail.yourFaction ?? null
+    this.lockedSeat = tail.lockedSeat ?? null
     this.host.adopt(options, replayGame(options, [...tail.entries]))
     this.host.seats(tail.seats ?? [])
     void this.fetchCatchup()
@@ -467,5 +474,27 @@ export class Session {
     if (this.link.seatToken === undefined) return
     if (this.inflight !== null) await this.inflight.catch(() => {})
     this.host.seats(await this.client.setPings(this.link.gameId, this.link.seatToken, pings))
+  }
+
+  /**
+   * Claim this client's seat for the signed-in account. A spectator — including one holding a
+   * token someone else already claimed — has no seat of its own to claim and does nothing.
+   *
+   * `resync` after the seats update because `yourFaction` doesn't change here, but `lockedSeat`
+   * might: a successful claim is what clears it.
+   */
+  async sit(name?: string): Promise<void> {
+    if (this.link.seatToken === undefined) return
+    if (this.inflight !== null) await this.inflight.catch(() => {})
+    this.host.seats(await this.client.sit(this.link.gameId, this.link.seatToken, name))
+    await this.resync()
+  }
+
+  /** Release this client's seat, giving up this account's claim on it. */
+  async release(): Promise<void> {
+    if (this.link.seatToken === undefined) return
+    if (this.inflight !== null) await this.inflight.catch(() => {})
+    this.host.seats(await this.client.release(this.link.gameId, this.link.seatToken))
+    await this.resync()
   }
 }

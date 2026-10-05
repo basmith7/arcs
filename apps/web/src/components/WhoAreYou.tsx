@@ -41,7 +41,12 @@ export function WhoAreYou({ seats, onPick, onWatch }: Props): JSX.Element {
       await onPick(faction)
     } catch {
       // The watching session is untouched on failure (`store.claimSeat`), so the prompt is still up.
-      setError("Couldn't take that seat. Try again, or open your own seat link.")
+      // A seat locked to an account is refused to everyone else (`/claim` answers seat-locked).
+      setError(
+        seats.find((s) => s.faction === faction)?.owner !== undefined
+          ? 'That seat is locked to a signed-in player. Sign in as them, or pick another.'
+          : "Couldn't take that seat. Try again, or open your own seat link.",
+      )
       setBusy(null)
     } finally {
       inFlight.current = false
@@ -67,7 +72,7 @@ export function WhoAreYou({ seats, onPick, onWatch }: Props): JSX.Element {
               >
                 <span className={s.name === undefined ? 'who-name who-open' : 'who-name'}>{s.name ?? 'Open seat'}</span>
                 <span className="who-faction" style={{ color: tint }}>
-                  {busy === s.faction ? 'Sitting down…' : s.faction}
+                  {busy === s.faction ? 'Sitting down…' : s.owner === undefined ? s.faction : `${s.faction} · signed in`}
                 </span>
               </button>
             )

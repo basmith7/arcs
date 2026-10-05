@@ -1,6 +1,9 @@
 import { isWaiting } from '@arcs/engine'
 import { useEffect, useRef, useState } from 'react'
 
+import { useAccount } from './account.js'
+import { NAME_MAX } from './seat-form.js'
+import { LockedBanner, SignInButton, SigninNotice, SitHereBar } from './components/AccountBits.js'
 import { AskModal } from './components/AskModal.js'
 import { AskStrip } from './components/AskStrip.js'
 import { AmbitionTrack } from './components/AmbitionTrack.js'
@@ -85,6 +88,13 @@ export function App(): JSX.Element {
   // Bumped on a catch-up dismiss/reopen: the dismissal itself lives in localStorage (catchup.ts).
   const [, setCatchupTick] = useState(0)
   /*
+   * The optional Discord login. Read up here, with the other hooks, because the lobby needs it too
+   * (the sign-in link) and hooks cannot follow the early return. "Sit here" dismissed stays
+   * dismissed for this page's life, like the name prompt.
+   */
+  const account = useAccount()
+  const [sitDismissed, setSitDismissed] = useState(false)
+  /*
    * The music. Mounted here rather than in `main.tsx` so it lives exactly as long as the app
    * does, and started before the early return: the title screen is where most first clicks
    * happen, and that click is what the browser wants before it will play anything.
@@ -161,10 +171,12 @@ export function App(): JSX.Element {
           <button className="ghost" onClick={() => setSettingsOpen(true)}>
             Settings
           </button>
+          <SignInButton />
         </div>
         <Attribution />
         {rulesOpen ? <RulesModal onClose={() => setRulesOpen(false)} /> : null}
         {settingsOpen ? <SettingsModal onClose={() => setSettingsOpen(false)} /> : null}
+        <SigninNotice />
       </div>
     )
   }
@@ -185,12 +197,16 @@ export function App(): JSX.Element {
   const myName = store.mySeatName()
   const myDiscordName = store.mySeatDiscordName()
   const needsName = seatView.kind === 'seat' && myName === undefined && !nameDismissed
+  const signedIn = account.account !== null
+  const locked = store.lockedSeat()
+  const owner = store.mySeatOwner()
   // Seats come with the join read, so an empty list is "not loaded yet" (or upstream's Worker,
   // which has no claim endpoint) — ask nothing until there is someone to be. Read off the
   // server's answer (`seatView`), not the URL, so a stale token that seats nobody asks too.
   const humanSeats = store.seats.filter((s) => !s.isBot)
+  // A locked seat's link also reads as a spectator; it gets the locked banner, not this prompt.
   const needsSeat =
-    seatView.kind === 'spectator' && !watchChosen && !state.isOver && humanSeats.length > 0
+    seatView.kind === 'spectator' && locked === null && !watchChosen && !state.isOver && humanSeats.length > 0
   const cont = viewFor(engineCont, seatView)
   /*
    * Whether the controls work. Separate from what is *drawn* — a watcher sees the dice and the
@@ -242,11 +258,21 @@ export function App(): JSX.Element {
         />
       ) : null}
       {needsName && seatView.kind === 'seat' ? (
-        <NamePrompt
-          faction={seatView.faction}
-          onSubmit={(name, discordId) => store.claimName(name, discordId)}
-          onDismiss={() => setNameDismissed(true)}
-        />
+        account.account !== null ? (
+          <NamePrompt
+            faction={seatView.faction}
+            // Discord names run to 32 characters; a seat name stops at NAME_MAX.
+            signedInAs={account.account.displayName.slice(0, NAME_MAX)}
+            onSubmit={(name) => store.sitHere(name)}
+            onDismiss={() => setNameDismissed(true)}
+          />
+        ) : (
+          <NamePrompt
+            faction={seatView.faction}
+            onSubmit={(name, discordId) => store.claimName(name, discordId)}
+            onDismiss={() => setNameDismissed(true)}
+          />
+        )
       ) : null}
       <header className="topbar">
         <span className="brand">Arcs</span>
@@ -336,6 +362,11 @@ export function App(): JSX.Element {
           </button>
         </div>
       </header>
+      {seatView.kind === 'seat' && !needsName && signedIn && owner === undefined && !sitDismissed ? (
+        <SitHereBar onSit={() => void store.sitHere()} onDismiss={() => setSitDismissed(true)} />
+      ) : null}
+      {locked !== null ? <LockedBanner owner={locked.owner} /> : null}
+      <SigninNotice />
 
       <main className={logPinned && !phone ? 'layout log-pinned' : 'layout'}>
         <section className="board-col">

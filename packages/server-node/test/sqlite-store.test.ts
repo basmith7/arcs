@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { describeStoreContract } from '../../server/test/contract.js'
 import { SqliteStore } from '../src/sqlite-store.js'
-import { THREE_PLAYER, tempDbPath } from './fixtures.js'
+import { RED_FIRST_LEAD, THREE_PLAYER, tempDbPath } from './fixtures.js'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 
@@ -194,5 +194,72 @@ describe('SqliteStore extras', () => {
     )
     expect(results.filter((r) => r.ok)).toHaveLength(1)
     expect(store.journal(game.gameId)).toHaveLength(1)
+  })
+})
+
+describe('accounts', () => {
+  it('upserts by discord id, refreshing names', () => {
+    const s = new SqliteStore(':memory:')
+    const a = s.upsertAccount({ discordId: '111111111111111111', discordName: 'bri', displayName: 'Brian' })
+    const b = s.upsertAccount({ discordId: '111111111111111111', discordName: 'bri2', displayName: 'Bri' })
+    expect(b.id).toBe(a.id)
+    expect(b.displayName).toBe('Bri')
+  })
+
+  it('sessions expire and are deleted on lookup', () => {
+    const s = new SqliteStore(':memory:')
+    const a = s.upsertAccount({ discordId: '111111111111111111', discordName: 'bri', displayName: 'Brian' })
+    s.createSession(a.id, 'h1', 1000)
+    expect(s.sessionAccount('h1', 999)?.account.id).toBe(a.id)
+    expect(s.sessionAccount('h1', 1000)).toBeUndefined()
+    expect(s.sessionAccount('h1', 0)).toBeUndefined() // gone, not just hidden
+  })
+
+  it('a claimed seat reads its Discord id through the account; release falls back to the seat', async () => {
+    const s = new SqliteStore(':memory:')
+    const g = await s.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const red = g.seats[0]!.seatToken
+    s.setName(g.gameId, red, 'Old', { id: '222222222222222222', name: 'guessed' })
+    const a = s.upsertAccount({ discordId: '111111111111111111', discordName: 'bri', displayName: 'Brian' })
+    const seats = s.claim(g.gameId, red, a.id, 'Brian')!
+    expect(seats[0]).toMatchObject({ name: 'Brian', accountId: a.id, ownerName: 'Brian', discordId: '111111111111111111', discordName: 'bri' })
+    const released = s.release(g.gameId, red)!
+    expect(released[0]!.accountId).toBeUndefined()
+    expect(released[0]!.discordId).toBe('222222222222222222')
+  })
+
+  it('lists an account’s seats most recently played first', async () => {
+    const s = new SqliteStore(':memory:')
+    const a = s.upsertAccount({ discordId: '111111111111111111', discordName: 'bri', displayName: 'Brian' })
+    const g1 = await s.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const g2 = await s.create(THREE_PLAYER, THREE_PLAYER.factions)
+    s.claim(g1.gameId, g1.seats[0]!.seatToken, a.id, 'Brian')
+    s.claim(g2.gameId, g2.seats[0]!.seatToken, a.id, 'Brian')
+    await new Promise((r) => setTimeout(r, 5))
+    await s.append(g1.gameId, g1.seats[0]!.seatToken, 0, RED_FIRST_LEAD)
+    expect(s.accountSeats(a.id).map((x) => x.gameId)).toEqual([g1.gameId, g2.gameId])
+  })
+
+  it('migrates an old database', () => {
+    const path = tempDbPath()
+    const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
+    const old = new DatabaseSync(path)
+    old.exec(`CREATE TABLE game (id TEXT PRIMARY KEY, options TEXT NOT NULL, created_at INTEGER NOT NULL,
+      webhook_url TEXT, last_notified_length INTEGER NOT NULL DEFAULT -1, last_notified_at INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE seat (game_id TEXT NOT NULL, ord INTEGER NOT NULL, faction TEXT NOT NULL, token TEXT NOT NULL UNIQUE,
+      name TEXT, is_bot INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (game_id, ord));
+      INSERT INTO game (id, options, created_at) VALUES ('g', '{}', 42);
+      INSERT INTO seat (game_id, ord, faction, token) VALUES ('g', 0, 'red', 't');`)
+    old.close()
+    const s = new SqliteStore(path)
+    const a = s.upsertAccount({ discordId: '111111111111111111', discordName: 'bri', displayName: 'Brian' })
+    s.claim('g', 't', a.id, 'Brian')
+    expect(s.accountSeats(a.id)).toEqual([{ gameId: 'g', seatToken: 't', faction: 'red', createdAt: 42, updatedAt: 42 }])
+    // A crash between adding updated_at and backfilling it: the next open finishes the job.
+    s.close()
+    const half = new DatabaseSync(path)
+    half.exec('UPDATE game SET updated_at = 0')
+    half.close()
+    expect(new SqliteStore(path).accountSeats(a.id)[0]!.updatedAt).toBe(42)
   })
 })

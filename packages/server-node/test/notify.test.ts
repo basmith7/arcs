@@ -227,6 +227,27 @@ describe('Notifier', () => {
     expect(sent2[0]!.mentions).toEqual([])
   })
 
+  it('tags a claimed seat with its account\'s Discord id, not the seat\'s own', async () => {
+    const store = new SqliteStore(':memory:')
+    const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions, { webhookUrl: HOOK })
+    store.setName(game.gameId, game.seats[1]!.seatToken, 'Sam', { id: '999888777666555444' })
+    const account = store.upsertAccount({ discordId: '111222333444555666', discordName: 'sam', displayName: 'Sam' })
+    store.claim(game.gameId, game.seats[1]!.seatToken, account.id, 'Sam')
+    const sent: { content: string; mentions: readonly string[] }[] = []
+    const notifier = new Notifier(store, {
+      publicOrigin: 'https://arcs.test',
+      post: async (_url, message) => {
+        sent.push({ content: message.content, mentions: message.mentions })
+      },
+      windowMs: 60_000,
+    })
+    const start = startGame(THREE_PLAYER)
+    const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    expect(sent[0]!.content).toContain('<@111222333444555666>')
+    expect(sent[0]!.mentions).toEqual(['111222333444555666'])
+  })
+
   it('tags a linked winner in the game-over message', async () => {
     const store = new SqliteStore(':memory:')
     const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions, { webhookUrl: HOOK })

@@ -2,12 +2,32 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { App } from './App.js'
+import { loadAccount, setSigninFailed } from './account.js'
+import { MyGames } from './components/MyGames.js'
 import { MULTIPLAYER_URL } from './multiplayer/config.js'
 import { parseLink, recall } from './multiplayer/link.js'
 import { store } from './store.js'
 import './styles.css'
 import './phone.css'
 import './phone-modals.css'
+
+/*
+ * Navigation is a reload: every hash change boots the page afresh, so a game link, the lobby and
+ * `#/me` each enter through this one path rather than through in-page routing that would have to
+ * unwind a joined session by hand.
+ */
+window.addEventListener('hashchange', () => window.location.reload())
+
+/*
+ * A failed Discord sign-in comes back as `?signin=failed`. Say so once, then drop the parameter so
+ * a refresh does not say it again.
+ */
+const params = new URLSearchParams(window.location.search)
+if (params.get('signin') === 'failed') {
+  setSigninFailed(true)
+  history.replaceState(null, '', window.location.pathname + window.location.hash)
+}
+if (MULTIPLAYER_URL !== null) void loadAccount(MULTIPLAYER_URL)
 
 /*
  * A game link in the address bar joins that game before anything renders, so a player who follows
@@ -17,9 +37,20 @@ import './phone-modals.css'
  * copied without the tail, or trimmed by a chat client — where this browser has played that game
  * before. It upgrades a would-be spectator back into their seat rather than silently demoting them,
  * which is the difference between "my game is broken" and nothing being noticed at all.
+ *
+ * Read once per boot: a hash change reloads (above), so this is also how following a link in-page
+ * enters a game.
  */
+/*
+ * `#/me` is the My Games page: no game to join and no autosave to restore. Without a server there
+ * is nothing to list, so a no-server build falls through to the ordinary boot.
+ */
+const myGames = window.location.hash === '#/me' && MULTIPLAYER_URL !== null
+
 const link = parseLink(window.location.hash)
-if (link !== null && link !== undefined && MULTIPLAYER_URL !== null) {
+if (myGames) {
+  // Nothing to load: MyGames fetches its own list.
+} else if (link !== null && link !== undefined && MULTIPLAYER_URL !== null) {
   const seatToken = link.seatToken ?? recall(link.gameId)
   void store.joinSession(MULTIPLAYER_URL, seatToken === undefined ? link : { ...link, seatToken })
 } else if (link === null || link === undefined) {
@@ -34,6 +65,6 @@ if (link !== null && link !== undefined && MULTIPLAYER_URL !== null) {
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    {myGames ? <MyGames /> : <App />}
   </React.StrictMode>,
 )

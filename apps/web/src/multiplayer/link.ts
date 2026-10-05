@@ -75,3 +75,26 @@ export function recall(gameId: string): string | undefined {
     return undefined
   }
 }
+
+const KEY_PREFIX = 'arcs:seat:'
+
+/**
+ * Every seat `remember` has stashed, across every game — the list behind "My games". Walked by
+ * index rather than read by a known key, the same as `recall` reads one by a known key, because
+ * there is no index of which games were ever joined other than `localStorage` itself.
+ */
+export function rememberedSeats(): { gameId: string; seatToken: string }[] {
+  try {
+    const seats: { gameId: string; seatToken: string }[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key === null || !key.startsWith(KEY_PREFIX)) continue
+      const seatToken = localStorage.getItem(key)
+      if (seatToken === null) continue
+      seats.push({ gameId: key.slice(KEY_PREFIX.length), seatToken })
+    }
+    return seats
+  } catch {
+    return []
+  }
+}
