@@ -175,6 +175,7 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const seat = /^\/games\/([^/]+)\/seat$/.exec(path)
   const undo = /^\/games\/([^/]+)\/undo$/.exec(path)
   const live = /^\/games\/([^/]+)\/live$/.exec(path)
+  const catchup = /^\/games\/([^/]+)\/catchup$/.exec(path)
 
   if (live !== null) return bad(426, 'expected a websocket upgrade')
 
@@ -188,6 +189,16 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     const tail = await store.read(gameId, since, presented)
     if (tail === undefined) return bad(404, 'no such game')
     return json({ ...tail, seats: publicSeats(store, gameId) })
+  }
+
+  // --- GET /games/:id/catchup — this seat's turn story, if one is written ---
+  if (catchup !== null && request.method === 'GET') {
+    const gameId = decodeURIComponent(catchup[1]!)
+    const token = request.headers.get('x-seat-token') ?? undefined
+    const seat = token === undefined ? undefined : store.seatForToken(gameId, token)
+    if (seat === undefined) return bad(403, 'seat token does not belong to this game')
+    const length = gate.resultOf(gameId)?.state.journal.length ?? 0
+    return json({ length, story: store.getCatchup(gameId, seat.faction, length) ?? null })
   }
 
   // --- POST /games/:id/actions --------------------------------------------

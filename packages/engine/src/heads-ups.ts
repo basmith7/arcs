@@ -165,3 +165,9 @@ export function seatFacts(before: GameState, now: GameState, faction: FactionId,
     headsUps: list.slice(0, MAX_HEADS_UPS),
   }
 }
+
+/** A heads-up (or any fact text) with the table's faction ids replaced by player names. */
+export function withNames(text: string, factions: readonly FactionId[], name: (f: FactionId) => string): string {
+  if (factions.length === 0) return text
+  return text.replace(new RegExp(`\\b(${factions.join('|')})\\b`, 'g'), (f) => name(f as FactionId))
+}

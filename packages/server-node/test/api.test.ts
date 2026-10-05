@@ -228,3 +228,26 @@ describe('POST /games/:id/undo', () => {
     expect(a.store.journal(id)).toEqual([])
   })
 })
+
+describe('GET /games/:id/catchup', () => {
+  it("serves a seat its own story for the current turn, and nobody else's", async () => {
+    const a = api()
+    const created = (await (
+      await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }), a)
+    )!.json()) as Created
+    const other = await a.store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const id = created.gameId
+    const red = created.seats.find((s) => s.faction === 'red')!.seatToken
+    const at = (h: Record<string, string>) => route(get(`/games/${id}/catchup`, h), a)
+
+    expect((await at({}))?.status).toBe(403)
+    expect((await at({ 'x-seat-token': other.seats[0]!.seatToken }))?.status).toBe(403)
+
+    a.store.putCatchup(id, 'red', 0, 'your story', 1)
+    expect(await (await at({ 'x-seat-token': red }))!.json()).toEqual({ length: 0, story: 'your story' })
+
+    // A story for an older length (the game moved on, or a take-back) is never served.
+    await route(post(`/games/${id}/actions`, { seatToken: red, expectedLength: 0, action: RED_FIRST_LEAD }), a)
+    expect(await (await at({ 'x-seat-token': red }))!.json()).toEqual({ length: 1, story: null })
+  })
+})

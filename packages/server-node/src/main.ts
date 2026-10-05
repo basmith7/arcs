@@ -2,6 +2,8 @@ import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { CatchupWriter } from './catchup.js'
+import { deepseekChat } from './deepseek.js'
 import { DiscordBot } from './discord.js'
 import { EngineGate } from './gate.js'
 import { Notifier } from './notify.js'
@@ -22,6 +24,10 @@ const DISCORD_CHANNEL_ID = process.env['DISCORD_CHANNEL_ID'] || undefined
 const PRESENCE_ACTIVE_MS = Number(process.env['PRESENCE_ACTIVE_MS'] || 120_000)
 const PING_GRACE_MS = Number(process.env['PING_GRACE_MS'] || 600_000)
 const LEAVE_GRACE_MS = Number(process.env['LEAVE_GRACE_MS'] || 60_000)
+const DEEPSEEK_API_KEY = process.env['DEEPSEEK_API_KEY'] || undefined
+// Ids as `GET https://api.deepseek.com/models` listed them on 2026-10-05.
+const CATCHUP_WRITER_MODEL = process.env['CATCHUP_WRITER_MODEL'] || 'deepseek-v4-pro'
+const CATCHUP_CHECKER_MODEL = process.env['CATCHUP_CHECKER_MODEL'] || 'deepseek-flash'
 
 process.on('uncaughtException', (e) => console.error('[fatal]', e))
 process.on('unhandledRejection', (e) => console.error('[unhandled]', e))
@@ -53,10 +59,20 @@ const thinker = new WorkerThinker(
   new URL(import.meta.url.endsWith('.ts') ? './bot-worker.ts' : './bot-worker.js', import.meta.url),
   localThink(),
 )
+// The turn catch-up's story; without a key the page shows its heads-up bullets only (catchup.ts).
+const catchup = new CatchupWriter(store, presence, {
+  current: (gameId) => gate.resultOf(gameId),
+  ...(DEEPSEEK_API_KEY === undefined ? {} : { chat: deepseekChat(DEEPSEEK_API_KEY) }),
+  writerModel: CATCHUP_WRITER_MODEL,
+  checkerModel: CATCHUP_CHECKER_MODEL,
+})
 const gate = new EngineGate(store, {
   pace: BOT_PACE_MS,
   think: thinker.think,
-  onSettled: (s) => void notifier.onSettled(s),
+  onSettled: (s) => {
+    void notifier.onSettled(s)
+    catchup.onSettled(s)
+  },
 })
 const server = createArcsServer({
   api: { store, gate, ...(bot === undefined ? {} : { bot }) },
@@ -69,6 +85,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(
     `arcs server on :${PORT}  db=${DATABASE_PATH}  static=${STATIC_DIR}  origin=${PUBLIC_ORIGIN}  discord=${discordStatus}`,
   )
+  console.log(`catch-up stories: ${DEEPSEEK_API_KEY === undefined ? 'off (no DEEPSEEK_API_KEY)' : `on (${CATCHUP_WRITER_MODEL}, checked by ${CATCHUP_CHECKER_MODEL})`}`)
 })
 
 const stop = (): void => {
