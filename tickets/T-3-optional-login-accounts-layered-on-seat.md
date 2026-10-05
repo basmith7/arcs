@@ -5,7 +5,7 @@ status: doing
 labels: []
 depends: []
 created: 2026-10-05T01:47:30Z
-updated: 2026-10-05T19:37:05Z
+updated: 2026-10-05T19:37:21Z
 kind: build
 risk: medium
 riskReason: New auth/session surface on a public site; seat locking can lock players out of live games if wrong.
@@ -34,4 +34,4 @@ Branch: idea/agent-5 (16 commits on main 35111fc)
 - [x] Add games from this browser claims only the ticked games.
 - [x] Release seat (after a confirm) unlocks it for link play again.
 - [x] My Games rows and Back work through the hash; a failed sign-in returns to the starting page with a notice.
-- [ ] Tests pass; screenshots taken; verified live on arcs.basmith.net.
+- [x] Tests pass; screenshots taken; verified live on arcs.basmith.net.
