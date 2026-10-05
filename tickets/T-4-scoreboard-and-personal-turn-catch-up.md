@@ -6,7 +6,7 @@ priority: medium
 labels: []
 depends: []
 created: 2026-10-05T06:33:56Z
-updated: 2026-10-05T07:19:50Z
+updated: 2026-10-05T07:19:51Z
 kind: build
 risk: medium
 riskReason: New AI dependency and per-seat private text on the live server; scoreboard itself is read-only
@@ -21,7 +21,7 @@ A shared live Scoreboard (dialog on desktop, fifth tab on phone) and a per-seat 
 
 ## Done when
 - [x] Engine `gameFacts`/`seatFacts` exist; table tests on saved games (incl. game 158107d8's position) match the real chapter-end scoring
-- [ ] `buildChapterReport` lives in the engine; `Declaration` carries `by`
+- [x] `buildChapterReport` lives in the engine; `Declaration` carries `by`
 - [ ] Each of the 5 heads-ups has a fires / doesn't-fire test
 - [ ] Privacy test: a seat's facts never contain another seat's hand
 - [ ] Scoreboard opens as a dialog from the header on desktop and as a fifth bottom tab on phone; screenshots of both
