@@ -5,11 +5,11 @@
  * `403 wrong-turn`, and `/healthz`.
  */
 import { startGame } from '@arcs/engine'
-import type { FactionId, NewGameOptions } from '@arcs/engine'
+import type { FactionId, NewGameOptions, RuleResult } from '@arcs/engine'
 
 import type { Auth } from './auth.js'
 import type { DiscordBot } from './discord.js'
-import type { EngineGate } from './gate.js'
+import { askedFactions, type EngineGate } from './gate.js'
 import { seatAccess } from './seat-access.js'
 import type { SqliteStore } from './sqlite-store.js'
 
@@ -95,6 +95,15 @@ function rateLimited(request: Request): boolean {
   return bucket.count > CREATE_LIMIT
 }
 
+/** Whether `faction` is on the clock, and the result once the game is over. Pulled out so `won`
+ * is testable against a stub `RuleResult` without playing out a whole game. */
+export function gameStatus(result: RuleResult, faction: string): { yourTurn: boolean; over: boolean; won?: boolean } {
+  const over = result.state.isOver
+  return over
+    ? { yourTurn: false, over, won: result.state.winners[0] === faction }
+    : { yourTurn: askedFactions(result).includes(faction), over }
+}
+
 export function publicSeats(store: SqliteStore, gameId: string): PublicSeat[] {
   return store.seats(gameId).map((s) => ({
     faction: s.faction,
@@ -149,6 +158,27 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   }
 
   if (path === '/healthz') return new Response('ok', { status: 200, headers: CORS })
+  if (path === '/me/games' && request.method === 'GET') {
+    if (api.auth === undefined) return bad(404, 'not found')
+    if (account === undefined) return bad(401, 'signed out')
+    const games = store
+      .accountSeats(account.id)
+      .map((row) => {
+        const result = gate.resultOf(row.gameId)
+        if (result === undefined) return undefined
+        return {
+          ...row,
+          length: store.journalLength(row.gameId),
+          ...gameStatus(result, row.faction),
+          seats: publicSeats(store, row.gameId),
+        }
+      })
+      .filter((g): g is NonNullable<typeof g> => g !== undefined)
+    return new Response(JSON.stringify({ games }), {
+      status: 200,
+      headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...CORS },
+    })
+  }
   if (path === '/me' && request.method === 'GET' && api.auth === undefined) return json({ account: null, enabled: false })
   if (path === '/me' || path.startsWith('/auth/')) return api.auth === undefined ? bad(404, 'not found') : api.auth.route(request)
   if (path !== '/games' && !path.startsWith('/games/')) return undefined

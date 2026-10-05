@@ -296,6 +296,17 @@ describe('seat locks', () => {
     expect(await res.json()).toEqual({ error: 'bot-seat' })
   })
 
+  it('lists my games with whose turn and the result', async () => {
+    const { a, gameId, red, me } = await setup() // reuse the seat-locks setup; red leads first
+    await route(post(`/games/${gameId}/claim`, { seatToken: red }, { cookie: me }), a)
+    const res = (await route(get('/me/games', { cookie: me }), a))!
+    const { games } = await res.json()
+    expect(games).toHaveLength(1)
+    expect(games[0]).toMatchObject({ gameId, faction: 'red', seatToken: red, yourTurn: true, over: false, length: 0 })
+    expect(games[0].won).toBeUndefined()
+    expect((await route(get('/me/games'), a))!.status).toBe(401)
+  })
+
   it('with auth disabled, a seat with account_id set still behaves as unlocked', async () => {
     const a = api()
     const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }, nextIp()), a))!.json()) as Created
