@@ -1,6 +1,6 @@
 # Scoreboard and personal catch-up — design
 
-2026-10-04 · status: draft for Brian's review
+2026-10-04 · status: approved by Brian 2026-10-04
 
 ## Why
 
@@ -55,7 +55,8 @@ where it touches hidden information, so another seat's hand is unreachable by ty
 ## 2. Scoreboard (web)
 
 - A **Scoreboard** button in the game header opens a dialog built like Settings and Rules (same modal
-  shell): closes on ✕, Esc and backdrop click. On a phone it is in the header menu, as Settings is.
+  shell): closes on ✕, Esc and backdrop click. On a phone it is a fifth bottom tab
+  (Court · Ambitions · Players · Log · Scoreboard), opening as a sheet like the others.
 - Content: one row per player (name, colour, power, pieces, systems ruled, declared, tax base,
   courting, resources, cards in hand as a count); an ambition race (holding per faction, declared
   markers); and "If the chapter ended now: Brian would take Keeper (+5) · Neal would take Tycoon
@@ -157,8 +158,8 @@ Verdict: acceptable accretion (four fixes folded in).
 *Spec review (Jakob's Law), Fable, 2026-10-04. Advisory.*
 
 - Scoreboard in the phone header menu: on Android, views live in bottom tabs and the overflow menu
-  holds actions; here Court/Ambitions/Players/Log are tabs. **Departs** — kept as Brian chose ("copy
-  the settings"); flagged for him to confirm or make it a fifth tab.
+  holds actions; here Court/Ambitions/Players/Log are tabs. **Fixed** — a fifth tab on phones (Brian,
+  2026-10-04); the dialog stays on desktop.
 - System Back with a dialog open leaves the game (no dialog pushes history — Settings and Rules too).
   **Unclear** — out of scope here; tracked as its own ticket for all dialogs.
 - 120-word card over the map on a phone. **Fixed** — opens collapsed on phone.
