@@ -2,7 +2,7 @@
  * A scoreboard for a game in progress: where everyone stands, the ambition races, and what each
  * player looks to be going for, followed by the log grouped by round to write a story from.
  *
- *   npm run recap -- <gameId | save.json> [--public]
+ *   npm run recap -- <gameId | save.json> [--public] [--story] [--seat <faction>]
  *
  * Spike (2026-10-04): a private report, to find out what an in-game scoreboard panel should show.
  * Reads a live game from Tower over ssh with `sqlite3 -readonly`, exactly as `advise` does — never a
@@ -12,32 +12,18 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
-import {
-  AMBITIONS,
-  Location,
-  ScoreAmbitions,
-  contentsOf,
-  courtCard,
-  defaultRegistry,
-  loadGame,
-  metric,
-  parseFigureId,
-  parseResourceToken,
-  perform,
-  planetResource,
-  replayGame,
-  rules,
-  securedCards,
-} from '@arcs/engine'
+import { contentsOf, defaultRegistry, gameFacts, loadGame, replayGame, seatFacts, sinceLastTurn } from '@arcs/engine'
 import type { FactionId, GameState, NewGameOptions } from '@arcs/engine'
 
 const argv = process.argv.slice(2)
-const source = argv.find((a) => !a.startsWith('--'))
+const source = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--seat')
 const story = argv.includes('--story')
+const seatArg = argv.indexOf('--seat')
+const seat = seatArg >= 0 ? (argv[seatArg + 1] as FactionId | undefined) : undefined
 // The story is written from the public view only: what a table of players could all see.
 const showHands = !argv.includes('--public') && !story
 if (source === undefined) {
-  console.error('usage: npm run recap -- <gameId | save.json> [--public] [--story]')
+  console.error('usage: npm run recap -- <gameId | save.json> [--public] [--story] [--seat <faction>]')
   process.exit(2)
 }
 
@@ -89,53 +75,35 @@ const who = (f: FactionId): string => (names.get(f) ? `${f} (${names.get(f)})` :
 say(`${options.board} — chapter ${s.chapter}, round ${s.round}${s.isOver ? ' — game over' : ''}`)
 say(`initiative: ${s.initiativeOrder.join(' → ')}\n`)
 
-const pieces = (f: FactionId, piece: string): number =>
-  s.board.systems.reduce(
-    (n, sys) =>
-      n +
-      contentsOf(s.figures, Location.system(sys)).filter((id) => {
-        const p = parseFigureId(id)
-        return p.color === f && p.piece === piece
-      }).length,
-    0,
-  )
+// The same public fact model the Scoreboard and the turn catch-up use.
+const facts = gameFacts(s, registry)
 
-const pieces1 = (f: FactionId, sys: string, piece: string): number =>
-  contentsOf(s.figures, Location.system(sys)).filter((id) => {
-    const p = parseFigureId(id)
-    return p.color === f && p.piece === piece
-  }).length
-
-for (const f of s.factions) {
-  const held = s.board.systems.filter((sys) => rules(s, f, sys))
-  const res = [...s.resources.contents.entries()]
-    .filter(([loc]) => loc.startsWith(`cityslot:${f}:`) || loc.startsWith(`cardslot:${f}:`))
-    .flatMap(([, ids]) => ids.map((id) => parseResourceToken(id).resource))
-  const court = securedCards(s, f).map((id) => courtCard(id).name)
-  const hand = contentsOf(s.cards, `hand:${f}`)
-  say(`${who(f)} — power ${s.power[f] ?? 0}`)
-  say(
-    `  ${pieces(f, 'City')} cities, ${pieces(f, 'Starport')} starports, ${pieces(f, 'Ship')} ships; rules ${held.join(', ') || 'nothing'}`,
-  )
-  say(`  resources: ${res.join(', ') || 'none'}; court: ${court.join(', ') || 'none'}`)
-  say(`  hand: ${showHands ? hand.join(', ') || 'empty' : `${hand.length} cards`}`)
+for (const f of facts.factions) {
+  const hand = contentsOf(s.cards, `hand:${f.faction}`)
+  say(`${who(f.faction)} — power ${f.power}`)
+  say(`  ${f.cities} cities, ${f.starports} starports, ${f.ships} ships; rules ${f.rules.join(', ') || 'nothing'}`)
+  say(`  resources: ${f.resources.join(', ') || 'none'}; court: ${f.court.join(', ') || 'none'}`)
+  say(`  hand: ${showHands ? hand.join(', ') || 'empty' : `${f.handSize} cards`}`)
 }
 
 // --- ambition races ----------------------------------------------------------
 
 say('\nambitions (holdings now):')
-for (const a of AMBITIONS) {
-  const marks = s.declared.filter((d) => d.ambition === a)
-  const tag = marks.length === 0 ? 'undeclared' : `declared ${marks.map((d) => `${d.marker.high}/${d.marker.low}`).join(' + ')}`
-  const row = s.factions.map((f) => ({ f, v: metric(s, f, a) })).sort((x, y) => y.v - x.v)
-  say(`  ${a.padEnd(8)} ${tag.padEnd(16)} ${row.map((r) => `${r.f} ${r.v}`).join(', ')}`)
+for (const a of facts.ambitions) {
+  const tag = a.markers.length === 0 ? 'undeclared' : `declared ${a.markers.map((m) => `${m.high}/${m.low}`).join(' + ')}`
+  say(`  ${a.ambition.padEnd(8)} ${tag.padEnd(16)} ${a.holdings.map((h) => `${h.faction} ${h.value}`).join(', ')}`)
 }
 
 // The engine's own scoring, run on a copy of the state: what the chapter end would pay right now.
-if (s.declared.length > 0 && !s.isOver) {
-  const scored = perform(s, ScoreAmbitions(), registry).state
+if (facts.ifChapterEndedNow !== null) {
   say('\nif the chapter ended now:')
-  for (const line of scored.log.slice(s.log.length)) say(`  ${line}`)
+  for (const r of facts.ifChapterEndedNow.results) {
+    if (r.awards.length === 0) say(`  no one would score ${r.ambition}`)
+    for (const w of r.awards) {
+      const verb = w.place === 'first' ? 'would take' : w.place === 'second' ? 'would place second in' : 'would tie'
+      say(`  ${w.faction} ${verb} ${r.ambition} (+${w.power})`)
+    }
+  }
 }
 
 // --- what each player looks to be going for ---------------------------------
@@ -145,28 +113,25 @@ if (s.declared.length > 0 && !s.isOver) {
  * only, and on this spike's first game it said all four players were going hard for Keeper.
  */
 say('\nwhat each player looks to be going for:')
-for (const f of s.factions) {
-  const declared = s.log.filter((l) => l.startsWith(`${f} declared `)).map((l) => l.slice(f.length + 10))
-  // Taxing a city yields its planet's resource, so cities by planet type are the income.
-  const taxBase = new Map<string, number>()
-  for (const sys of s.board.systems) {
-    if (pieces1(f, sys, 'City') === 0) continue
-    const r = planetResource(s, sys)
-    if (r !== undefined) taxBase.set(r, (taxBase.get(r) ?? 0) + pieces1(f, sys, 'City'))
+for (const f of facts.factions) {
+  const marker = (a: string): string => {
+    const d = s.declared.find((x) => x.by === f.faction && x.ambition === a)
+    return d === undefined ? a : `${a} (${d.marker.high}/${d.marker.low})`
   }
-  // Agents sitting on court cards: what they are trying to win next.
-  const courting = [...s.figures.contents.entries()]
-    .filter(([loc, ids]) => loc.startsWith('court:agents:') && ids.some((id) => parseFigureId(id).color === f))
-    .map(([loc, ids]) => {
-      const card = contentsOf(s.courtCards, `court:slot:${loc.slice('court:agents:'.length)}`)[0]
-      const c = card === undefined ? undefined : courtCard(card)
-      const mine = ids.filter((id) => parseFigureId(id).color === f).length
-      return `${c?.name ?? '?'}${c?.suit ? ` (${c.suit})` : ''} ×${mine}`
-    })
-  say(`  ${who(f)}:`)
-  say(`    declared: ${declared.join(', ') || 'nothing'}`)
-  say(`    tax base: ${[...taxBase].map(([r, n]) => `${n} ${r}`).join(', ') || 'none'}`)
-  say(`    courting: ${courting.join(', ') || 'nothing'}`)
+  say(`  ${who(f.faction)}:`)
+  say(`    declared: ${f.declared.map(marker).join(', ') || 'nothing'}`)
+  say(`    tax base: ${Object.entries(f.taxBase).map(([r, n]) => `${n} ${r}`).join(', ') || 'none'}`)
+  say(`    courting: ${f.courting.map((c) => `${c.card}${c.suit ? ` (${c.suit})` : ''} ×${c.agents}`).join(', ') || 'nothing'}`)
+}
+
+// --- one seat's catch-up heads-ups ------------------------------------------
+
+if (seat !== undefined) {
+  const since = sinceLastTurn(journal, seat)
+  const sf = seatFacts(replayGame(options, journal.slice(0, since), registry).state, s, seat, registry)
+  say(`\ncatch-up for ${who(seat)} (journal since ${since}, ${sf.since.length} log lines):`)
+  for (const h of sf.headsUps) say(`  - ${h.text}`)
+  if (sf.headsUps.length === 0) say('  (no heads-ups)')
 }
 
 // --- the story so far --------------------------------------------------------
