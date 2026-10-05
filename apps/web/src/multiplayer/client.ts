@@ -129,6 +129,11 @@ export class MultiplayerClient {
     })
   }
 
+  /** This seat's turn catch-up story for the current journal length; `story` is null until written. */
+  async catchup(gameId: string, seatToken: string): Promise<{ length: number; story: string | null; enabled: boolean }> {
+    return this.json(`/games/${encodeURIComponent(gameId)}/catchup`, { headers: { 'x-seat-token': seatToken } })
+  }
+
   /**
    * Claim a seat by name, so the game and other players can show who you are.
    *

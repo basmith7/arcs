@@ -630,3 +630,15 @@ html.phone-hand-grid .hand.tap .hand-card {
   font-size: 9.5px;
   letter-spacing: 0.02em;
 }
+
+/* --- catch-up card: narrower margins over the phone map; story folded behind "More" --- */
+.app.phone .cu-card {
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: auto;
+  max-height: 60%;
+}
+.app.phone .cu-story-slot {
+  min-height: 1.6em;
+}

@@ -52,6 +52,11 @@ class FakeSocket {
     this.onmessage?.({ data: JSON.stringify({ from, entries }) })
   }
 
+  /** Pretend the server pushed a seat's catch-up story. */
+  pushCatchup(catchup: { length: number; story: string }): void {
+    this.onmessage?.({ data: JSON.stringify({ catchup }) })
+  }
+
   /** Pretend the server pushed a turn notice. */
   pushTurn(turn: { faction: string; chapter: number; length: number }): void {
     this.onmessage?.({ data: JSON.stringify({ turn }) })
@@ -81,12 +86,14 @@ function host(): SessionHost & {
   adopted: number
   remote: Action[]
   turns: { faction: string; chapter: number; length: number }[]
+  catchups: { length: number; story: string | null }[]
 } {
   return {
     result: null,
     adopted: 0,
     remote: [],
     turns: [],
+    catchups: [],
     current() {
       return this.result
     },
@@ -101,6 +108,9 @@ function host(): SessionHost & {
     seats: () => {},
     turn(t) {
       this.turns.push(t)
+    },
+    catchup(c) {
+      this.catchups.push(c)
     },
   }
 }
@@ -167,6 +177,8 @@ describe('the live socket', () => {
 
     FakeSocket.last!.pushTurn({ faction: 'yellow', chapter: 2, length: 4 })
     expect(h.turns).toEqual([{ faction: 'yellow', chapter: 2, length: 4 }])
+    FakeSocket.last!.pushCatchup({ length: 4, story: 's' })
+    expect(h.catchups).toContainEqual({ length: 4, story: 's' })
     expect(h.remote).toHaveLength(0)
     session.leave()
   })

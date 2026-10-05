@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { FACTION_IDS, defaultRegistry, move, observe, replayGame, seatFacts, sinceLastTurn } from '../src/index.js'
+import { FACTION_IDS, defaultRegistry, move, observe, replayGame, seatFacts, sinceLastTurn, turnStart } from '../src/index.js'
 import type { GameState, NewGameOptions } from '../src/index.js'
 
 const live = JSON.parse(readFileSync(new URL('./fixtures/game-158107d8.json', import.meta.url), 'utf8')) as {
@@ -25,6 +25,10 @@ describe('sinceLastTurn', () => {
   })
   it('skips the turn in progress', () => {
     expect(sinceLastTurn(live.journal.slice(0, 69), 'red')).toBe(sinceLastTurn(live.journal.slice(0, 66), 'red'))
+  })
+  it('turnStart is where the turn in progress began', () => {
+    expect(turnStart(live.journal.slice(0, 69), 'red')).toBe(66)
+    expect(turnStart(live.journal.slice(0, 66), 'red')).toBe(66)
   })
   it('is 0 for a seat that has not had a turn', () => {
     expect(sinceLastTurn(live.journal.slice(0, 5), 'yellow')).toBe(0)

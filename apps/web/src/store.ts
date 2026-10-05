@@ -23,11 +23,15 @@ import {
   takeBackBlock,
   buildChapterReport,
   chapterEnded,
+  replayGame,
+  seatFacts,
+  sinceLastTurn,
 } from '@arcs/engine'
 import type {
   Action,
   AskedThisTurn,
   ChapterReport,
+  SeatFacts,
   FactionId,
   GameState,
   NewGameOptions,
@@ -503,6 +507,10 @@ class GameStore {
         this.emit()
       },
       turn: (t) => this.notifyTurn(link.gameId, t),
+      catchup: (c) => {
+        this.catchup = { length: c.length, story: c.story, enabled: c.enabled ?? true }
+        this.emit()
+      },
     })
     this.session = session
     remember(link)
@@ -532,6 +540,7 @@ class GameStore {
     this.session = null
     this.seats = []
     this.seatsVersion += 1
+    this.catchup = null
   }
 
   seatName(faction: string): string | undefined {
@@ -592,6 +601,34 @@ class GameStore {
     } catch {
       /* no storage, no persisted preference — the toggle still works for this tab */
     }
+  }
+
+  // --- turn catch-up (components/CatchUp.tsx) --------------------------------
+
+  /** The server's story for this seat, and whether it writes stories at all. */
+  private catchup: { length: number; story: string | null; enabled: boolean } | null = null
+  private seatFactsMemo: { key: string; facts: SeatFacts } | null = null
+
+  /** The story for exactly this journal length: a take-back or a later move never shows a stale one. */
+  catchupStory(length: number): string | null {
+    return this.catchup !== null && this.catchup.length === length ? this.catchup.story : null
+  }
+
+  /** Whether the server writes stories (false until it has said so, and on an older server). */
+  catchupEnabled(): boolean {
+    return this.catchup?.enabled ?? false
+  }
+
+  /** A seat's catch-up facts: since its previous turn, up to now. Replayed once per journal length. */
+  seatFacts(faction: FactionId): SeatFacts | null {
+    if (this.result === null || this.options === null) return null
+    const journal = this.result.state.journal
+    const key = `${this.generation}:${faction}:${journal.length}`
+    if (this.seatFactsMemo?.key !== key) {
+      const before = replayGame(this.options, journal.slice(0, sinceLastTurn(journal, faction)), this.registry).state
+      this.seatFactsMemo = { key, facts: seatFacts(before, this.result.state, faction, this.registry) }
+    }
+    return this.seatFactsMemo.facts
   }
 
   /** The joined game's link, or `null` when playing locally. */

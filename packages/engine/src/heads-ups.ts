@@ -58,6 +58,17 @@ export function sinceLastTurn(journal: readonly string[], faction: FactionId): n
   return i + 1
 }
 
+/**
+ * Where the turn in progress began: the journal length when it reached this faction. The current
+ * length when the faction has not acted since (the turn has only just come to it). The catch-up's
+ * story and its dismissal key on this, so they hold for the whole turn, not just its first move.
+ */
+export function turnStart(journal: readonly string[], faction: FactionId): number {
+  let i = journal.length
+  while (i > 0 && factionOf(journal[i - 1]!) === faction) i--
+  return i
+}
+
 /** The strict leader of an ambition, or undefined on a tie or when nobody holds any. */
 function leader(state: GameState, ambition: Ambition): FactionId | undefined {
   const rows = state.factions.map((f) => ({ f, v: metric(state, f, ambition) })).sort((a, b) => b.v - a.v)

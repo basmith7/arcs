@@ -75,7 +75,7 @@ const gate = new EngineGate(store, {
   },
 })
 const server = createArcsServer({
-  api: { store, gate, ...(bot === undefined ? {} : { bot }) },
+  api: { store, gate, catchupEnabled: DEEPSEEK_API_KEY !== undefined, ...(bot === undefined ? {} : { bot }) },
   staticDir: STATIC_DIR,
   presence,
 })

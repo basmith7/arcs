@@ -106,12 +106,19 @@ describe('CatchupWriter', () => {
     expect(t.store.getCatchup(t.gameId, 'yellow', LEN)).toBeUndefined()
   })
 
-  it('drops a story when the game moved on while it was written', async () => {
-    const moved = { ...afterRed, state: { ...afterRed.state, journal: [...afterRed.state.journal, 'x'] } }
+  it('drops a story when the turn moved on while it was written', async () => {
+    const moved = { ...afterRed, state: { ...afterRed.state, journal: [...afterRed.state.journal, 'x(faction="blue")'] } }
     const t = await setup(scripted('story', 'PASS'), THREE_PLAYER, () => moved)
     await t.handOff()
     expect(t.store.getCatchup(t.gameId, 'yellow', LEN)).toBeUndefined()
     expect(t.pushed).toEqual([])
+  })
+
+  it('keeps a story when the seat has already started its turn', async () => {
+    const started = { ...afterRed, state: { ...afterRed.state, journal: [...afterRed.state.journal, 'x(faction="yellow")'] } }
+    const t = await setup(scripted('story', 'PASS'), THREE_PLAYER, () => started)
+    await t.handOff()
+    expect(t.store.getCatchup(t.gameId, 'yellow', LEN)).toBe('story')
   })
 
   it("deletes the game's stories when it ends", async () => {

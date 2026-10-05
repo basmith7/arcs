@@ -4,7 +4,7 @@
  * their wire shapes (docs/17 section 4b); this adds bots on create, `seats` on read, a name claim,
  * `403 wrong-turn`, and `/healthz`.
  */
-import { startGame } from '@arcs/engine'
+import { startGame, turnStart } from '@arcs/engine'
 import type { FactionId, NewGameOptions } from '@arcs/engine'
 
 import type { DiscordBot } from './discord.js'
@@ -17,6 +17,8 @@ export interface Api {
   readonly onSeatsChanged?: (gameId: string) => void
   /** When set, the server resolves claimed names to guild members instead of requiring a pasted id. */
   readonly bot?: DiscordBot
+  /** Whether turn catch-up stories are written (a DeepSeek key is configured); the page holds space for one. */
+  readonly catchupEnabled?: boolean
 }
 
 export interface PublicSeat {
@@ -197,8 +199,13 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     const token = request.headers.get('x-seat-token') ?? undefined
     const seat = token === undefined ? undefined : store.seatForToken(gameId, token)
     if (seat === undefined) return bad(403, 'seat token does not belong to this game')
-    const length = gate.resultOf(gameId)?.state.journal.length ?? 0
-    return json({ length, story: store.getCatchup(gameId, seat.faction, length) ?? null })
+    // Keyed by where the seat's turn began, so the story holds through the turn's own moves.
+    const length = turnStart(gate.resultOf(gameId)?.state.journal ?? [], seat.faction as FactionId)
+    return json({
+      length,
+      story: store.getCatchup(gameId, seat.faction, length) ?? null,
+      enabled: api.catchupEnabled ?? false,
+    })
   }
 
   // --- POST /games/:id/actions --------------------------------------------

@@ -12,7 +12,7 @@
  * forget: `onSettled` only enqueues, on one chain for the whole server, so a slow or failing call
  * never delays a move — and DeepSeek sees one game's request at a time.
  */
-import { defaultRegistry, replayGame, seatFacts, sinceLastTurn, withNames } from '@arcs/engine'
+import { defaultRegistry, replayGame, seatFacts, sinceLastTurn, turnStart, withNames } from '@arcs/engine'
 import type { FactionId, NewGameOptions, RuleResult, SeatFacts } from '@arcs/engine'
 
 import type { Chat } from './deepseek.js'
@@ -38,18 +38,20 @@ export interface CatchupPush {
   readonly catchup: { readonly length: number; readonly story: string }
 }
 
-const MAX_WORDS = 150 // the prompt asks for 120; a little slack before it counts as a failure
+const MAX_WORDS = 120 // the prompt asks for 80; slack before a long draft counts as a failure
 
 const STORY_SYSTEM = `You narrate a game of Arcs for one player, who is the hero of the story. Root for them.
-Write at most 120 words of plain markdown: one or two sentences on what happened since their
-last turn, then the heads-ups given (reworded warmly, same facts), then one line cheering them on.
+Write at most 80 words of plain text: two or three sentences on what happened since their last
+turn, then one line of your own rooting for them — a statement about them, never a command. The
+heads-ups are shown to the player as bullets right above your text: do not repeat them, though the
+story may lead up to them.
 Use only the facts provided. Never invent moves, cards or numbers. Never tell the player what to
 do, suggest a move, or say "you should"/"consider". Do not guess what any rival holds in hand.
 Arcs basics: taxing a city gains its planet's resource; Relics score Keeper, Material and Fuel
 score Tycoon, Psionics score Empath; a secured Guild card counts as one of its resource; Weapons
 score no ambition.`
 
-const CHECK_SYSTEM = `You check a short game recap against the facts it was written from. Reply PASS if every claim in it is supported by the facts and no sentence tells the player what to do. Otherwise reply FAIL: followed by the first unsupported or advising sentence.`
+const CHECK_SYSTEM = `You check a short game recap against the facts it was written from. Reply PASS if every factual claim in it is supported by the facts and no sentence advises a game action (a move, a card to play, a plan to follow). A closing line that roots for the player without stating a game fact is fine: it is neither a claim nor advice. Otherwise reply FAIL: followed by the first unsupported or advising sentence.`
 
 /** The facts as the writer sees them: names in place of faction ids, the hand marked private. */
 function factSheet(facts: SeatFacts, name: (f: FactionId) => string): string {
@@ -149,25 +151,33 @@ export class CatchupWriter {
     const names = new Map(this.store.seats(gameId).map((s) => [s.faction, s.name ?? s.faction]))
     const name = (f: FactionId): string => names.get(f) ?? f
 
-    const ask = (model: string, p: { system: string; user: string }): Promise<string> => {
+    const ask = (model: string, p: { system: string; user: string }, reason = false): Promise<string> => {
       const signal = AbortSignal.timeout(this.timeoutMs)
       // Raced as well as passed: a call that ignores its signal still cannot hold the chain.
       const timedOut = new Promise<never>((_, reject) =>
         signal.addEventListener('abort', () => reject(new Error('deepseek timeout')), { once: true }),
       )
-      return Promise.race([chat(model, p.system, p.user, signal), timedOut])
+      return Promise.race([chat(model, p.system, p.user, signal, { reason }), timedOut])
     }
 
     let story: string | undefined
+    const refusals: string[] = []
     for (let attempt = 0; attempt < 2 && story === undefined; attempt++) {
-      const draft = await ask(this.opts.writerModel, storyPrompt(facts, name))
-      const verdict = await ask(this.opts.checkerModel, checkPrompt(facts, name, draft))
-      const short = draft.split(/\s+/).length <= MAX_WORDS
-      if (short && /^\W*PASS\b/i.test(verdict)) story = draft
+      const draft = await ask(this.opts.writerModel, storyPrompt(facts, name), true)
+      const verdict = await ask(this.opts.checkerModel, checkPrompt(facts, name, draft), true)
+      const words = draft.split(/\s+/).length
+      if (words > MAX_WORDS) refusals.push(`${words} words`)
+      else if (/^\W*PASS\b/i.test(verdict)) story = draft
+      else refusals.push(verdict.slice(0, 160).replace(/\s+/g, ' '))
     }
-    if (story === undefined) return
-    // A move or a take-back while writing: this story describes a turn that is no longer current.
-    if (this.opts.current(gameId)?.state.journal.length !== journal.length) return
+    if (story === undefined) {
+      console.log(`[catchup] bullets only for ${gameId} ${faction}: ${refusals.join(' | ')}`)
+      return
+    }
+    // The seat may have started its turn meanwhile; anything else (its turn over, a take-back
+    // below the hand-off) means this story describes a turn that is no longer current.
+    const live = this.opts.current(gameId)?.state.journal
+    if (live === undefined || turnStart(live, faction) !== journal.length) return
     this.store.putCatchup(gameId, faction, journal.length, story, this.now())
     const push: CatchupPush = { catchup: { length: journal.length, story } }
     this.presence.send(gameId, seatToken, push)

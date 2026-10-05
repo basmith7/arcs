@@ -1,4 +1,4 @@
-import { isWaiting } from '@arcs/engine'
+import { isWaiting, turnStart } from '@arcs/engine'
 import { useEffect, useRef, useState } from 'react'
 
 import { AskModal } from './components/AskModal.js'
@@ -24,6 +24,8 @@ import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
 import { NamePrompt } from './components/NamePrompt.js'
 import { SeatBadge } from './components/SeatBadge.js'
+import { catchupDismissed, reopenCatchup, shouldShowCatchup } from './catchup.js'
+import { CatchUpSlot } from './components/CatchUp.js'
 import { RulesModal } from './components/RulesModal.js'
 import { ScoreboardModal, ScoreboardPanel } from './components/Scoreboard.js'
 import { SettingsModal } from './components/SettingsModal.js'
@@ -77,6 +79,8 @@ export function App(): JSX.Element {
    */
   const [rulesOpen, setRulesOpen] = useState(false)
   const [scoreOpen, setScoreOpen] = useState(false)
+  // Bumped on a catch-up dismiss/reopen: the dismissal itself lives in localStorage (catchup.ts).
+  const [, setCatchupTick] = useState(0)
   /*
    * The music. Mounted here rather than in `main.tsx` so it lives exactly as long as the app
    * does, and started before the early return: the title screen is where most first clicks
@@ -200,6 +204,16 @@ export function App(): JSX.Element {
    * `cont`: it is not a decision surface and `handOwner` already decides whose cards it fans.
    */
   const boardCont = watched === null ? cont : hushed(cont)
+  /*
+   * The turn catch-up: a seated player, on their own turn. Dismissed per turn (its start in the
+   * journal), so a reload keeps it closed and the next turn brings it back by itself.
+   */
+  const gameId = store.sessionLink()?.gameId
+  const catchupFaction =
+    gameId !== undefined && seatView.kind === 'seat' && shouldShowCatchup(seatView, engineCont) ? seatView.faction : null
+  const catchupClosed =
+    catchupFaction !== null && catchupDismissed(gameId!, turnStart(state.journal, catchupFaction))
+
   // A new decision, for the phone map to frame its targets by (MapZoom).
   const mapFocus =
     cont.kind === 'ask' ? `${cont.faction}:${cont.actions.map((x) => x.type).join()}` : cont.kind
@@ -266,6 +280,18 @@ export function App(): JSX.Element {
             Undo
           </button>
           {store.undoNote === null ? null : <span className="undo-note">{store.undoNote}</span>}
+          {catchupFaction !== null && catchupClosed ? (
+            <button
+              className="ghost"
+              style={{ whiteSpace: 'nowrap' }}
+              onClick={() => {
+                reopenCatchup(gameId!)
+                setCatchupTick((n) => n + 1)
+              }}
+            >
+              Catch-up
+            </button>
+          ) : null}
           <button className="ghost" onClick={saveGame}>
             Save
           </button>
@@ -317,6 +343,16 @@ export function App(): JSX.Element {
               </Watching>
             )}
             {phone ? <PhonePlays state={state} onOpen={() => setSheet('court')} /> : null}
+            {/* Over the map's foot, never the dock: the decision below does not move. */}
+            {catchupFaction !== null && !catchupClosed ? (
+              <CatchUpSlot
+                faction={catchupFaction}
+                gameId={gameId!}
+                journal={state.journal}
+                phone={phone}
+                onDismiss={() => setCatchupTick((n) => n + 1)}
+              />
+            ) : null}
             {/* Over the map only, never the dock: the decision being made stays in reach. */}
             {phone && sheet !== null ? (
               <div className={`phone-sheet ${sheet}`} role="dialog" aria-label={sheet}>
