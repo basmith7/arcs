@@ -39,6 +39,22 @@ describe('Auth', () => {
     }
   })
 
+  it('a session in use slides: /me at day 89 re-issues the cookie and the session outlives day 90', async () => {
+    const DAY = 24 * 3600 * 1000
+    let t = Date.UTC(2026, 0, 1)
+    const auth = new Auth(new SqliteStore(':memory:'), {
+      clientId: 'id', clientSecret: 's', publicOrigin: ORIGIN, fetch: discordFake().f, now: () => t,
+    })
+    const session = cookieOf((await signIn(auth))!, 'arcs_session')!
+    const cookie = { cookie: `arcs_session=${session}` }
+    t += 89 * DAY
+    const me = (await auth.route(new Request(`${ORIGIN}/me`, { headers: cookie })))!
+    expect(cookieOf(me, 'arcs_session')).toBe(session)
+    expect(me.headers.getSetCookie().join('\n')).toMatch(/Max-Age=7776000/)
+    t += 10 * DAY
+    expect(auth.accountOf(new Request(`${ORIGIN}/me`, { headers: cookie }))?.displayName).toBe('Brian')
+  })
+
   it('logout deletes the session', async () => {
     const auth = new Auth(new SqliteStore(':memory:'), { clientId: 'id', clientSecret: 's', publicOrigin: ORIGIN, fetch: discordFake().f })
     const session = cookieOf((await signIn(auth))!, 'arcs_session')!

@@ -182,10 +182,9 @@ export class SqliteStore implements GameStore {
     if (!have.has('pings')) this.db.exec('ALTER TABLE seat ADD COLUMN pings INTEGER NOT NULL DEFAULT 1')
     if (!have.has('account_id')) this.db.exec('ALTER TABLE seat ADD COLUMN account_id TEXT')
     const gameCols = new Set((this.db.prepare('PRAGMA table_info(game)').all() as { name: string }[]).map((c) => c.name))
-    if (!gameCols.has('updated_at')) {
-      this.db.exec('ALTER TABLE game ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0')
-      this.db.exec('UPDATE game SET updated_at = created_at')
-    }
+    if (!gameCols.has('updated_at')) this.db.exec('ALTER TABLE game ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0')
+    // Every open, not just the one that added the column, so a crash between the two finishes here.
+    this.db.exec('UPDATE game SET updated_at = created_at WHERE updated_at = 0')
   }
 
   close(): void {

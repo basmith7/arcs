@@ -199,14 +199,23 @@ export class Auth {
     return new Response(null, { status: 204, headers })
   }
 
+  /**
+   * Every boot asks `/me`, so this is where the cookie slides: a live session gets its cookie
+   * re-issued for the full 90 days, keeping the browser's copy in step with `accountOf`'s extension.
+   */
   private me(request: Request): Response {
     const account = this.accountOf(request)
+    const headers = new Headers({ 'content-type': 'application/json', 'cache-control': 'no-store' })
+    if (account !== undefined) {
+      const token = parseCookies(request.headers.get('cookie')).arcs_session!
+      headers.append('set-cookie', setCookie(SESSION_COOKIE, token, SESSION_MAX_AGE_MS / 1000, this.secure))
+    }
     return new Response(
       JSON.stringify({
         account: account === undefined ? null : { displayName: account.displayName, discordName: account.discordName },
         enabled: true,
       }),
-      { status: 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } },
+      { status: 200, headers },
     )
   }
 }

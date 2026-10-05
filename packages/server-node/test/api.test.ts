@@ -302,6 +302,17 @@ describe('seat locks', () => {
     expect(res!.status).toBe(200)
   })
 
+  it('Who are you? refuses a locked seat to anyone but its owner', async () => {
+    const { a, gameId, red, me, eve } = await setup()
+    await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: me }), a)
+    const pick = (cookie: Record<string, string>) => route(post(`/games/${gameId}/claim`, { faction: 'red' }, cookie), a)
+    const refused = (await pick({ cookie: eve }))!
+    expect(refused.status).toBe(403)
+    expect(await refused.json()).toEqual({ error: 'seat-locked', owner: 'Brian' })
+    expect((await pick({}))!.status).toBe(403)
+    expect(await (await pick({ cookie: me }))!.json()).toEqual({ seatToken: red })
+  })
+
   it('a bot seat cannot be claimed', async () => {
     const { a, me } = await setup()
     const created = (await (await route(post('/games', { options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }, nextIp()), a))!.json()) as Created

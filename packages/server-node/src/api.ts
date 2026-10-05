@@ -164,7 +164,14 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     const rows = store
       .accountSeats(account.id)
       .map((row) => {
-        const result = gate.resultOf(row.gameId)
+        // A game that will not replay (prod still holds malformed probes) drops out of the list
+        // rather than failing the whole page.
+        let result: ReturnType<typeof gate.resultOf>
+        try {
+          result = gate.resultOf(row.gameId)
+        } catch {
+          return undefined
+        }
         if (result === undefined) return undefined
         return {
           ...row,
@@ -336,6 +343,10 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     const picked = store.seats(gameId).find((s) => s.faction === b.faction)
     if (picked === undefined) return bad(404, 'no such seat')
     if (picked.isBot) return bad(403, 'that seat is a bot')
+    // A seat locked to an account goes only to that account: handing its token to anyone else
+    // would only strand them on the locked banner, with `recall` bringing them back to it.
+    const locked = lockedFor(gameId, picked.seatToken)
+    if (locked) return locked
     return json({ seatToken: picked.seatToken })
   }
 

@@ -255,5 +255,11 @@ describe('accounts', () => {
     const a = s.upsertAccount({ discordId: '111111111111111111', discordName: 'bri', displayName: 'Brian' })
     s.claim('g', 't', a.id, 'Brian')
     expect(s.accountSeats(a.id)).toEqual([{ gameId: 'g', seatToken: 't', faction: 'red', createdAt: 42, updatedAt: 42 }])
+    // A crash between adding updated_at and backfilling it: the next open finishes the job.
+    s.close()
+    const half = new DatabaseSync(path)
+    half.exec('UPDATE game SET updated_at = 0')
+    half.close()
+    expect(new SqliteStore(path).accountSeats(a.id)[0]!.updatedAt).toBe(42)
   })
 })
