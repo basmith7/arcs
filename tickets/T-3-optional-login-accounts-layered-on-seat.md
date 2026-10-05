@@ -1,11 +1,11 @@
 ---
 id: T-3
 title: Optional login (accounts layered on seat links)
-status: doing
+status: done
 labels: []
 depends: []
 created: 2026-10-05T01:47:30Z
-updated: 2026-10-05T19:37:30Z
+updated: 2026-10-05T19:47:23Z
 kind: build
 risk: high
 riskReason: "diff: touches packages/server-node/src/auth.ts (auth); touches packages/server-node/test/auth.test.ts (auth); creates a table; alters a table; 2960 changed lines"
@@ -15,6 +15,8 @@ plan: docs/superpowers/plans/2026-10-04-optional-login.md
 build:
   at: 2026-10-05T07:11:43Z
   agent: arcs-t-3-1
+merged: 93bb777333f9976d941333b63875633c9eb12e70
+mergedAt: 2026-10-05T19:47:23Z
 ---
 Add a real login while keeping today's zero-friction seat links working: Discord OAuth sign-in, layered on top of the links.
 
