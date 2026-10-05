@@ -137,6 +137,14 @@ SELECT s.faction, s.token, s.name, s.is_bot, s.pings, s.account_id,
 FROM seat s LEFT JOIN account a ON a.id = s.account_id
 `
 
+// With login off, a seat claimed earlier reads as the plain link seat it was before: its own Discord
+// columns, no account, no owner — so Unlink, the pasted-id form and pings all act on the seat.
+const SEAT_SELECT_NO_ACCOUNTS = `
+SELECT s.faction, s.token, s.name, s.is_bot, s.pings, NULL AS account_id,
+  s.discord_id, s.discord_name, NULL AS owner_name
+FROM seat s
+`
+
 // Vite 5 (which vitest runs on) does not know `node:sqlite` as a builtin and would try to resolve a
 // bare `sqlite` package, so the module is reached through `createRequire` — the same trick as
 // packages/server/test/cloudflare.test.ts. Types still come from @types/node. Works unchanged
@@ -148,7 +156,11 @@ export class SqliteStore implements GameStore {
   private readonly db: Db
   private readonly watchers = new Map<GameId, Set<OnAppend>>()
 
-  constructor(path: string) {
+  private readonly seatSelect: string
+
+  /** `accounts` is whether Discord login is on; off, seat reads ignore claims (SEAT_SELECT_NO_ACCOUNTS). */
+  constructor(path: string, { accounts = true }: { accounts?: boolean } = {}) {
+    this.seatSelect = accounts ? SEAT_SELECT : SEAT_SELECT_NO_ACCOUNTS
     this.db = new DatabaseSync(path)
     if (path !== ':memory:') this.db.exec('PRAGMA journal_mode = WAL')
     this.db.exec('PRAGMA foreign_keys = ON')
@@ -306,7 +318,7 @@ export class SqliteStore implements GameStore {
 
   seats(gameId: GameId): SeatRow[] {
     return this.db
-      .prepare(`${SEAT_SELECT} WHERE s.game_id = ? ORDER BY s.ord`)
+      .prepare(`${this.seatSelect} WHERE s.game_id = ? ORDER BY s.ord`)
       .all(gameId)
       .map((r) => toSeat(r as unknown as SeatDb))
   }
@@ -391,7 +403,7 @@ export class SqliteStore implements GameStore {
 
   seatByToken(gameId: GameId, token: SeatToken): SeatRow | undefined {
     const row = this.db
-      .prepare(`${SEAT_SELECT} WHERE s.game_id = ? AND s.token = ?`)
+      .prepare(`${this.seatSelect} WHERE s.game_id = ? AND s.token = ?`)
       .get(gameId, token) as unknown as SeatDb | undefined
     return row === undefined ? undefined : toSeat(row)
   }

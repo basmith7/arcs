@@ -48,8 +48,9 @@ describe('account', () => {
     expect(getAccount()).toEqual({ loaded: true, enabled: false, account: null, signinFailed: false })
   })
 
-  it('builds the sign-in href with the return hash encoded', () => {
-    expect(signInHref('', '#/g/a/s/b')).toBe('/auth/discord?return=%23%2Fg%2Fa%2Fs%2Fb')
+  it('builds the sign-in href with the return hash encoded, never carrying the seat token', () => {
+    expect(signInHref('', '#/g/a/s/b')).toBe('/auth/discord?return=%23%2Fg%2Fa')
+    expect(signInHref('', '#/me')).toBe('/auth/discord?return=%23%2Fme')
   })
 
   it('still reloads the page when the logout request throws', async () => {

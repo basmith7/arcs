@@ -2,6 +2,7 @@ import { isWaiting } from '@arcs/engine'
 import { useEffect, useRef, useState } from 'react'
 
 import { useAccount } from './account.js'
+import { NAME_MAX } from './seat-form.js'
 import { LockedBanner, SignInButton, SigninNotice, SitHereBar } from './components/AccountBits.js'
 import { AskModal } from './components/AskModal.js'
 import { AskStrip } from './components/AskStrip.js'
@@ -225,7 +226,8 @@ export function App(): JSX.Element {
         account.account !== null ? (
           <NamePrompt
             faction={seatView.faction}
-            signedInAs={account.account.displayName}
+            // Discord names run to 32 characters; a seat name stops at NAME_MAX.
+            signedInAs={account.account.displayName.slice(0, NAME_MAX)}
             onSubmit={(name) => store.claimSeat(name)}
             onDismiss={() => setNameDismissed(true)}
           />

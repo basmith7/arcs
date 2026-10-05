@@ -161,7 +161,7 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   if (path === '/me/games' && request.method === 'GET') {
     if (api.auth === undefined) return bad(404, 'not found')
     if (account === undefined) return bad(401, 'signed out')
-    const games = store
+    const rows = store
       .accountSeats(account.id)
       .map((row) => {
         const result = gate.resultOf(row.gameId)
@@ -175,6 +175,14 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
         }
       })
       .filter((g): g is NonNullable<typeof g> => g !== undefined)
+    // One row per game: an account holding several seats in one (hotseat) gets the seat whose turn
+    // it is, else its first. A Map keeps first-insertion order, so the sort survives.
+    const byGame = new Map<string, (typeof rows)[number]>()
+    for (const g of rows) {
+      const held = byGame.get(g.gameId)
+      if (held === undefined || (!held.yourTurn && g.yourTurn)) byGame.set(g.gameId, g)
+    }
+    const games = [...byGame.values()]
     return new Response(JSON.stringify({ games }), {
       status: 200,
       headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...CORS },

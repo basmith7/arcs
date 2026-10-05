@@ -9,6 +9,8 @@
 
 import { useSyncExternalStore } from 'react'
 
+import { hashFor, parseLink } from './multiplayer/link.js'
+
 export interface AccountState {
   /** False until the first `loadAccount` call has settled, success or failure. */
   readonly loaded: boolean
@@ -75,9 +77,14 @@ export function setSigninFailed(v: boolean): void {
  * Where "sign in" navigates to. `hash` is where to land back on afterward — the game link, if
  * there was one — and it travels as a query parameter rather than the hash itself, since Discord's
  * redirect would otherwise swallow it.
+ *
+ * A game link goes back without its seat token: the token is the credential, and query strings end
+ * up in access logs. `recall` puts the seat back on return, since joining stashed it.
  */
 export function signInHref(baseUrl: string, hash: string): string {
-  return `${baseUrl}/auth/discord?return=${encodeURIComponent(hash)}`
+  const link = parseLink(hash)
+  const back = link === undefined ? hash : hashFor(link.gameId)
+  return `${baseUrl}/auth/discord?return=${encodeURIComponent(back)}`
 }
 
 /**

@@ -18,7 +18,7 @@ const post = (path: string, body: unknown, headers: Record<string, string> = {})
 const get = (path: string, headers: Record<string, string> = {}): Request => new Request(`${BASE}${path}`, { headers })
 
 function api(auth?: Auth): Api {
-  const store = new SqliteStore(':memory:')
+  const store = new SqliteStore(':memory:', { accounts: auth !== undefined })
   return { store, gate: new EngineGate(store, { pace: 0 }), ...(auth === undefined ? {} : { auth }) }
 }
 
@@ -300,6 +300,9 @@ describe('seat locks', () => {
   it('lists my games with whose turn and the result', async () => {
     const { a, gameId, red, me } = await setup() // reuse the seat-locks setup; red leads first
     await route(post(`/games/${gameId}/claim`, { seatToken: red }, { cookie: me }), a)
+    // A second seat in the same game (hotseat) still lists the game once, as the seat whose turn it is.
+    const blue = a.store.seats(gameId).find((s) => s.faction === 'blue')!.seatToken
+    await route(post(`/games/${gameId}/claim`, { seatToken: blue }, { cookie: me }), a)
     const res = (await route(get('/me/games', { cookie: me }), a))!
     const { games } = await res.json()
     expect(games).toHaveLength(1)
@@ -327,5 +330,9 @@ describe('seat locks', () => {
     const tail = await (await route(get(`/games/${created.gameId}`, { 'x-seat-token': red }), a))!.json()
     expect(tail.yourFaction).toBe('red')
     expect(tail.lockedSeat).toBeUndefined()
+    // No owner and no account-derived Discord link: the client sees the plain link seat it was.
+    const seat = tail.seats.find((s: { faction: string }) => s.faction === 'red')
+    expect(seat.owner).toBeUndefined()
+    expect(seat.discordLinked).toBeUndefined()
   })
 })
