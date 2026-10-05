@@ -1,17 +1,20 @@
 ---
 id: T-3
 title: Optional login (accounts layered on seat links)
-status: todo
+status: doing
 labels: []
 depends: []
 created: 2026-10-05T01:47:30Z
-updated: 2026-10-05T07:07:45Z
+updated: 2026-10-05T07:11:43Z
 kind: build
 risk: medium
 riskReason: New auth/session surface on a public site; seat locking can lock players out of live games if wrong.
 size: large
 spec: docs/superpowers/specs/2026-10-04-optional-login-design.md
 plan: docs/superpowers/plans/2026-10-04-optional-login.md
+build:
+  at: 2026-10-05T07:11:43Z
+  agent: arcs-t-3-1
 ---
 Add a real login while keeping today's zero-friction seat links working: Discord OAuth sign-in, layered on top of the links.
 
