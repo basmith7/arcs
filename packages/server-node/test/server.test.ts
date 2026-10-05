@@ -7,6 +7,7 @@ import type { AddressInfo } from 'node:net'
 import WebSocket from 'ws'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { Auth } from '../src/auth.js'
 import { EngineGate } from '../src/gate.js'
 import { Presence } from '../src/presence.js'
 import { createArcsServer } from '../src/server.js'
@@ -18,14 +19,14 @@ afterEach(() => {
   for (const c of closers.splice(0)) c()
 })
 
-async function listen(heartbeatMs?: number, presence?: Presence) {
+async function listen(heartbeatMs?: number, presence?: Presence, auth?: Auth) {
   const staticDir = mkdtempSync(join(tmpdir(), 'arcs-static-'))
   writeFileSync(join(staticDir, 'index.html'), '<html>arcs</html>')
   writeFileSync(join(staticDir, 'app.js'), 'console.log(1)')
   const store = new SqliteStore(':memory:')
   const gate = new EngineGate(store, { pace: 0 })
   const server = createArcsServer({
-    api: { store, gate },
+    api: { store, gate, ...(auth === undefined ? {} : { auth }) },
     staticDir,
     ...(heartbeatMs === undefined ? {} : { heartbeatMs }),
     ...(presence === undefined ? {} : { presence }),
@@ -45,6 +46,33 @@ describe('createArcsServer', () => {
     expect(await (await fetch(`${base}/anything/else`)).text()).toBe('<html>arcs</html>')
     expect((await fetch(`${base}/games/nope`)).status).toBe(404)
     expect((await fetch(`${base}/../etc/passwd`)).status).not.toBe(500)
+  })
+
+  it('carries both the session and the clearing oauth cookie on a Discord sign-in callback', async () => {
+    const fetchFake = (async (url: string | URL | Request) => {
+      const u = String(url)
+      if (u.endsWith('/oauth2/token')) return Response.json({ access_token: 'at', token_type: 'Bearer' })
+      if (u.endsWith('/users/@me')) return Response.json({ id: '111111111111111111', username: 'bri', global_name: 'Brian' })
+      return new Response('no', { status: 404 })
+    }) as typeof fetch
+    const auth = new Auth(new SqliteStore(':memory:'), {
+      clientId: 'id',
+      clientSecret: 's',
+      publicOrigin: 'http://127.0.0.1',
+      fetch: fetchFake,
+    })
+    const { base } = await listen(undefined, undefined, auth)
+    const start = await fetch(`${base}/auth/discord`, { redirect: 'manual' })
+    const oauth = start.headers.getSetCookie().find((c) => c.startsWith('arcs_oauth='))!.split(';')[0]!
+    const state = new URL(start.headers.get('location')!).searchParams.get('state')!
+    const callback = await fetch(`${base}/auth/discord/callback?code=c&state=${state}`, {
+      redirect: 'manual',
+      headers: { cookie: oauth },
+    })
+    const cookies = callback.headers.getSetCookie()
+    expect(cookies.length).toBe(2)
+    expect(cookies.some((c) => c.startsWith('arcs_session='))).toBe(true)
+    expect(cookies.some((c) => c.startsWith('arcs_oauth=') && c.includes('Max-Age=0'))).toBe(true)
   })
 
   it('pushes every append, including bot moves, over the live socket', async () => {

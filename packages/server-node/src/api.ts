@@ -7,6 +7,7 @@
 import { startGame } from '@arcs/engine'
 import type { FactionId, NewGameOptions } from '@arcs/engine'
 
+import type { Auth } from './auth.js'
 import type { DiscordBot } from './discord.js'
 import type { EngineGate } from './gate.js'
 import type { SqliteStore } from './sqlite-store.js'
@@ -17,6 +18,8 @@ export interface Api {
   readonly onSeatsChanged?: (gameId: string) => void
   /** When set, the server resolves claimed names to guild members instead of requiring a pasted id. */
   readonly bot?: DiscordBot
+  /** When unset, Discord login is disabled: `/me` reports it and `/auth/*` 404s. */
+  readonly auth?: Auth
 }
 
 export interface PublicSeat {
@@ -130,6 +133,8 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const { store, gate, bot } = api
 
   if (path === '/healthz') return new Response('ok', { status: 200, headers: CORS })
+  if (path === '/me' && request.method === 'GET' && api.auth === undefined) return json({ account: null, enabled: false })
+  if (path === '/me' || path.startsWith('/auth/')) return api.auth === undefined ? bad(404, 'not found') : api.auth.route(request)
   if (path !== '/games' && !path.startsWith('/games/')) return undefined
 
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
