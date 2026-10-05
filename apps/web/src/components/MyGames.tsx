@@ -197,7 +197,7 @@ function AddFromBrowser({
     for (const c of candidates ?? []) {
       if (!ticked.has(c.gameId)) continue
       try {
-        await client.claim(c.gameId, c.seatToken)
+        await client.sit(c.gameId, c.seatToken)
       } catch (e) {
         if (e instanceof ApiError && e.status === 403) refused.push(c.label)
       }

@@ -109,7 +109,7 @@ export class Session {
   private sending: Promise<unknown> = Promise.resolve()
 
   constructor(
-    baseUrl: string,
+    readonly baseUrl: string,
     readonly link: GameLink,
     private readonly host: SessionHost,
   ) {
@@ -439,6 +439,11 @@ export class Session {
     this.host.seats(await this.client.claimName(this.link.gameId, this.link.seatToken, name, discordId))
   }
 
+  /** A spectator's "Who are you?" pick: the token for that human seat (`POST /games/:id/claim`). */
+  async claimSeat(faction: string): Promise<string> {
+    return this.client.claimSeat(this.link.gameId, faction)
+  }
+
   /** Toggle this client's own seat's Discord turn-ping preference. A spectator does nothing. */
   async setPings(pings: boolean): Promise<void> {
     if (this.link.seatToken === undefined) return
@@ -453,10 +458,10 @@ export class Session {
    * `resync` after the seats update because `yourFaction` doesn't change here, but `lockedSeat`
    * might: a successful claim is what clears it.
    */
-  async claim(name?: string): Promise<void> {
+  async sit(name?: string): Promise<void> {
     if (this.link.seatToken === undefined) return
     if (this.inflight !== null) await this.inflight.catch(() => {})
-    this.host.seats(await this.client.claim(this.link.gameId, this.link.seatToken, name))
+    this.host.seats(await this.client.sit(this.link.gameId, this.link.seatToken, name))
     await this.resync()
   }
 

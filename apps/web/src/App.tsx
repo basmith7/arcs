@@ -30,6 +30,7 @@ import { SeatBadge } from './components/SeatBadge.js'
 import { RulesModal } from './components/RulesModal.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
+import { WhoAreYou } from './components/WhoAreYou.js'
 import { initAudio } from './audio.js'
 import { enterPhoneCanvas } from './phone-canvas.js'
 import { useNarrow, type Sheet } from './phone.js'
@@ -56,6 +57,8 @@ export function App(): JSX.Element {
   const [logOpen, setLogOpen] = useState(false)
   /** Escape/cancel dismisses the name prompt for the rest of this session; it does not reappear. */
   const [nameDismissed, setNameDismissed] = useState(false)
+  /** "Just watching" in Who-are-you: stay a spectator for this session. */
+  const [watchChosen, setWatchChosen] = useState(false)
   /*
    * The settings dialog. Local state like the log drawer, and mounted on both screens below —
    * the music starts on the title screen, so the volume control has to be reachable there too.
@@ -191,6 +194,13 @@ export function App(): JSX.Element {
   const signedIn = account.account !== null
   const locked = store.lockedSeat()
   const owner = store.mySeatOwner()
+  // Seats come with the join read, so an empty list is "not loaded yet" (or upstream's Worker,
+  // which has no claim endpoint) — ask nothing until there is someone to be. Read off the
+  // server's answer (`seatView`), not the URL, so a stale token that seats nobody asks too.
+  const humanSeats = store.seats.filter((s) => !s.isBot)
+  // A locked seat's link also reads as a spectator; it gets the locked banner, not this prompt.
+  const needsSeat =
+    seatView.kind === 'spectator' && locked === null && !watchChosen && !state.isOver && humanSeats.length > 0
   const cont = viewFor(engineCont, seatView)
   /*
    * Whether the controls work. Separate from what is *drawn* — a watcher sees the dice and the
@@ -222,13 +232,20 @@ export function App(): JSX.Element {
       className={phone ? 'app phone' : 'app'}
       {...(phone && sheet !== null ? { 'data-sheet': sheet } : {})}
     >
+      {needsSeat ? (
+        <WhoAreYou
+          seats={humanSeats}
+          onPick={(faction) => store.claimSeat(faction)}
+          onWatch={() => setWatchChosen(true)}
+        />
+      ) : null}
       {needsName && seatView.kind === 'seat' ? (
         account.account !== null ? (
           <NamePrompt
             faction={seatView.faction}
             // Discord names run to 32 characters; a seat name stops at NAME_MAX.
             signedInAs={account.account.displayName.slice(0, NAME_MAX)}
-            onSubmit={(name) => store.claimSeat(name)}
+            onSubmit={(name) => store.sitHere(name)}
             onDismiss={() => setNameDismissed(true)}
           />
         ) : (
@@ -310,7 +327,7 @@ export function App(): JSX.Element {
         </div>
       </header>
       {seatView.kind === 'seat' && !needsName && signedIn && owner === undefined && !sitDismissed ? (
-        <SitHereBar onSit={() => void store.claimSeat()} onDismiss={() => setSitDismissed(true)} />
+        <SitHereBar onSit={() => void store.sitHere()} onDismiss={() => setSitDismissed(true)} />
       ) : null}
       {locked !== null ? <LockedBanner owner={locked.owner} /> : null}
       <SigninNotice />
@@ -385,26 +402,33 @@ export function App(): JSX.Element {
           {cont.kind === 'gameOver' ? (
             <AskStrip cont={cont} onNewGame={() => store.reset()} />
           ) : (
-            <Watching canAct={acting}>
+            <>
+              {/*
+                * The hand stays outside `Watching`: an inert subtree never gets `:hover` or taps, so
+                * inside it the fan could not be raised to read while someone else played. It needs
+                * no guard — off your turn `Hand` draws no plays, and `store.mayAct` refuses anyway.
+                */}
               <div className="hand-row">
                 <Hand state={state} cont={cont} tapToSelect={phone} />
               </div>
-              {/*
-                * The three that share the hand's grid area, and none of them mount in watch mode:
-                * the Prelude, the tray and the strip are all menus addressed to somebody else, and
-                * the fan they would cover is the one thing in this band that is still yours.
-                */}
-              {watched !== null ? null : (
-                <>
-                  {/* Shares the hand's grid area, as a sibling: `.hand-row` clips its own children. */}
-                  <PreludeScreen state={state} cont={cont} />
-                  {/* The action phase, on the same terms as the Prelude: over the hand, map still visible. */}
-                  <ActionTray state={state} cont={cont} />
-                  {/* Every decision without a bespoke surface, in the same band — see AskStrip. */}
-                  <AskStrip cont={cont} onNewGame={() => store.reset()} />
-                </>
-              )}
-            </Watching>
+              <Watching canAct={acting}>
+                {/*
+                  * The three that share the hand's grid area, and none of them mount in watch mode:
+                  * the Prelude, the tray and the strip are all menus addressed to somebody else, and
+                  * the fan they would cover is the one thing in this band that is still yours.
+                  */}
+                {watched !== null ? null : (
+                  <>
+                    {/* Shares the hand's grid area, as a sibling: `.hand-row` clips its own children. */}
+                    <PreludeScreen state={state} cont={cont} />
+                    {/* The action phase, on the same terms as the Prelude: over the hand, map still visible. */}
+                    <ActionTray state={state} cont={cont} />
+                    {/* Every decision without a bespoke surface, in the same band — see AskStrip. */}
+                    <AskStrip cont={cont} onNewGame={() => store.reset()} />
+                  </>
+                )}
+              </Watching>
+            </>
           )}
           {phone ? null : <PlayerBoards state={state} current={current} />}
         </section>

@@ -171,6 +171,16 @@ export class MultiplayerClient {
     return body.seats
   }
 
+  /** "Who are you?": the token for a human seat picked by a visitor who arrived without one. */
+  async claimSeat(gameId: string, faction: string): Promise<string> {
+    const body = await this.json<{ seatToken: string }>(`/games/${encodeURIComponent(gameId)}/claim`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ faction }),
+    })
+    return body.seatToken
+  }
+
   /** Toggle the per-seat Discord turn-ping preference. */
   async setPings(gameId: string, seatToken: string, pings: boolean): Promise<readonly PublicSeat[]> {
     const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/seat`, {
@@ -223,8 +233,8 @@ export class MultiplayerClient {
    * Claim a seat for the signed-in account, so it shows as locked to anyone else and lists under
    * "My games". `name` only matters the first time — the server keeps the name a seat already has.
    */
-  async claim(gameId: string, seatToken: string, name?: string): Promise<readonly PublicSeat[]> {
-    const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/claim`, {
+  async sit(gameId: string, seatToken: string, name?: string): Promise<readonly PublicSeat[]> {
+    const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/sit`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ seatToken, ...(name === undefined ? {} : { name }) }),

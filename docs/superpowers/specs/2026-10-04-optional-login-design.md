@@ -93,7 +93,7 @@ function seatAccess(seat: StoredSeat, account: Account | undefined): Access
 **Claiming is always an explicit tap, never a side effect of opening a link**, so a signed-in player
 opening a friend's forwarded link can't lock the friend out. A signed-in player on an unclaimed seat
 sees, in place of the NamePrompt, one button: **Sit here as @name** (and a "use another name" link that
-opens the normal NamePrompt). Tapping either calls `POST /games/:id/claim {seatToken, name?}`, which sets
+opens the normal NamePrompt). Tapping either calls `POST /games/:id/sit {seatToken, name?}` (renamed from `/claim`, which v0.12.0's "Who are you?" took), which sets
 `account_id` and the name (default: display name). Signed out, the NamePrompt is unchanged. A signed-in
 player already playing an unclaimed seat (named before signing in) gets the same **Sit here as @name**
 as a one-line bar above the board until they tap it or dismiss it.
@@ -123,7 +123,7 @@ spec does not add an admin page.
   join path handles everything else.
 - **Add games from this browser**: when the browser holds `arcs:seat:*` entries not on the list, a
   button opens a checklist of those games (game id, faction, names at the table) and claims the ticked
-  ones via `/claim`. Ticking, not a silent sweep, because a borrowed browser holds someone else's seats.
+  ones via `/sit`. Ticking, not a silent sweep, because a borrowed browser holds someone else's seats.
 
 ## Navigation
 

@@ -13,6 +13,9 @@ wide so tokens never overlap, and each point is checked to sit clear inside the 
 token cannot spill outside it.
 
     python3 scripts/compute_placements.py <regions.ppm> <board-topology.json>
+
+Planet systems' points are then rewritten by `place_fleets.py`, which lays fleets out from the gate
+ring outward — run it after this.
 """
 import json
 import math

@@ -234,8 +234,9 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const actions = /^\/games\/([^/]+)\/actions$/.exec(path)
   const seat = /^\/games\/([^/]+)\/seat$/.exec(path)
   const undo = /^\/games\/([^/]+)\/undo$/.exec(path)
-  const live = /^\/games\/([^/]+)\/live$/.exec(path)
   const claim = /^\/games\/([^/]+)\/claim$/.exec(path)
+  const live = /^\/games\/([^/]+)\/live$/.exec(path)
+  const sit = /^\/games\/([^/]+)\/sit$/.exec(path)
   const release = /^\/games\/([^/]+)\/release$/.exec(path)
 
   if (live !== null) return bad(426, 'expected a websocket upgrade')
@@ -321,6 +322,23 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     }
   }
 
+  // --- POST /games/:id/claim ----------------------------------------------
+  // "Who are you?" for a visitor holding the bare game link: answer with the picked human seat's
+  // token. This deliberately trusts the pick — anyone with the game link may take any human seat —
+  // because the bare link is what the Discord pings post, and a friend on a new device landing as
+  // a spectator was the failure that cost more than the trust does. Bot seats are never handed out.
+  if (claim !== null && request.method === 'POST') {
+    const gameId = decodeURIComponent(claim[1]!)
+    const b = await body<{ faction?: unknown }>(request)
+    if (b === undefined) return bad(400, 'body must be JSON')
+    if (typeof b.faction !== 'string') return bad(400, 'faction is required')
+    if (store.options(gameId) === undefined) return bad(404, 'no such game')
+    const picked = store.seats(gameId).find((s) => s.faction === b.faction)
+    if (picked === undefined) return bad(404, 'no such seat')
+    if (picked.isBot) return bad(403, 'that seat is a bot')
+    return json({ seatToken: picked.seatToken })
+  }
+
   // --- POST /games/:id/seat -----------------------------------------------
   if (seat !== null && request.method === 'POST') {
     const gameId = decodeURIComponent(seat[1]!)
@@ -379,9 +397,11 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     return json({ seats: publicSeats(store, gameId) })
   }
 
-  // --- POST /games/:id/claim -----------------------------------------------
-  if (claim !== null && request.method === 'POST') {
-    const gameId = decodeURIComponent(claim[1]!)
+  // --- POST /games/:id/sit -------------------------------------------------
+  // "Sit here": lock the seat a token names to the signed-in account. Not `/claim`, which is
+  // "Who are you?" handing a tokenless visitor a seat's token.
+  if (sit !== null && request.method === 'POST') {
+    const gameId = decodeURIComponent(sit[1]!)
     const b = await body<{ seatToken?: unknown; name?: unknown }>(request)
     if (b === undefined) return bad(400, 'body must be JSON')
     if (typeof b.seatToken !== 'string') return bad(400, 'seatToken is required')

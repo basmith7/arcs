@@ -353,7 +353,7 @@ describe('createArcsServer', () => {
       })
     ).json()) as { gameId: string; seats: { seatToken: string }[] }
     const seatToken = created.seats[0]!.seatToken
-    await fetch(`${base}/games/${created.gameId}/claim`, {
+    await fetch(`${base}/games/${created.gameId}/sit`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: `arcs_session=${cookie}` },
       body: JSON.stringify({ seatToken }),
@@ -381,7 +381,7 @@ describe('createArcsServer', () => {
       })
     ).json()) as { gameId: string; seats: { seatToken: string }[] }
     const seatToken = created.seats[0]!.seatToken
-    // Claim the seat directly against the store (bypassing the HTTP /claim route, which needs
+    // Claim the seat directly against the store (bypassing the HTTP /sit route, which needs
     // `auth`) so the row has an `account_id` even though this server has login off.
     const account = store.upsertAccount({ discordId: 'd1', discordName: 'bri', displayName: 'Brian' })
     store.claim(created.gameId, seatToken, account.id, 'Brian')
