@@ -236,9 +236,41 @@ describe('POST /games/:id/undo', () => {
     const stale = await route(post(`/games/${id}/undo`, { seatToken: token('red'), expectedLength: 5 }), a)
     expect(stale?.status).toBe(409)
 
+    a.store.putCatchup(id, 'yellow', 1, 'about the move being taken back', 1)
+    a.store.putCatchup(id, 'red', 0, "red's own turn, still current", 1)
     const ok = await route(post(`/games/${id}/undo`, { seatToken: token('red'), expectedLength: 1 }), a)
     expect(ok?.status).toBe(200)
     expect(await ok!.json()).toEqual({ ok: true, length: 0 })
     expect(a.store.journal(id)).toEqual([])
+    // A story written about the taken-back move must not survive to be served after a redo.
+    expect(a.store.getCatchup(id, 'yellow', 1)).toBeUndefined()
+    // …while a story for a turn that began at or before the cut is still good.
+    expect(a.store.getCatchup(id, 'red', 0)).toBe("red's own turn, still current")
+  })
+})
+
+describe('GET /games/:id/catchup', () => {
+  it("serves a seat its own story for the current turn, and nobody else's", async () => {
+    const a = api()
+    // Straight into the store: the create route is rate limited per address across this file.
+    const created = await a.store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const other = await a.store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const id = created.gameId
+    const red = created.seats.find((s) => s.faction === 'red')!.seatToken
+    const at = (h: Record<string, string>) => route(get(`/games/${id}/catchup`, h), a)
+
+    expect((await at({}))?.status).toBe(403)
+    expect((await at({ 'x-seat-token': other.seats[0]!.seatToken }))?.status).toBe(403)
+
+    a.store.putCatchup(id, 'red', 0, 'your story', 1)
+    a.store.putCatchup(id, 'yellow', 0, 'stale', 1)
+    expect(await (await at({ 'x-seat-token': red }))!.json()).toEqual({ length: 0, story: 'your story', enabled: false })
+
+    // Red's first move: still red's turn, which began at 0, so the story holds for the whole turn.
+    await route(post(`/games/${id}/actions`, { seatToken: red, expectedLength: 0, action: RED_FIRST_LEAD }), a)
+    expect(await (await at({ 'x-seat-token': red }))!.json()).toEqual({ length: 0, story: 'your story', enabled: false })
+    // A story keyed to a turn that is not the seat's current one is never served.
+    const yellow = created.seats.find((s) => s.faction === 'yellow')!.seatToken
+    expect(await (await at({ 'x-seat-token': yellow }))!.json()).toEqual({ length: 1, story: null, enabled: false })
   })
 })

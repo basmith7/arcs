@@ -24,7 +24,10 @@ import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
 import { NamePrompt } from './components/NamePrompt.js'
 import { SeatBadge } from './components/SeatBadge.js'
+import { catchupDismissed, reopenCatchup, shouldShowCatchup } from './catchup.js'
+import { CatchUpSlot } from './components/CatchUp.js'
 import { RulesModal } from './components/RulesModal.js'
+import { ScoreboardModal, ScoreboardPanel } from './components/Scoreboard.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
 import { WhoAreYou } from './components/WhoAreYou.js'
@@ -78,6 +81,9 @@ export function App(): JSX.Element {
    * to start a game is exactly the person who wants to read the rulebook first.
    */
   const [rulesOpen, setRulesOpen] = useState(false)
+  const [scoreOpen, setScoreOpen] = useState(false)
+  // Bumped on a catch-up dismiss/reopen: the dismissal itself lives in localStorage (catchup.ts).
+  const [, setCatchupTick] = useState(0)
   /*
    * The music. Mounted here rather than in `main.tsx` so it lives exactly as long as the app
    * does, and started before the early return: the title screen is where most first clicks
@@ -207,6 +213,18 @@ export function App(): JSX.Element {
    * `cont`: it is not a decision surface and `handOwner` already decides whose cards it fans.
    */
   const boardCont = watched === null ? cont : hushed(cont)
+  /*
+   * The turn catch-up: a seated player, on their own turn. Dismissed per turn (its start in the
+   * journal), so a reload keeps it closed and the next turn brings it back by itself.
+   */
+  const gameId = store.sessionLink()?.gameId
+  const catchupTurn =
+    gameId !== undefined && seatView.kind === 'seat' && shouldShowCatchup(seatView, engineCont)
+      ? store.seatTurn(seatView.faction)
+      : null
+  const catchupFaction = catchupTurn?.inTurn === true && seatView.kind === 'seat' ? seatView.faction : null
+  const catchupClosed = catchupFaction !== null && catchupDismissed(gameId!, catchupFaction, catchupTurn!.start)
+
   // A new decision, for the phone map to frame its targets by (MapZoom).
   const mapFocus =
     cont.kind === 'ask' ? `${cont.faction}:${cont.actions.map((x) => x.type).join()}` : cont.kind
@@ -280,12 +298,30 @@ export function App(): JSX.Element {
             Undo
           </button>
           {store.undoNote === null ? null : <span className="undo-note">{store.undoNote}</span>}
+          {catchupFaction !== null && catchupClosed ? (
+            <button
+              className="ghost"
+              style={{ whiteSpace: 'nowrap' }}
+              onClick={() => {
+                reopenCatchup(gameId!, catchupFaction)
+                setCatchupTick((n) => n + 1)
+              }}
+            >
+              Catch-up
+            </button>
+          ) : null}
           <button className="ghost" onClick={saveGame}>
             Save
           </button>
           {phone ? null : (
             <button className="ghost" onClick={() => setLogOpen((v) => !v)}>
               Log
+            </button>
+          )}
+          {/* A phone has it as a bottom tab: views live in the tabs, the menu holds actions. */}
+          {phone ? null : (
+            <button className="ghost" onClick={() => setScoreOpen(true)}>
+              Scoreboard
             </button>
           )}
           <button className="ghost" onClick={() => setRulesOpen(true)}>
@@ -325,6 +361,16 @@ export function App(): JSX.Element {
               </Watching>
             )}
             {phone ? <PhonePlays state={state} onOpen={() => setSheet('court')} /> : null}
+            {/* Over the map's foot, never the dock: the decision below does not move. */}
+            {catchupFaction !== null && !catchupClosed ? (
+              <CatchUpSlot
+                faction={catchupFaction}
+                gameId={gameId!}
+                turn={catchupTurn!.start}
+                phone={phone}
+                onDismiss={() => setCatchupTick((n) => n + 1)}
+              />
+            ) : null}
             {/* Over the map only, never the dock: the decision being made stays in reach. */}
             {phone && sheet !== null ? (
               <div className={`phone-sheet ${sheet}`} role="dialog" aria-label={sheet}>
@@ -339,6 +385,8 @@ export function App(): JSX.Element {
                     <AmbitionTrack state={state} cont={boardCont} />
                   ) : sheet === 'boards' ? (
                     <PlayerBoards state={state} current={current} />
+                  ) : sheet === 'score' ? (
+                    <ScoreboardPanel state={state} />
                   ) : (
                     <LogPanel log={state.log} />
                   )}
@@ -448,6 +496,9 @@ export function App(): JSX.Element {
 
       {/* Rules: not a decision either, and a spectator has eyes. */}
       {rulesOpen ? <RulesModal onClose={() => setRulesOpen(false)} /> : null}
+
+      {/* The Scoreboard: public facts only, the same for every seat and spectator. */}
+      {scoreOpen && !phone ? <ScoreboardModal state={state} onClose={() => setScoreOpen(false)} /> : null}
 
       {/* Settings: not a decision, so outside `Watching` — a spectator has ears. */}
       {settingsOpen ? (

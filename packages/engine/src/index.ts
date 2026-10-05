@@ -52,6 +52,9 @@ export * from './lore.js'
 export * from './guild-actions.js'
 export * from './control.js'
 export * from './dice.js'
+export * from './chapter-report.js'
+export * from './facts.js'
+export * from './heads-ups.js'
 export {
   CITIES_PER_FACTION,
   SHIPS_PER_FACTION,
@@ -92,6 +95,8 @@ import type { BotLevel } from './ai/levels.js'
 import type { LeadersAndLoreOptions } from './leaders.js'
 import type { GameState } from './state.js'
 import { emptyTracker } from './tracker.js'
+import { seatAsk, turnWindow } from './heads-ups.js'
+import type { SeatAsk, TurnWindow } from './heads-ups.js'
 
 export interface NewGameOptions {
   /** Required, never defaulted — see docs/05-board-topology.md section 2. */
@@ -236,6 +241,29 @@ export function replayGame(
     result = applyExternal(result, decodeAction(encoded), registry)
   }
   return result
+}
+
+/**
+ * A seat's turn window (heads-ups.ts `turnWindow`), from one replay: what the game asked of the
+ * seat before each journal entry, and now. Used by the catch-up on both sides.
+ */
+export function seatTurn(
+  options: NewGameOptions,
+  journal: readonly string[],
+  faction: FactionId,
+  registry: RuleRegistry = defaultRegistry(),
+): TurnWindow {
+  let result = startGame(options, registry)
+  const asks: SeatAsk[] = []
+  const chapters: number[] = []
+  for (const encoded of journal) {
+    asks.push(seatAsk(result.continue, faction))
+    chapters.push(result.state.chapter)
+    result = applyExternal(result, decodeAction(encoded), registry)
+  }
+  asks.push(seatAsk(result.continue, faction))
+  chapters.push(result.state.chapter)
+  return turnWindow(journal, asks, faction, chapters)
 }
 
 /** Step back one external action by replaying the journal minus its last entry. */

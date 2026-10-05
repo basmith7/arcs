@@ -1260,7 +1260,7 @@ describe('Ancient Holdings (lore13) — a resource slot on the card itself', () 
       resources: t,
       power: { red: 0, yellow: 0, blue: 0 },
       ambitions: ['Keeper'],
-      declared: [{ ambition: 'Keeper', marker: { high: 6, low: 3 }, round: 0 }],
+      declared: [{ ambition: 'Keeper', marker: { high: 6, low: 3 }, round: 0, by: 'red' as const }],
     }
     const scored = advance(staged, { type: 'ambition/score' }, registry).state
     expect(scored.power['red']).toBe(6)

@@ -614,3 +614,31 @@ html.phone-hand-grid .hand.tap .hand-card {
 .mz:has(.board-hint) .mz-scroll {
   padding-bottom: 64px;
 }
+
+/* --- scoreboard sheet: one player card to a row --- */
+.phone-sheet .sb-players {
+  grid-template-columns: 1fr;
+}
+.phone-sheet .sb-race li {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+/* Five tabs on a 360px phone: sized to their labels ("Scoreboard" is the longest), not equal. */
+.phone-tabs button {
+  flex: 1 1 auto;
+  padding: 0 3px;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+}
+
+/* --- catch-up card: narrower margins over the phone map; story folded behind "More" --- */
+.app.phone .cu-card {
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: auto;
+  max-height: 60%;
+}
+.app.phone .cu-story-slot {
+  min-height: 1.6em;
+}
