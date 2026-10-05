@@ -108,7 +108,7 @@ heads-ups of its own.
   for another game → 403.
 - Honest limit: the page already receives the full journal whatever the token (`sqlite-store.ts`),
   so a determined player can reconstruct hands today. The catch-up does not change that; it just
-  never puts another seat's hand into the text it writes or stores.
+  never puts another seat's hand into the text it writes or stores. Closing the leak itself is arcs/T-6.
 - A card above the current decision on your turn. Desktop: open in full. Phone: opens collapsed to
   the headline and bullets above the docked decision, tap to expand the story. The story is placed
   *below* the bullets in space reserved for it, so nothing moves under the thumb and the decision
