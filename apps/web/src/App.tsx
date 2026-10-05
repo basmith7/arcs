@@ -1,4 +1,4 @@
-import { isWaiting, turnStart } from '@arcs/engine'
+import { isWaiting } from '@arcs/engine'
 import { useEffect, useRef, useState } from 'react'
 
 import { AskModal } from './components/AskModal.js'
@@ -30,6 +30,7 @@ import { RulesModal } from './components/RulesModal.js'
 import { ScoreboardModal, ScoreboardPanel } from './components/Scoreboard.js'
 import { SettingsModal } from './components/SettingsModal.js'
 import { Watching } from './components/Watching.js'
+import { WhoAreYou } from './components/WhoAreYou.js'
 import { initAudio } from './audio.js'
 import { enterPhoneCanvas } from './phone-canvas.js'
 import { useNarrow, type Sheet } from './phone.js'
@@ -56,6 +57,8 @@ export function App(): JSX.Element {
   const [logOpen, setLogOpen] = useState(false)
   /** Escape/cancel dismisses the name prompt for the rest of this session; it does not reappear. */
   const [nameDismissed, setNameDismissed] = useState(false)
+  /** "Just watching" in Who-are-you: stay a spectator for this session. */
+  const [watchChosen, setWatchChosen] = useState(false)
   /*
    * The settings dialog. Local state like the log drawer, and mounted on both screens below —
    * the music starts on the title screen, so the volume control has to be reachable there too.
@@ -182,6 +185,12 @@ export function App(): JSX.Element {
   const myName = store.mySeatName()
   const myDiscordName = store.mySeatDiscordName()
   const needsName = seatView.kind === 'seat' && myName === undefined && !nameDismissed
+  // Seats come with the join read, so an empty list is "not loaded yet" (or upstream's Worker,
+  // which has no claim endpoint) — ask nothing until there is someone to be. Read off the
+  // server's answer (`seatView`), not the URL, so a stale token that seats nobody asks too.
+  const humanSeats = store.seats.filter((s) => !s.isBot)
+  const needsSeat =
+    seatView.kind === 'spectator' && !watchChosen && !state.isOver && humanSeats.length > 0
   const cont = viewFor(engineCont, seatView)
   /*
    * Whether the controls work. Separate from what is *drawn* — a watcher sees the dice and the
@@ -209,10 +218,12 @@ export function App(): JSX.Element {
    * journal), so a reload keeps it closed and the next turn brings it back by itself.
    */
   const gameId = store.sessionLink()?.gameId
-  const catchupFaction =
-    gameId !== undefined && seatView.kind === 'seat' && shouldShowCatchup(seatView, engineCont) ? seatView.faction : null
-  const catchupClosed =
-    catchupFaction !== null && catchupDismissed(gameId!, turnStart(state.journal, catchupFaction))
+  const catchupTurn =
+    gameId !== undefined && seatView.kind === 'seat' && shouldShowCatchup(seatView, engineCont)
+      ? store.seatTurn(seatView.faction)
+      : null
+  const catchupFaction = catchupTurn?.inTurn === true && seatView.kind === 'seat' ? seatView.faction : null
+  const catchupClosed = catchupFaction !== null && catchupDismissed(gameId!, catchupTurn!.start)
 
   // A new decision, for the phone map to frame its targets by (MapZoom).
   const mapFocus =
@@ -223,6 +234,13 @@ export function App(): JSX.Element {
       className={phone ? 'app phone' : 'app'}
       {...(phone && sheet !== null ? { 'data-sheet': sheet } : {})}
     >
+      {needsSeat ? (
+        <WhoAreYou
+          seats={humanSeats}
+          onPick={(faction) => store.claimSeat(faction)}
+          onWatch={() => setWatchChosen(true)}
+        />
+      ) : null}
       {needsName && seatView.kind === 'seat' ? (
         <NamePrompt
           faction={seatView.faction}
@@ -348,7 +366,7 @@ export function App(): JSX.Element {
               <CatchUpSlot
                 faction={catchupFaction}
                 gameId={gameId!}
-                journal={state.journal}
+                turn={catchupTurn!.start}
                 phone={phone}
                 onDismiss={() => setCatchupTick((n) => n + 1)}
               />
@@ -401,26 +419,33 @@ export function App(): JSX.Element {
           {cont.kind === 'gameOver' ? (
             <AskStrip cont={cont} onNewGame={() => store.reset()} />
           ) : (
-            <Watching canAct={acting}>
+            <>
+              {/*
+                * The hand stays outside `Watching`: an inert subtree never gets `:hover` or taps, so
+                * inside it the fan could not be raised to read while someone else played. It needs
+                * no guard — off your turn `Hand` draws no plays, and `store.mayAct` refuses anyway.
+                */}
               <div className="hand-row">
                 <Hand state={state} cont={cont} tapToSelect={phone} />
               </div>
-              {/*
-                * The three that share the hand's grid area, and none of them mount in watch mode:
-                * the Prelude, the tray and the strip are all menus addressed to somebody else, and
-                * the fan they would cover is the one thing in this band that is still yours.
-                */}
-              {watched !== null ? null : (
-                <>
-                  {/* Shares the hand's grid area, as a sibling: `.hand-row` clips its own children. */}
-                  <PreludeScreen state={state} cont={cont} />
-                  {/* The action phase, on the same terms as the Prelude: over the hand, map still visible. */}
-                  <ActionTray state={state} cont={cont} />
-                  {/* Every decision without a bespoke surface, in the same band — see AskStrip. */}
-                  <AskStrip cont={cont} onNewGame={() => store.reset()} />
-                </>
-              )}
-            </Watching>
+              <Watching canAct={acting}>
+                {/*
+                  * The three that share the hand's grid area, and none of them mount in watch mode:
+                  * the Prelude, the tray and the strip are all menus addressed to somebody else, and
+                  * the fan they would cover is the one thing in this band that is still yours.
+                  */}
+                {watched !== null ? null : (
+                  <>
+                    {/* Shares the hand's grid area, as a sibling: `.hand-row` clips its own children. */}
+                    <PreludeScreen state={state} cont={cont} />
+                    {/* The action phase, on the same terms as the Prelude: over the hand, map still visible. */}
+                    <ActionTray state={state} cont={cont} />
+                    {/* Every decision without a bespoke surface, in the same band — see AskStrip. */}
+                    <AskStrip cont={cont} onNewGame={() => store.reset()} />
+                  </>
+                )}
+              </Watching>
+            </>
           )}
           {phone ? null : <PlayerBoards state={state} current={current} />}
         </section>

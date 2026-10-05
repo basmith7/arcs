@@ -154,6 +154,16 @@ export class MultiplayerClient {
     return body.seats
   }
 
+  /** "Who are you?": the token for a human seat picked by a visitor who arrived without one. */
+  async claimSeat(gameId: string, faction: string): Promise<string> {
+    const body = await this.json<{ seatToken: string }>(`/games/${encodeURIComponent(gameId)}/claim`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ faction }),
+    })
+    return body.seatToken
+  }
+
   /** Toggle the per-seat Discord turn-ping preference. */
   async setPings(gameId: string, seatToken: string, pings: boolean): Promise<readonly PublicSeat[]> {
     const body = await this.json<{ seats: readonly PublicSeat[] }>(`/games/${encodeURIComponent(gameId)}/seat`, {

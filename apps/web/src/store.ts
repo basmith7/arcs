@@ -25,13 +25,14 @@ import {
   chapterEnded,
   replayGame,
   seatFacts,
-  sinceLastTurn,
+  seatTurn,
 } from '@arcs/engine'
 import type {
   Action,
   AskedThisTurn,
   ChapterReport,
   SeatFacts,
+  TurnWindow,
   FactionId,
   GameState,
   NewGameOptions,
@@ -44,7 +45,8 @@ import { useSyncExternalStore } from 'react'
 import { Session } from './multiplayer/session.js'
 import type { PublicSeat } from './multiplayer/client.js'
 import type { SeatView } from './multiplayer/seat.js'
-import { remember } from './multiplayer/link.js'
+import { hashFor, remember } from './multiplayer/link.js'
+
 import type { GameLink } from './multiplayer/link.js'
 import { eventActor, queueAt } from './turn-events.js'
 import type { TurnEvent } from './turn-events.js'
@@ -487,7 +489,15 @@ class GameStore {
   async joinSession(baseUrl: string, link: GameLink): Promise<void> {
     this.leaveSession()
     this.clearBotTimer()
-    const session = new Session(baseUrl, link, {
+    const session = this.openSession(baseUrl, link)
+    this.session = session
+    remember(link)
+    await session.join()
+  }
+
+  /** A session for `link` whose hooks write into this store. Not yet joined, nor `this.session`. */
+  private openSession(baseUrl: string, link: GameLink): Session {
+    return new Session(baseUrl, link, {
       current: () => this.result,
       adopt: (options, result) => {
         this.options = options
@@ -508,13 +518,13 @@ class GameStore {
       },
       turn: (t) => this.notifyTurn(link.gameId, t),
       catchup: (c) => {
-        this.catchup = { length: c.length, story: c.story, enabled: c.enabled ?? true }
+        const had = this.catchup
+        // A fetch answered before the story was written must not wipe the one pushed since.
+        const story = c.story ?? (had !== null && had.length === c.length ? had.story : null)
+        this.catchup = { length: c.length, story, enabled: c.enabled ?? had?.enabled ?? true }
         this.emit()
       },
     })
-    this.session = session
-    remember(link)
-    await session.join()
   }
 
   /**
@@ -556,6 +566,34 @@ class GameStore {
 
   async claimName(name: string, discordId?: string): Promise<void> {
     await this.session?.claimName(name, discordId)
+  }
+
+  /**
+   * Take the seat a tokenless visitor picked in "Who are you?": fetch its token and join as that
+   * seat, and only once that join has landed drop the watching session, stash the token and put
+   * it in the address bar (so the URL in front of them is now their own link).
+   *
+   * Join-then-swap, unlike `joinSession`'s teardown-first: the visitor is still watching a live
+   * game when this throws, so the prompt can say so and be tried again, and a seat that could
+   * not be joined is never remembered.
+   */
+  async claimSeat(faction: string): Promise<void> {
+    const watching = this.session
+    if (watching === null) return
+    const seatToken = await watching.claimSeat(faction)
+    const link = { gameId: watching.link.gameId, seatToken }
+    const seated = this.openSession(watching.baseUrl, link)
+    try {
+      await seated.join()
+    } catch (e) {
+      seated.leave()
+      throw e
+    }
+    watching.leave()
+    this.session = seated
+    remember(link)
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', hashFor(link.gameId, seatToken))
+    this.emit()
   }
 
   /** `undefined` when this client holds no seat (hotseat or spectator); otherwise whether it's linked. */
@@ -607,9 +645,9 @@ class GameStore {
 
   /** The server's story for this seat, and whether it writes stories at all. */
   private catchup: { length: number; story: string | null; enabled: boolean } | null = null
-  private seatFactsMemo: { key: string; facts: SeatFacts } | null = null
+  private turnMemo: { key: string; turn: TurnWindow; facts: SeatFacts | null } | null = null
 
-  /** The story for exactly this journal length: a take-back or a later move never shows a stale one. */
+  /** The story for exactly this turn start: a take-back or a later turn never shows a stale one. */
   catchupStory(length: number): string | null {
     return this.catchup !== null && this.catchup.length === length ? this.catchup.story : null
   }
@@ -619,16 +657,31 @@ class GameStore {
     return this.catchup?.enabled ?? false
   }
 
-  /** A seat's catch-up facts: since its previous turn, up to now. Replayed once per journal length. */
+  /** A seat's turn window (engine `seatTurn`), replayed once per journal length. */
+  seatTurn(faction: FactionId): TurnWindow | null {
+    return this.turnFor(faction)?.turn ?? null
+  }
+
+  /** A seat's catch-up facts: since its previous turn, up to now. */
   seatFacts(faction: FactionId): SeatFacts | null {
+    const memo = this.turnFor(faction)
+    if (memo === null || this.result === null || this.options === null) return null
+    if (memo.facts === null) {
+      const journal = this.result.state.journal
+      const before = replayGame(this.options, journal.slice(0, memo.turn.since), this.registry).state
+      memo.facts = seatFacts(before, this.result.state, faction, this.registry)
+    }
+    return memo.facts
+  }
+
+  private turnFor(faction: FactionId): { turn: TurnWindow; facts: SeatFacts | null } | null {
     if (this.result === null || this.options === null) return null
     const journal = this.result.state.journal
     const key = `${this.generation}:${faction}:${journal.length}`
-    if (this.seatFactsMemo?.key !== key) {
-      const before = replayGame(this.options, journal.slice(0, sinceLastTurn(journal, faction)), this.registry).state
-      this.seatFactsMemo = { key, facts: seatFacts(before, this.result.state, faction, this.registry) }
+    if (this.turnMemo?.key !== key) {
+      this.turnMemo = { key, turn: seatTurn(this.options, journal, faction, this.registry), facts: null }
     }
-    return this.seatFactsMemo.facts
+    return this.turnMemo
   }
 
   /** The joined game's link, or `null` when playing locally. */

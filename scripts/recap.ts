@@ -12,7 +12,7 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
-import { contentsOf, defaultRegistry, gameFacts, loadGame, replayGame, seatFacts, sinceLastTurn } from '@arcs/engine'
+import { contentsOf, defaultRegistry, gameFacts, loadGame, replayGame, seatFacts, seatTurn } from '@arcs/engine'
 import type { FactionId, GameState, NewGameOptions } from '@arcs/engine'
 
 const argv = process.argv.slice(2)
@@ -127,7 +127,7 @@ for (const f of facts.factions) {
 // --- one seat's catch-up heads-ups ------------------------------------------
 
 if (seat !== undefined) {
-  const since = sinceLastTurn(journal, seat)
+  const { since } = seatTurn(options, journal, seat, registry)
   const sf = seatFacts(replayGame(options, journal.slice(0, since), registry).state, s, seat, registry)
   say(`\ncatch-up for ${who(seat)} (journal since ${since}, ${sf.since.length} log lines):`)
   for (const h of sf.headsUps) say(`  - ${h.text}`)

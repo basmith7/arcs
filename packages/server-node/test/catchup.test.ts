@@ -3,8 +3,8 @@
  * seat, DeepSeek writes a story and a second call checks it; a passing story is stored for that
  * seat and pushed down its socket. DeepSeek is faked; nothing here touches the network.
  */
-import { replayGame, startGame } from '@arcs/engine'
-import type { RuleResult } from '@arcs/engine'
+import { applyExternal, replayGame, startGame } from '@arcs/engine'
+import type { Action, RuleResult } from '@arcs/engine'
 import { describe, expect, it } from 'vitest'
 
 import { CatchupWriter } from '../src/catchup.js'
@@ -16,6 +16,9 @@ import { ONE_HUMAN, RED_OPENING, THREE_PLAYER } from './fixtures.js'
 const start = startGame(THREE_PLAYER) // red is asked
 const afterRed = replayGame(THREE_PLAYER, RED_OPENING) // yellow is asked
 const LEN = afterRed.state.journal.length
+// Yellow's first play opens its turn; it is then asked to go on with it, not to open another.
+const yellowMid = applyExternal(afterRed, (afterRed.continue as unknown as { actions: Action[] }).actions[0]!)
+const soloStart = startGame(ONE_HUMAN) // red, the only human, asked to lead
 
 /** A Chat that answers from a script — writer and checker calls alike — and records each call. */
 function scripted(...replies: (string | Error)[]): Chat & { calls: { model: string; user: string }[] } {
@@ -67,6 +70,7 @@ describe('CatchupWriter', () => {
     const t = await setup(chat)
     await t.handOff()
     expect(chat.calls.map((c) => c.model)).toEqual(['writer', 'checker', 'writer', 'checker'])
+    expect(chat.calls[2]!.user).toContain('FAIL: invented') // the rewrite is told what was wrong
     expect(t.store.getCatchup(t.gameId, 'yellow', LEN)).toBe('second')
   })
 
@@ -86,11 +90,21 @@ describe('CatchupWriter', () => {
     expect(t.pushed).toEqual([])
   })
 
-  it('writes nothing when the turn did not change hands', async () => {
+  it('writes nothing mid-turn, only when a turn opens', async () => {
     const chat = scripted()
     const t = await setup(chat)
-    await t.handOff(afterRed, afterRed)
+    await t.handOff(afterRed, yellowMid)
     expect(chat.calls).toEqual([])
+  })
+
+  it('writes when the turn comes back to a lone human after the bots', async () => {
+    const chat = scripted('story', 'PASS')
+    const t = await setup(chat, ONE_HUMAN, () => soloStart)
+    // red asked before and after: the bots played in between, and red is asked to open a turn.
+    t.writer.onSettled({ gameId: t.gameId, before: soloStart, after: soloStart })
+    await t.writer.settled()
+    expect(chat.calls.map((c) => c.model)).toEqual(['writer', 'checker'])
+    expect(t.store.getCatchup(t.gameId, 'red', 0)).toBe('story')
   })
 
   it('writes nothing for a bot seat', async () => {
@@ -106,8 +120,8 @@ describe('CatchupWriter', () => {
     expect(t.store.getCatchup(t.gameId, 'yellow', LEN)).toBeUndefined()
   })
 
-  it('drops a story when the turn moved on while it was written', async () => {
-    const moved = { ...afterRed, state: { ...afterRed.state, journal: [...afterRed.state.journal, 'x(faction="blue")'] } }
+  it('drops a story when a take-back rewrote the turn while it was written', async () => {
+    const moved = replayGame(THREE_PLAYER, [...afterRed.state.journal.slice(0, -1), 'turn/pass(faction="red")'])
     const t = await setup(scripted('story', 'PASS'), THREE_PLAYER, () => moved)
     await t.handOff()
     expect(t.store.getCatchup(t.gameId, 'yellow', LEN)).toBeUndefined()
@@ -115,8 +129,7 @@ describe('CatchupWriter', () => {
   })
 
   it('keeps a story when the seat has already started its turn', async () => {
-    const started = { ...afterRed, state: { ...afterRed.state, journal: [...afterRed.state.journal, 'x(faction="yellow")'] } }
-    const t = await setup(scripted('story', 'PASS'), THREE_PLAYER, () => started)
+    const t = await setup(scripted('story', 'PASS'), THREE_PLAYER, () => yellowMid)
     await t.handOff()
     expect(t.store.getCatchup(t.gameId, 'yellow', LEN)).toBe('story')
   })

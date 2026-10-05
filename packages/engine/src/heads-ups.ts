@@ -17,6 +17,7 @@ import { observe } from './observe.js'
 import type { Resource } from './resources.js'
 import { metric } from './rules/ambitions.js'
 import type { Ambition, GameState } from './state.js'
+import type { Continue } from './continue.js'
 import { contentsOf } from './tracker.js'
 
 export type HeadsUpKind = 'rival-tax-base' | 'overtake-risk' | 'outnumbered' | 'first-place' | 'hand'
@@ -49,24 +50,81 @@ const SCORES: Readonly<Record<Ambition, readonly Resource[]>> = {
 // Every journal entry names its actor as a top-level `faction="…"` argument; nested `then` JSON
 // writes `"faction":` and so never matches.
 const factionOf = (encoded: string): string | undefined => /faction="([a-z]+)"/.exec(encoded)?.[1]
+const typeOf = (encoded: string): string => /^([^(]*)/.exec(encoded)![1]!
 
-/** Journal index just after this faction's previous turn ended; 0 if it has not had one. */
-export function sinceLastTurn(journal: readonly string[], faction: FactionId): number {
-  let i = journal.length - 1
-  while (i >= 0 && factionOf(journal[i]!) === faction) i-- // the turn in progress
-  while (i >= 0 && factionOf(journal[i]!) !== faction) i-- // everyone else since
-  return i + 1
+/** The plays that open a turn: every turn begins with exactly one, and nothing else does. */
+const OPENERS: ReadonlySet<string> = new Set(['turn/lead', 'turn/pass', 'turn/surpass', 'turn/copy', 'turn/pivot'])
+
+/** What the engine is asking of a seat right now, as far as turns go. */
+export type SeatAsk = 'opener' | 'other' | 'none'
+
+/**
+ * A seat's turn in the journal. `start`: the index of the play that opened it (the journal length
+ * when the seat is being asked to open it now). `since`: the index just after the seat's previous
+ * turn ended (0 before its first). `inTurn` is false when it is not this seat's turn at all.
+ */
+export interface TurnWindow {
+  readonly inTurn: boolean
+  readonly start: number
+  readonly since: number
 }
 
 /**
- * Where the turn in progress began: the journal length when it reached this faction. The current
- * length when the faction has not acted since (the turn has only just come to it). The catch-up's
- * story and its dismissal key on this, so they hold for the whole turn, not just its first move.
+ * The turn window, from the journal and the round each entry was played in (`rounds[i]`, as
+ * `journalRounds` gives it). Turns are told apart by round and by the play that opens them, not
+ * by runs of one faction's entries: a seat that ends one round and leads the next has its two
+ * turns side by side, and a seat answering inside someone else's turn is not on its own.
  */
-export function turnStart(journal: readonly string[], faction: FactionId): number {
-  let i = journal.length
-  while (i > 0 && factionOf(journal[i - 1]!) === faction) i--
-  return i
+export function turnWindow(
+  journal: readonly string[],
+  rounds: readonly string[],
+  current: string,
+  asked: SeatAsk,
+  faction: FactionId,
+): TurnWindow {
+  const opens = (i: number, mine: boolean): boolean =>
+    OPENERS.has(typeOf(journal[i]!)) && (factionOf(journal[i]!) === faction) === mine
+  let start = -1
+  for (let i = journal.length - 1; i >= 0 && rounds[i] === current; i--) {
+    if (opens(i, true)) {
+      start = i
+      break
+    }
+  }
+  let inTurn: boolean
+  if (start >= 0) {
+    // Opened this round: still its turn while it is asked and nobody else has opened since.
+    let overtaken = false
+    for (let i = start + 1; i < journal.length; i++) if (opens(i, false)) overtaken = true
+    inTurn = asked !== 'none' && !overtaken
+  } else {
+    start = journal.length
+    inTurn = asked === 'opener'
+  }
+  let previous = -1
+  for (let i = start - 1; i >= 0; i--) {
+    if (opens(i, true)) {
+      previous = i
+      break
+    }
+  }
+  let since = 0
+  if (previous >= 0) {
+    since = previous + 1
+    for (let i = previous; i < start; i++) {
+      if (rounds[i] === rounds[previous] && factionOf(journal[i]!) === faction) since = i + 1
+    }
+  }
+  return { inTurn, start, since }
+}
+
+/** What the continue asks of a seat, for `turnWindow`. */
+export function seatAsk(cont: Continue, faction: FactionId): SeatAsk {
+  if (cont.kind === 'ask' && cont.faction === faction) {
+    return cont.actions.some((a) => OPENERS.has(a.type)) ? 'opener' : 'other'
+  }
+  if (cont.kind === 'multiAsk' && cont.asks.some((a) => a.faction === faction)) return 'other'
+  return 'none'
 }
 
 /** The strict leader of an ambition, or undefined on a tie or when nobody holds any. */

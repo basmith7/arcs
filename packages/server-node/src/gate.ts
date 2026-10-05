@@ -156,6 +156,9 @@ export class EngineGate {
 
     const cut = this.store.truncateLast(gameId, expectedLength)
     if (!cut.ok) return { ok: false, reason: 'conflict', length: cut.length }
+    // A catch-up story may describe the move just taken back; a redo would land at the same
+    // length and be served it (catchup.ts). The next hand-off writes a fresh one.
+    this.store.deleteCatchups(gameId)
     this.remember(gameId, before)
     this.broadcast(gameId, { from: cut.length, entries: [], reset: true })
     return { ok: true, length: cut.length }

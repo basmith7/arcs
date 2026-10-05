@@ -12,11 +12,11 @@
  * forget: `onSettled` only enqueues, on one chain for the whole server, so a slow or failing call
  * never delays a move — and DeepSeek sees one game's request at a time.
  */
-import { defaultRegistry, replayGame, seatFacts, sinceLastTurn, turnStart, withNames } from '@arcs/engine'
+import { defaultRegistry, replayGame, seatAsk, seatFacts, seatTurn, withNames } from '@arcs/engine'
 import type { FactionId, NewGameOptions, RuleResult, SeatFacts } from '@arcs/engine'
 
 import type { Chat } from './deepseek.js'
-import { askedOf } from './gate.js'
+import { askedFactions } from './gate.js'
 import type { Settled } from './gate.js'
 import type { Presence } from './presence.js'
 import type { SqliteStore } from './sqlite-store.js'
@@ -91,6 +91,7 @@ export function checkPrompt(facts: SeatFacts, name: (f: FactionId) => string, st
 export class CatchupWriter {
   private readonly registry = defaultRegistry()
   private chain: Promise<void> = Promise.resolve()
+  private readonly inFlight = new Set<string>()
   private readonly timeoutMs: number
   private readonly now: () => number
 
@@ -122,31 +123,43 @@ export class CatchupWriter {
     }
   }
 
-  private consider({ gameId, before, after }: Settled): void {
+  private consider({ gameId, after }: Settled): void {
     if (after.state.isOver) {
       this.store.deleteCatchups(gameId)
       return
     }
-    const asked = askedOf(after)
-    if (asked === undefined || (before !== null && askedOf(before) === asked)) return
-    const seat = this.store.seats(gameId).find((s) => s.faction === asked)
-    if (seat === undefined || seat.isBot) return
     const chat = this.opts.chat
     if (chat === undefined) return
     const length = after.state.journal.length
-    if (this.store.getCatchup(gameId, asked, length) !== undefined) return
-    this.chain = this.chain.then(() =>
-      this.write(chat, gameId, asked as FactionId, seat.seatToken, after).catch((e: unknown) => {
-        console.error('[catchup] no story', gameId, asked, String(e))
-      }),
-    )
+    /*
+     * A hand-off is the game asking a seat to open a turn (lead, pass, surpass, copy or pivot) —
+     * not "someone else was asked before": a lone human among bots is asked before and after, and
+     * a seat answering inside someone else's turn is asked without it being its turn.
+     */
+    for (const f of askedFactions(after)) {
+      const faction = f as FactionId
+      if (seatAsk(after.continue, faction) !== 'opener') continue
+      const seat = this.store.seats(gameId).find((s) => s.faction === faction)
+      if (seat === undefined || seat.isBot) continue
+      const key = `${gameId}:${faction}:${length}`
+      if (this.inFlight.has(key) || this.store.getCatchup(gameId, faction, length) !== undefined) continue
+      this.inFlight.add(key)
+      this.chain = this.chain.then(() =>
+        this.write(chat, gameId, faction, seat.seatToken, after)
+          .catch((e: unknown) => {
+            console.error('[catchup] no story', gameId, faction, String(e))
+          })
+          .finally(() => this.inFlight.delete(key)),
+      )
+    }
   }
 
   private async write(chat: Chat, gameId: string, faction: FactionId, seatToken: string, after: RuleResult): Promise<void> {
     const options = this.store.options(gameId) as NewGameOptions | undefined
     if (options === undefined) return
     const journal = after.state.journal
-    const before = replayGame(options, journal.slice(0, sinceLastTurn(journal, faction)), this.registry).state
+    const { since } = seatTurn(options, journal, faction, this.registry)
+    const before = replayGame(options, journal.slice(0, since), this.registry).state
     const facts = seatFacts(before, after.state, faction, this.registry)
     const names = new Map(this.store.seats(gameId).map((s) => [s.faction, s.name ?? s.faction]))
     const name = (f: FactionId): string => names.get(f) ?? f
@@ -163,7 +176,10 @@ export class CatchupWriter {
     let story: string | undefined
     const refusals: string[] = []
     for (let attempt = 0; attempt < 2 && story === undefined; attempt++) {
-      const draft = await ask(this.opts.writerModel, storyPrompt(facts, name), true)
+      const prompt = storyPrompt(facts, name)
+      const last = refusals.at(-1)
+      if (last !== undefined) prompt.user += `\n\nA checker rejected your previous draft: ${last}\nWrite it again without that.`
+      const draft = await ask(this.opts.writerModel, prompt, true)
       const verdict = await ask(this.opts.checkerModel, checkPrompt(facts, name, draft), true)
       const words = draft.split(/\s+/).length
       if (words > MAX_WORDS) refusals.push(`${words} words`)
@@ -174,10 +190,13 @@ export class CatchupWriter {
       console.log(`[catchup] bullets only for ${gameId} ${faction}: ${refusals.join(' | ')}`)
       return
     }
-    // The seat may have started its turn meanwhile; anything else (its turn over, a take-back
-    // below the hand-off) means this story describes a turn that is no longer current.
+    // The seat may have started its turn meanwhile. Anything else — its turn over, or a take-back
+    // that rewrote the hand-off (same length, different last move) — and the story is about a turn
+    // that no longer exists.
     const live = this.opts.current(gameId)?.state.journal
-    if (live === undefined || turnStart(live, faction) !== journal.length) return
+    if (live === undefined || live[journal.length - 1] !== journal[journal.length - 1]) return
+    const now = seatTurn(options, live, faction, this.registry)
+    if (!now.inTurn || now.start !== journal.length) return
     this.store.putCatchup(gameId, faction, journal.length, story, this.now())
     const push: CatchupPush = { catchup: { length: journal.length, story } }
     this.presence.send(gameId, seatToken, push)

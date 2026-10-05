@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { FACTION_IDS, defaultRegistry, move, observe, replayGame, seatFacts, sinceLastTurn, turnStart } from '../src/index.js'
+import { FACTION_IDS, defaultRegistry, move, observe, replayGame, seatFacts, seatTurn, turnWindow } from '../src/index.js'
 import type { GameState, NewGameOptions } from '../src/index.js'
 
 const live = JSON.parse(readFileSync(new URL('./fixtures/game-158107d8.json', import.meta.url), 'utf8')) as {
@@ -17,27 +17,50 @@ function give(state: GameState, resource: string, slot: string): GameState {
   return { ...state, resources: move(state.resources, id, slot) }
 }
 
-describe('sinceLastTurn', () => {
-  it("is just after the faction's previous turn", () => {
-    const j = live.journal.slice(0, 66)
-    const lastRed = j.map((e, i) => (e.includes('faction="red"') ? i : -1)).filter((i) => i >= 0).at(-1)!
-    expect(sinceLastTurn(j, 'red')).toBe(lastRed + 1)
+describe('seatTurn: where a seat\'s turn began, and what happened since its last one', () => {
+  const turn = (n: number, f: string) => seatTurn(live.options, live.journal.slice(0, n), f as never, reg)
+  const lastRedBefore66 = live.journal.slice(0, 66).map((e, i) => (e.includes('faction="red"') ? i : -1)).filter((i) => i >= 0).at(-1)!
+
+  it('at the hand-off: the turn starts now, since runs from the end of its previous turn', () => {
+    expect(turn(66, 'red')).toEqual({ inTurn: true, start: 66, since: lastRedBefore66 + 1 })
   })
-  it('skips the turn in progress', () => {
-    expect(sinceLastTurn(live.journal.slice(0, 69), 'red')).toBe(sinceLastTurn(live.journal.slice(0, 66), 'red'))
+  it('mid-turn: the same window, so the story and dismissal hold for the whole turn', () => {
+    expect(turn(69, 'red')).toEqual(turn(66, 'red'))
   })
-  it('turnStart is where the turn in progress began', () => {
-    expect(turnStart(live.journal.slice(0, 69), 'red')).toBe(66)
-    expect(turnStart(live.journal.slice(0, 66), 'red')).toBe(66)
+  it('not that seat\'s turn: no window', () => {
+    expect(turn(66, 'yellow').inTurn).toBe(false)
   })
-  it('is 0 for a seat that has not had a turn', () => {
-    expect(sinceLastTurn(live.journal.slice(0, 5), 'yellow')).toBe(0)
+  it('a seat on its first turn ever: since is 0', () => {
+    const first = live.journal.findIndex((e) => e.includes('faction="yellow"'))
+    expect(turn(first, 'yellow')).toEqual({ inTurn: true, start: first, since: 0 })
+  })
+})
+
+describe('turnWindow (pure): turns told apart by round and opening action, not by runs of a faction', () => {
+  // Red ends round 1 and leads round 2: its two turns sit side by side in the journal.
+  const journal = [
+    'turn/lead(card="A-1",faction="blue")',
+    'action/x(faction="blue")',
+    'turn/surpass(card="A-7",faction="red")',
+    'action/x(faction="red")',
+    'turn/lead(card="B-2",faction="red")',
+    'action/x(faction="red")',
+  ]
+  const rounds = ['1.1', '1.1', '1.1', '1.1', '1.2', '1.2']
+  it('splits adjacent turns at the round boundary', () => {
+    expect(turnWindow(journal, rounds, '1.2', 'other', 'red')).toEqual({ inTurn: true, start: 4, since: 4 })
+  })
+  it('opens a window at the ask to lead, before the seat has acted', () => {
+    expect(turnWindow(journal.slice(0, 4), rounds.slice(0, 4), '1.2', 'opener', 'red')).toEqual({ inTurn: true, start: 4, since: 4 })
+  })
+  it('a response asked outside its own turn is no turn', () => {
+    expect(turnWindow(journal.slice(0, 2), rounds.slice(0, 2), '1.1', 'other', 'red').inTurn).toBe(false)
   })
 })
 
 describe('heads-ups (red, at the start of its round-3 turn)', () => {
   const now = at(66)
-  const before = at(sinceLastTurn(live.journal.slice(0, 66), 'red'))
+  const before = at(seatTurn(live.options, live.journal.slice(0, 66), 'red', reg).since)
   const facts = seatFacts(before, now, 'red', reg)
   const kinds = (f: { headsUps: readonly { kind: string }[] }, k: string) => f.headsUps.filter((h) => h.kind === k)
 
@@ -45,7 +68,7 @@ describe('heads-ups (red, at the start of its round-3 turn)', () => {
     expect(facts.headsUps).toContainEqual({ kind: 'rival-tax-base', text: 'blue can now tax Relic — it counts toward Keeper.' })
   })
   it('rival-tax-base does not fire for an ambition you did not declare', () => {
-    const y = seatFacts(at(sinceLastTurn(live.journal.slice(0, 66), 'yellow')), now, 'yellow', reg)
+    const y = seatFacts(at(seatTurn(live.options, live.journal.slice(0, 66), 'yellow', reg).since), now, 'yellow', reg)
     expect(kinds(y, 'rival-tax-base')).toEqual([])
   })
 

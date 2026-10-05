@@ -9,7 +9,7 @@
  */
 
 import type { FactionId, HeadsUp } from '@arcs/engine'
-import { turnStart, withNames } from '@arcs/engine'
+import { withNames } from '@arcs/engine'
 import { useEffect, useState } from 'react'
 
 import { dismissCatchup } from '../catchup.js'
@@ -71,17 +71,17 @@ const STORY_WAIT_MS = 120_000
 export function CatchUpSlot({
   faction,
   gameId,
-  journal,
+  turn,
   phone,
   onDismiss,
 }: {
   faction: FactionId
   gameId: string
-  journal: readonly string[]
+  /** Where this turn began in the journal (engine `seatTurn`): the story's and dismissal's key. */
+  turn: number
   phone: boolean
   onDismiss: (turn: number) => void
 }): JSX.Element | null {
-  const turn = turnStart(journal, faction)
   const [waited, setWaited] = useState<number | null>(null)
   useEffect(() => {
     setWaited(null)

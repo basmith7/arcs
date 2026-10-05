@@ -3,7 +3,7 @@
  * no streaming; the reply's `content` only — the models' `reasoning_content` is never used.
  */
 
-/** `reason`: let the model think first (the checker); off, it answers straight away (the writer). */
+/** `reason`: let the model think first (low effort); off, it answers straight away. */
 export type Chat = (
   model: string,
   system: string,
@@ -27,9 +27,10 @@ export function deepseekChat(apiKey: string, fetchFn: typeof fetch = fetch): Cha
           { role: 'user', content: user },
         ],
         /*
-         * Both models reason by default, and reasoning counts against max_tokens. The writer needs
-         * none for 120 words. The checker does: without it, it passed a story that gave the wrong
-         * player the initiative (2026-10-05 probes) — so it reasons, at low effort, with room.
+         * Both models reason by default, and reasoning counts against max_tokens (a 2000 budget
+         * once left the checker's reply empty). The catch-up reasons on both calls: without it the
+         * checker passed a story that gave the wrong player the initiative and the writer slipped
+         * more (2026-10-05 probes). Off stays for callers that want a fast plain answer.
          */
         ...(opts.reason === true
           ? { reasoning_effort: 'low', max_tokens: 8000 }
