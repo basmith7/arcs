@@ -6,7 +6,7 @@ priority: medium
 labels: []
 depends: []
 created: 2026-10-05T06:33:56Z
-updated: 2026-10-05T08:40:27Z
+updated: 2026-10-05T15:49:35Z
 kind: build
 risk: high
 riskReason: New AI dependency, a new table and per-seat private text on the live server; 3,100 changed lines
@@ -18,9 +18,6 @@ build:
   agent: arcs-t-4-1
 merged: ebad4af3b51ce16c2fe9c0a42ea451dc23fde381
 mergedAt: 2026-10-05T08:38:04Z
-review:
-  at: 2026-10-05T08:40:27Z
-  agent: arcs-t-4-1
 ---
 A shared live Scoreboard (dialog on desktop, fifth tab on phone) and a per-seat AI catch-up when your turn comes (hero framing, heads-ups, never advice). Spec approved by Brian 2026-10-04: docs/superpowers/specs/2026-10-04-scoreboard-catchup-design.md. Spike: scripts/recap.ts on idea/agent-3.
 
