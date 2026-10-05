@@ -6,7 +6,7 @@ priority: medium
 labels: []
 depends: []
 created: 2026-10-05T06:33:56Z
-updated: 2026-10-05T07:19:53Z
+updated: 2026-10-05T07:49:35Z
 kind: build
 risk: medium
 riskReason: New AI dependency and per-seat private text on the live server; scoreboard itself is read-only
@@ -25,7 +25,7 @@ A shared live Scoreboard (dialog on desktop, fifth tab on phone) and a per-seat 
 - [x] Each of the 5 heads-ups has a fires / doesn't-fire test
 - [x] Privacy test: a seat's facts never contain another seat's hand
 - [x] Scoreboard opens as a dialog from the header on desktop and as a fifth bottom tab on phone; screenshots of both
-- [ ] Catch-up card on your turn: bullets at once, story pushed when written, collapsed on phone, dismissal remembered
+- [x] Catch-up card on your turn: bullets at once, story pushed when written, collapsed on phone, dismissal remembered
 - [x] Server writer → checker → rewrite → bullets-only path tested with DeepSeek faked, plus timeout; moves never delayed
 - [ ] Without DEEPSEEK_API_KEY the card shows bullets only, no errors
 - [ ] DEEPSEEK_API_KEY wired into the compose environment (repo and Tower copy)
