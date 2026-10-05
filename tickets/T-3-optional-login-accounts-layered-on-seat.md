@@ -5,10 +5,10 @@ status: doing
 labels: []
 depends: []
 created: 2026-10-05T01:47:30Z
-updated: 2026-10-05T19:37:21Z
+updated: 2026-10-05T19:37:30Z
 kind: build
-risk: medium
-riskReason: New auth/session surface on a public site; seat locking can lock players out of live games if wrong.
+risk: high
+riskReason: "diff: touches packages/server-node/src/auth.ts (auth); touches packages/server-node/test/auth.test.ts (auth); creates a table; alters a table; 2960 changed lines"
 size: large
 spec: docs/superpowers/specs/2026-10-04-optional-login-design.md
 plan: docs/superpowers/plans/2026-10-04-optional-login.md
