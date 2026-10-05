@@ -166,9 +166,10 @@ Verdict: acceptable accretion (four fixes folded in).
 - Dismissal surviving reload. **Fixed** — remembered per game and journal length.
 - "wins" for a projection. **Fixed** — "would take".
 
-## Needs Brian
+## Deploy notes
 
-- A DeepSeek API key in Tower's arcs `.env` as `DEEPSEEK_API_KEY` (the spike borrowed opencode's
-  login, which the server cannot).
+- `DEEPSEEK_API_KEY` is in Tower's arcs `.env` since 2026-10-04 (copied from SMARTDraft's). The build
+  must add `DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"` to the compose `environment` — the repo's
+  `docker-compose.prod.yml` and Tower's copy — or the container won't see it.
 - DeepSeek pricing for ~2 calls per human turn is assumed to be pennies a month — unconfirmed; check
   the DeepSeek pricing page before relying on it.
