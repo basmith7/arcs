@@ -52,8 +52,10 @@ describe('Auth', () => {
 
   it('drops a return that is not a hash route', async () => {
     const auth = new Auth(new SqliteStore(':memory:'), { clientId: 'id', clientSecret: 's', publicOrigin: ORIGIN, fetch: discordFake().f })
-    const res = (await signIn(auth, 'https://evil.example'))!
-    expect(res.headers.get('location')).toBe(`${ORIGIN}/`)
+    for (const bad of ['https://evil.example', '#/日本']) {
+      const res = (await signIn(auth, bad))!
+      expect(res.headers.get('location')).toBe(`${ORIGIN}/`)
+    }
   })
 
   it('logout deletes the session', async () => {

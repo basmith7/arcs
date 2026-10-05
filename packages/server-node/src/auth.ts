@@ -46,9 +46,14 @@ function hash(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
+// Printable ASCII only (no spaces/control chars) — rules out header-injection and anything
+// `Headers`/`URL` can't hold as a Latin-1 byte, e.g. `#/日本`, which would otherwise crash the
+// `Location` header on redirect.
+const HASH_ROUTE = /^#\/[\x21-\x7e]*$/
+
 /** A `return` value is only honoured when it is a same-origin hash route; anything else is dropped. */
 function sanitizeReturn(raw: string | null): string {
-  return raw !== null && raw.startsWith('#/') ? raw : ''
+  return raw !== null && HASH_ROUTE.test(raw) ? raw : ''
 }
 
 export class Auth {
@@ -130,7 +135,8 @@ export class Auth {
     const oauthCookie = parseCookies(request.headers.get('cookie'))[OAUTH_COOKIE]
     const dot = oauthCookie?.indexOf('.') ?? -1
     const cookieState = dot >= 0 ? oauthCookie!.slice(0, dot) : undefined
-    const ret = dot >= 0 ? Buffer.from(oauthCookie!.slice(dot + 1), 'base64url').toString() : ''
+    // The cookie round-trips through the browser, so re-validate rather than trust it verbatim.
+    const ret = dot >= 0 ? sanitizeReturn(Buffer.from(oauthCookie!.slice(dot + 1), 'base64url').toString()) : ''
 
     if (oauthCookie === undefined) return this.fail(ret)
     const state = url.searchParams.get('state')
