@@ -1,0 +1,41 @@
+---
+id: T-3
+title: Optional login (accounts layered on seat links)
+status: done
+labels: []
+depends: []
+created: 2026-10-05T01:47:30Z
+updated: 2026-10-05T20:56:32Z
+kind: build
+risk: high
+riskReason: "diff: touches packages/server-node/src/auth.ts (auth); touches packages/server-node/test/auth.test.ts (auth); creates a table; alters a table; 2960 changed lines"
+size: large
+spec: docs/superpowers/specs/2026-10-04-optional-login-design.md
+plan: docs/superpowers/plans/2026-10-04-optional-login.md
+build:
+  at: 2026-10-05T07:11:43Z
+  agent: arcs-t-3-1
+merged: ed7d9a7cec65a4c45e2d272a7d68bc73956cddbb
+mergedBefore:
+  - 93bb777333f9976d941333b63875633c9eb12e70
+mergedAt: 2026-10-05T20:56:32Z
+---
+Add a real login while keeping today's zero-friction seat links working: Discord OAuth sign-in, layered on top of the links.
+
+Goals (Brian, 2026-10-04): My Games on any device, reliable Discord pings (id from the login, not name matching), seats locked to an account. Stats/history is phase 2, its own ticket.
+
+Spec: docs/superpowers/specs/2026-10-04-optional-login-design.md
+Plan: docs/superpowers/plans/2026-10-04-optional-login.md
+Branch: idea/agent-5 (16 commits on main 35111fc)
+
+## Done when
+
+- [x] With the Discord env vars unset, the app behaves exactly as v0.11.1 and shows no sign-in button.
+- [x] Sign in with Discord creates an account and session and returns to the page it started from.
+- [x] Opening a seat link never claims it; a signed-in player's "Sit here as @name" tap does, and from then on pings mention their account's Discord id.
+- [x] A claimed seat's link, used signed out or by another account, watches only and shows the locked banner; /actions, /undo and /seat return 403 seat-locked.
+- [x] My Games lists the account's games with your-turn and Won/Lost, and opening one on another device plays the seat.
+- [x] Add games from this browser claims only the ticked games.
+- [x] Release seat (after a confirm) unlocks it for link play again.
+- [x] My Games rows and Back work through the hash; a failed sign-in returns to the starting page with a notice.
+- [x] Tests pass; screenshots taken; verified live on arcs.basmith.net.
