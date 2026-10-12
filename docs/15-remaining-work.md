@@ -1,5 +1,7 @@
 # Arcs Digital — Remaining Work
 
+> **Superseded.** Production is Node + SQLite in Docker on Tower; see `AGENTS.md`.
+
 The single backlog. Per-doc status sections (docs/14 phases, docs/13's card table) stay where they
 are; this is the list of what is *not* done, why it matters, and what it costs.
 

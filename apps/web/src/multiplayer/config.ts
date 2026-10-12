@@ -22,7 +22,7 @@
  * `''` — the `typeof` check below survives that folding, a truthiness check would not.
  *
  * Locally, `npm run serve` builds the site and serves it *and* the API on 8787, which is the
- * same-origin arrangement end to end. For the faster loop — vite on 5173, Worker on 8787 — point a
+ * same-origin arrangement end to end. For the faster loop — vite on 3071, Worker on 8787 — point a
  * dev build at the Worker instead:
  *
  *     VITE_MULTIPLAYER_URL=http://localhost:8787 npm run dev -w apps/web

@@ -5,7 +5,7 @@
       "name": "web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace", "@arcs/web"],
-      "port": 5173
+      "port": 3071
     },
     {
       "name": "site",

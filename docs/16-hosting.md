@@ -1,5 +1,7 @@
 # Arcs Digital — Hosting
 
+> **Superseded.** Production is Node + SQLite in Docker on Tower; see `AGENTS.md`.
+
 ## 1. The short version
 
 A **static single-page app**: no backend, no database, no API keys, no server-side state. Any

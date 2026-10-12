@@ -21,7 +21,7 @@ export default defineConfig({
   base: process.env['BASE_PATH'] ?? '/',
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 3071, // arcs vite port (~/Projects/PORTS.md)
     // Allow importing the engine package's source from the monorepo root.
     fs: { allow: ['../..'] },
   },

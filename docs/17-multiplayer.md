@@ -1,5 +1,7 @@
 # Arcs Digital — Multiplayer options
 
+> **Superseded.** Production is Node + SQLite in Docker on Tower; see `AGENTS.md`.
+
 Ordered by effort, with the honest problem stated up front.
 
 **Decided so far:** option 1 (shared journal, dumb server) on Cloudflare Durable Objects, written
@@ -290,7 +292,7 @@ that assumption is what produced the CORS header, the preflight on every append,
   them — which for a design where every client replays the same journal is the failure that matters.
 
 `access-control-allow-origin: *` stays on the API. It costs one header, it keeps the two-terminal
-dev loop working (vite on 5173, Worker on 8787), and it keeps rule 2 honest: a Node deployment on a
+dev loop working (vite on 3071, Worker on 8787), and it keeps rule 2 honest: a Node deployment on a
 separate host still serves the same contract. Nothing in production depends on it.
 
 **This does not weaken the portability contract.** Assets are static file serving — the one
