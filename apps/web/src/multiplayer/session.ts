@@ -384,7 +384,12 @@ export class Session {
         await this.resync()
         return
       }
-      for (const entry of tail.entries) this.host.applyRemote(decodeAction(entry))
+      /*
+       * Another session (or push) may have applied some of these while we awaited; skip what the
+       * journal already holds, as applyPush does.
+       */
+      const already = (this.host.current()?.state.journal.length ?? have) - have
+      for (const entry of tail.entries.slice(already)) this.host.applyRemote(decodeAction(entry))
       if (tail.seats !== undefined) {
         this.host.seats(tail.seats)
         if (this.ownerOf(tail.seats) !== this.ownerSeen) await this.resync()

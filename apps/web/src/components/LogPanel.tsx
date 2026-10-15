@@ -28,6 +28,7 @@
  * up when the drawer closes — a row that unmounts under the pointer takes its highlight with it.
  */
 
+import { useBackClose } from '../back-close.js'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -257,13 +258,18 @@ function Reader({ card, onClose }: { card: CardRef; onClose: () => void }): JSX.
   if (card.kind === 'lore' || card.kind === 'leader') {
     return <LeaderCardReader id={card.id} kind={card.kind} onClose={onClose} />
   }
-  const dash = card.id.lastIndexOf('-')
+  return <ActionArt id={card.id} onClose={onClose} />
+}
+
+function ActionArt({ id, onClose }: { id: string; onClose: () => void }): JSX.Element {
+  useBackClose(onClose)
+  const dash = id.lastIndexOf('-')
   const src = asset(
-    `game-assets/action/${card.id.slice(0, dash).toLowerCase()}-${card.id.slice(dash + 1)}.webp`,
+    `game-assets/action/${id.slice(0, dash).toLowerCase()}-${id.slice(dash + 1)}.webp`,
   )
   return createPortal(
     <div className="court-modal" onClick={onClose} role="presentation">
-      <img className="log-action-art" src={src} alt={card.id} onClick={(e) => e.stopPropagation()} />
+      <img className="log-action-art" src={src} alt={id} onClick={(e) => e.stopPropagation()} />
     </div>,
     document.body,
   )

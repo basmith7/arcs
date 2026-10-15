@@ -669,6 +669,11 @@ html.phone-hand-grid .hand.tap .hand-card {
   width: auto;
   max-height: 60%;
 }
+.app.phone .cu-card.compact {
+  top: 8px;
+  bottom: auto;
+  right: auto;
+}
 .app.phone .cu-story-slot {
   min-height: 1.6em;
 }

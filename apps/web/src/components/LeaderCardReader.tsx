@@ -10,6 +10,7 @@
  * than on the card itself means studying a rival's leader cannot draft it by accident.
  */
 
+import { useBackClose } from '../back-close.js'
 import { leaderCard, loreCard } from '@arcs/engine'
 import type { Action, FactionId } from '@arcs/engine'
 import { useEffect, useState } from 'react'
@@ -128,6 +129,7 @@ export function LeaderCardReader({
   action?: Action | undefined
   onClose: () => void
 }): JSX.Element {
+  useBackClose(onClose)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()

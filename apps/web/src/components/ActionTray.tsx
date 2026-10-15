@@ -40,6 +40,7 @@ import { createPortal } from 'react-dom'
 
 import { smallArt } from '../assets.js'
 import { store } from '../store.js'
+import { useBackClose } from '../back-close.js'
 import { useModalDrag } from '../modal-drag.js'
 import { ESCAPES, owns } from '../surfaces.js'
 import { colorOf } from '../theme.js'
@@ -377,6 +378,7 @@ function SourceModal({
   faction: FactionId
   onClose: () => void
 }): JSX.Element {
+  useBackClose(onClose)
   const drag = useModalDrag()
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
