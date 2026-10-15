@@ -110,6 +110,7 @@ const server = createArcsServer({
 })
 
 void gate.resumeAll()
+notifier.watchStalls((gameId) => gate.resultOf(gameId))
 notifier.start()
 server.listen(PORT, '0.0.0.0', () => {
   console.log(

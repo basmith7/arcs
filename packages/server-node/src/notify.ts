@@ -10,6 +10,8 @@
  *  - a turn ping held for the idle grace (player has the page open) or leave grace (they just left);
  *  - a daily reminder for a game that has waited on the same human for 24 h or more.
  */
+import type { RuleResult } from '@arcs/engine'
+
 import type { DiscordBot } from './discord.js'
 import { askedOf } from './gate.js'
 import type { Settled } from './gate.js'
@@ -188,6 +190,28 @@ export class Notifier {
     await this.post(line)
   }
 
+  /** Who the game now waits on, for the stall reminder. A new mover or a longer journal restarts the count. */
+  private trackStall(gameId: string, after: RuleResult): void {
+    const waitingOn = after.state.isOver ? undefined : this.store.seats(gameId).find((s) => s.faction === askedOf(after))
+    if (waitingOn !== undefined && !waitingOn.isBot) this.store.watchStall(gameId, waitingOn.seatToken, after.state.journal.length)
+    else this.store.clearStall(gameId)
+  }
+
+  /**
+   * Startup: track games already waiting on a human. A stall is otherwise noticed only when a move
+   * settles, so a game idle since before this server started would never be reminded.
+   */
+  watchStalls(resultOf: (gameId: string) => RuleResult | undefined): void {
+    for (const gameId of this.store.gameIds()) {
+      try {
+        const result = resultOf(gameId)
+        if (result !== undefined) this.trackStall(gameId, result)
+      } catch {
+        // A game that no longer replays is not one anybody is waiting on.
+      }
+    }
+  }
+
   async onSettled({ gameId, before, after }: Settled): Promise<void> {
     const length = after.state.journal.length
     // A held ping is stale once the journal has moved. Same length means a restart re-settling the game: keep it.
@@ -198,10 +222,7 @@ export class Notifier {
     if (this.fallbackChannel === undefined) return
     const seats = this.store.seats(gameId)
 
-    // Who the game now waits on, for the stall reminder. A new mover or a longer journal restarts the count.
-    const waitingOn = after.state.isOver ? undefined : seats.find((s) => s.faction === askedOf(after))
-    if (waitingOn !== undefined && !waitingOn.isBot) this.store.watchStall(gameId, waitingOn.seatToken, length)
-    else this.store.clearStall(gameId)
+    this.trackStall(gameId, after)
 
     if (length <= meta.lastNotifiedLength) return
 

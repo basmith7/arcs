@@ -111,6 +111,18 @@ describe('daily stall reminder', () => {
     expect(t.sent).toHaveLength(2)
   })
 
+  it('a game already stalled when the server starts is picked up and reminded at 16:30', async () => {
+    const t = await setup()
+    t.store.clearStall(t.game.gameId) // as if the stall predates reminder tracking
+    t.at('2026-10-14T23:30:00Z')
+    await t.notifier.sweep()
+    expect(t.sent).toHaveLength(0)
+    t.notifier.watchStalls(() => t.afterRed)
+    await t.notifier.sweep()
+    expect(t.sent).toHaveLength(1)
+    expect(t.sent[0]!.content).toContain('4 days since the last move')
+  })
+
   it('starts over after a move', async () => {
     const t = await setup()
     t.at('2026-10-11T23:30:00Z')
