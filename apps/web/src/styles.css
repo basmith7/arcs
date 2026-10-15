@@ -504,6 +504,27 @@ html.phone-portrait body {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* One row always: the captions to the left wrap first, and on a laptop-width screen the buttons
+     tighten (below) so the row fits the window instead of pushing the page sideways. */
+  flex-shrink: 0;
+}
+@media (max-width: 1440px) {
+  .toolbar {
+    gap: 6px;
+  }
+  .topbar .toolbar .ghost {
+    padding: 6px 9px;
+    letter-spacing: 0.08em;
+  }
+}
+/* Narrower still, one row cannot fit: wrap the buttons rather than scroll the page sideways. */
+@media (max-width: 1200px) {
+  .toolbar {
+    flex-shrink: 1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+  }
 }
 /* Why the server refused a take-back — someone moved first. Cleared by the next move. */
 .undo-note {
