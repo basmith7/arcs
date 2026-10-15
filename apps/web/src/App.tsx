@@ -120,6 +120,9 @@ export function App(): JSX.Element {
     if (!phone) {
       setSheet(null)
       setMenuOpen(false)
+    } else {
+      // The desktop Scoreboard dialog does not survive the layout switch (it would reopen on the way back).
+      setScoreOpen(false)
     }
   }, [phone, phoneHand])
   useEffect(() => {
@@ -409,6 +412,7 @@ export function App(): JSX.Element {
                 faction={catchupFaction}
                 gameId={gameId!}
                 turn={catchupTurn!.start}
+                played={state.journal.length > catchupTurn!.start}
                 phone={phone}
                 onDismiss={() => setCatchupTick((n) => n + 1)}
               />

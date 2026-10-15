@@ -6834,6 +6834,24 @@ a.da-ghost {
   text-transform: uppercase;
   color: var(--gold);
 }
+.cu-title-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+/* After the opening play: just the title row, so the map under it can be tapped. */
+.cu-card.compact {
+  /* Top, not bottom: the decision prompt sits at the map's foot and must stay readable. */
+  top: 12px;
+  bottom: auto;
+  width: auto;
+  padding: 4px 8px;
+}
+.cu-card.compact .cu-head {
+  margin-bottom: 0;
+  gap: 10px;
+}
 .cu-list {
   margin: 0;
   padding-left: 18px;

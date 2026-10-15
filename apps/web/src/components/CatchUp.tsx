@@ -24,19 +24,29 @@ interface Props {
   factions: readonly FactionId[]
   name: (f: FactionId) => string
   collapsed: boolean
+  /** Shrunk to its title row so it stops covering the map; tapping the title calls `onToggle`. */
+  compact?: boolean
+  onToggle?: (() => void) | undefined
   onDismiss: () => void
 }
 
-export function CatchUp({ headsUps, story, pending, factions, name, collapsed, onDismiss }: Props): JSX.Element {
+export function CatchUp({ headsUps, story, pending, factions, name, collapsed, compact = false, onToggle, onDismiss }: Props): JSX.Element {
+  const cls = ['cu-card', collapsed ? 'collapsed' : '', compact ? 'compact' : ''].filter(Boolean).join(' ')
   return (
-    <aside className={collapsed ? 'cu-card collapsed' : 'cu-card'} aria-label="Catch-up">
+    <aside className={cls} aria-label="Catch-up">
       <div className="cu-head">
-        <span className="cu-title">Since your last turn</span>
+        {onToggle === undefined ? (
+          <span className="cu-title">Since your last turn</span>
+        ) : (
+          <button className="cu-title cu-title-btn" onClick={onToggle} aria-expanded={!compact}>
+            Since your last turn {compact ? '▸' : '▾'}
+          </button>
+        )}
         <button className="da-ghost" onClick={onDismiss} aria-label="Dismiss catch-up">
           ✕
         </button>
       </div>
-      {headsUps.length === 0 ? (
+      {compact ? null : headsUps.length === 0 ? (
         <p className="cu-quiet">Nothing to flag.</p>
       ) : (
         <ul className="cu-list">
@@ -45,7 +55,7 @@ export function CatchUp({ headsUps, story, pending, factions, name, collapsed, o
           ))}
         </ul>
       )}
-      {story !== null ? (
+      {compact ? null : story !== null ? (
         collapsed ? (
           <details className="cu-story">
             <summary>More</summary>
@@ -72,6 +82,7 @@ export function CatchUpSlot({
   faction,
   gameId,
   turn,
+  played,
   phone,
   onDismiss,
 }: {
@@ -79,27 +90,40 @@ export function CatchUpSlot({
   gameId: string
   /** Where this turn began in the journal (engine `seatTurn`): the story's and dismissal's key. */
   turn: number
+  /** The seat has played its opening card: the card shrinks to its title row. */
+  played: boolean
   phone: boolean
   onDismiss: (turn: number) => void
 }): JSX.Element | null {
-  const [waited, setWaited] = useState<number | null>(null)
+  /*
+   * Once the slot is released the card is final: `released` keeps what it held (a story or none),
+   * so a story that lands after that is not inserted and cannot push the card's height. It shows
+   * on the next open of the card (a reload, or dismiss and Catch-up), when it can be laid out fresh.
+   */
+  const [released, setReleased] = useState<{ turn: number; story: string | null } | null>(null)
+  /** Tapped open after the opening play; per turn. */
+  const [expanded, setExpanded] = useState<number | null>(null)
   useEffect(() => {
-    setWaited(null)
-    const t = setTimeout(() => setWaited(turn), STORY_WAIT_MS)
+    setReleased(null)
+    const t = setTimeout(() => setReleased({ turn, story: store.catchupStory(turn) }), STORY_WAIT_MS)
     return () => clearTimeout(t)
   }, [turn])
   const facts = store.seatFacts(faction)
   if (facts === null) return null
-  const story = store.catchupStory(turn)
+  const settled = released?.turn === turn ? released : null
+  const story = settled !== null ? settled.story : store.catchupStory(turn)
+  const compact = played && expanded !== turn
   const factions = facts.factions.map((f) => f.faction)
   return (
     <CatchUp
       headsUps={facts.headsUps}
       story={story}
-      pending={story === null && store.catchupEnabled() && waited !== turn}
+      pending={story === null && store.catchupEnabled() && settled === null}
       factions={factions}
       name={(f) => store.seatName(f) ?? f}
       collapsed={phone}
+      compact={compact}
+      onToggle={played ? () => setExpanded(compact ? turn : null) : undefined}
       onDismiss={() => {
         dismissCatchup(gameId, faction, turn)
         onDismiss(turn)

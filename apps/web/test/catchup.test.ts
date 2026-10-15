@@ -44,6 +44,35 @@ describe('CatchUp card', () => {
   })
 })
 
+describe('CatchUp card after the opening play', () => {
+  const compact = (on: boolean) =>
+    renderToStaticMarkup(
+      createElement(CatchUp, {
+        headsUps,
+        story: 'Ken built on a Relic world.',
+        pending: false,
+        factions: ['red', 'blue'],
+        name: (f: string) => names[f]!,
+        collapsed: false,
+        compact: on,
+        onToggle: () => {},
+        onDismiss: () => {},
+      }),
+    )
+  it('shrinks to its title row, leaving the title to re-expand it', () => {
+    const html = compact(true)
+    expect(html).toContain('cu-card compact')
+    expect(html).toContain('Since your last turn')
+    expect(html).not.toContain('tying you on Keeper')
+    expect(html).not.toContain('Ken built on a Relic world.')
+  })
+  it('shows everything again once expanded', () => {
+    const html = compact(false)
+    expect(html).not.toContain('compact')
+    expect(html).toContain('tying you on Keeper')
+  })
+})
+
 describe('dismissal', () => {
   afterEach(() => vi.unstubAllGlobals())
   it('is remembered per game, seat and turn, and can be undone', () => {
