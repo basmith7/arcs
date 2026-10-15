@@ -104,6 +104,7 @@ export function ShareGame({ game, board, onEnter }: Props): JSX.Element {
           {game.seats.map((seat) => row(seat.faction, seat.seatToken, colorOf(seat.faction as FactionId)))}
           {row('watching', undefined, null)}
         </div>
+        <em className="ng-hint">Hands are hidden on screen, not locked — play nice.</em>
       </div>
 
       <div className="mp-go">

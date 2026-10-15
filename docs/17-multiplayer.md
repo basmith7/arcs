@@ -70,6 +70,7 @@ differently, and conflating them would be the way to believe something false abo
 | **Acting as another faction** | a tampered client | server: `actorOf` reads the `faction` off the encoded action and refuses a seat that does not match |
 | **Seeing another hand** | a mis-click, a shoulder | client: `Hand` renders your own seat's cards, never the current player's |
 | **Seeing future dice** | nothing | not addressed — every client holds the seed |
+| **Choosing the seed** | a table replaying a seed it already knows | server: `POST /games` picks the seed for an online game and ignores one in the body. Every client can still read it back from `GET /games/:id` (#18) |
 
 **Only the first row is a guarantee.** The server check needs no engine: an encoded action carries
 `faction="…"`, so refusing a forgery is an identity check on a string, not a rules check. Whose turn
@@ -364,11 +365,14 @@ package runs in a Worker.
   `state.rng`, so it would have to carry its result instead.
 - Each client is sent `observe(state, myFaction)`. **This part is already built** — `ObservedState`
   carries `hand` and `handSizes` (see section 2), so the widening this entry once listed as work is
-  done, and what remains is the randomness change alone.
+  done. What remains is the randomness change **and the client**: it is a journal replayer, and
+  23 files in `apps/web/src` read `GameState` directly. Optimistic moves, the legal-action list,
+  `takeBackBlock`, catch-up, the interlude and the game-over history all run the engine on full
+  state, so each would move to server-supplied views and every click would wait a round trip.
 
 The engine's determinism survives this — an action carrying its dice replays exactly as well as one
 that derives them. Still a bigger job than option 1, and it touches battle, the court shuffle and
-the draft — but a smaller one than it was, now that the player view exists.
+the draft, and the client work above. The player view helps, but this is weeks, not days.
 
 **Do this only if you actually want competitive play with strangers.** For friends it is cost with
 no benefit.
