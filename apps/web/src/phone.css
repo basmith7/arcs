@@ -631,7 +631,8 @@ html.phone-hand-grid .hand.tap .hand-card {
  */
 @media (max-width: 599px) {
   .mg-list,
-  .mg-import {
+  .mg-import,
+  .ps-scroll {
     width: 100%;
   }
   .mg-row,

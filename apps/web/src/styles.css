@@ -6915,3 +6915,69 @@ a.da-ghost {
 .system-glow .evt-caption path {
   fill: var(--parchment, #e8dcc0);
 }
+
+/* Player stats (`#/me/stats`, PlayerStats.tsx): My Games' shell with a record, a table and history. */
+.ps-record {
+  text-align: center;
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+.ps-sub {
+  color: var(--muted);
+  font-size: 14px;
+}
+.ps-avgs {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  text-align: center;
+  color: var(--muted);
+}
+.ps-scroll {
+  width: min(560px, 100%);
+  margin: 0 auto 16px;
+  overflow-x: auto;
+}
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ps-table th,
+.ps-table td {
+  padding: 6px 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+}
+.ps-table th:first-child,
+.ps-table td:first-child {
+  text-align: left;
+}
+.ps-table th {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+.ps-dot {
+  display: inline-block;
+  vertical-align: middle;
+}
+.ps-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ps-line,
+.ps-table-names {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ps-table-names {
+  color: var(--muted);
+  font-size: 12px;
+}
+.ps-foot {
+  margin: 16px auto 0;
+  width: min(520px, 100%);
+}

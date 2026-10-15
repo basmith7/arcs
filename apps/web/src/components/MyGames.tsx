@@ -98,6 +98,9 @@ export function MyGames(): JSX.Element {
           <a className="ghost" href="#/">
             New game
           </a>
+          <a className="ghost" href="#/me/stats">
+            Stats
+          </a>
           <SignInButton hideMyGames />
         </div>
         {body}
