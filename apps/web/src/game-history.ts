@@ -3,14 +3,14 @@
  * `buildChapterReport`; lives here because it replays through `startGame`/`applyExternal`.
  */
 
-import { applyExternal, buildChapterReport, chapterEnded, decodeAction, finalChapterReport, startGame } from '@arcs/engine'
+import { applyExternal, buildChapterReport, chapterEnded, decodeAction, finalChapterReport, standings as engineStandings, startGame } from '@arcs/engine'
 import type { ChapterReport, FactionId, NewGameOptions, RuleRegistry, RuleResult } from '@arcs/engine'
 
 export interface GameHistory {
   readonly chapters: readonly ChapterReport[]
   readonly winner: FactionId
   readonly reason: string
-  /** Final power, best first; seating order breaks ties, matching the engine's winner pick. */
+  /** Final power, best first; the engine's `standings` rule, so first place is its winner pick. */
   readonly standings: readonly { faction: FactionId; power: number }[]
 }
 
@@ -42,9 +42,7 @@ export function buildGameHistory(
   }
 
   const state = result.state
-  const standings = state.factions
-    .map((faction) => ({ faction, power: state.power[faction] ?? 0 }))
-    .sort((a, b) => b.power - a.power) // Array.sort is stable: seating order breaks ties.
+  const standings = engineStandings(state)
   const over = result.continue
   return {
     chapters,

@@ -15,6 +15,7 @@ import {
   move,
   parseFigureId,
   slotsOf,
+  standings,
   startGame,
 } from '../src/index.js'
 import { takeAmbitionMarker } from '../src/rules/ambitions.js'
@@ -314,6 +315,22 @@ describe('scoring awards power and ends the game', () => {
 
     expect(after.state.isOver).toBe(true)
     expect(after.state.winners).toEqual(['blue'])
+  })
+
+  it('places a tie by initiative, so standings[0] is the engine winner and 2nd follows initiative', () => {
+    const base = startGame({ board: 'Board3MixUp', factions: THREE, seed: 5 }).state
+    // Seating is red, yellow, blue; initiative is blue, yellow, red. Yellow and blue tie on top.
+    const state: GameState = {
+      ...base,
+      power: { red: 30, yellow: 30, blue: 30 },
+      initiativeOrder: ['blue', 'yellow', 'red'],
+    }
+    const placed = standings(state).map((s) => s.faction)
+    expect(placed).toEqual(['blue', 'yellow', 'red'])
+    expect(advance(state, { type: 'ambition/check-win' }, registry).state.winners).toEqual([placed[0]])
+    // A lower tie resolves the same way.
+    const low = standings({ ...state, power: { red: 9, yellow: 20, blue: 9 } }).map((s) => s.faction)
+    expect(low).toEqual(['yellow', 'blue', 'red'])
   })
 
   it('leaves an outright lead alone, whoever holds the initiative', () => {

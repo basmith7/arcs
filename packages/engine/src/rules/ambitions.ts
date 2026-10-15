@@ -37,6 +37,7 @@ import {
   spendToken,
   supplyOf,
 } from '../resources.js'
+import { standings } from '../standings.js'
 import { AMBITIONS } from '../state.js'
 import type { Ambition, AmbitionMarker, GameState } from '../state.js'
 import { contentsOf, move } from '../tracker.js'
@@ -715,21 +716,8 @@ function performCheckWin(state: GameState): RuleResult {
   const finalChapter = state.chapter >= 5
 
   if (maxPower >= threshold || finalChapter) {
-    /*
-     * Rulebook 6.2.3: on a tie for the most power, the win goes to "the tied player earliest in
-     * turn order" — which is the **initiative** order, not the seating order `state.factions`
-     * happens to list. Reducing over `state.factions` handed a tie to whoever sat first, a
-     * different player whenever initiative has moved off seat one.
-     *
-     * The reduce keeps the first on equality, so ordering the candidates is the whole tie-break.
-     * Any faction missing from `initiativeOrder` is appended in seating order rather than dropped:
-     * the two lists always agree today, and a winner is not the place to discover otherwise.
-     */
-    const order = [
-      ...state.initiativeOrder.filter((f) => state.factions.includes(f)),
-      ...state.factions.filter((f) => !state.initiativeOrder.includes(f)),
-    ]
-    const winner = order.reduce((a, b) => ((state.power[b] ?? 0) > (state.power[a] ?? 0) ? b : a))
+    // Rulebook 6.2.3: a tie goes to the tied player earliest in turn order (see `standings`).
+    const winner = standings(state)[0]!.faction
     const reason =
       maxPower >= threshold
         ? `${winner} reached ${maxPower} power (threshold ${threshold})`
