@@ -147,7 +147,9 @@ export function LockedBanner({ owner, canUnlock = false }: { owner: string; canU
   const [error, setError] = useState(false)
   return (
     <div className="locked-banner" role="status">
-      <span>This seat is @{owner}'s. Sign in to play.</span>
+      <span>
+        This seat is @{owner}'s. {account === null ? "If it's yours, sign in to play." : "You're watching."}
+      </span>
       {enabled && account === null ? (
         <SignInLink className="ghost">Sign in with Discord</SignInLink>
       ) : null}
