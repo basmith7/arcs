@@ -42,6 +42,7 @@ export function MyGames(): JSX.Element {
   const [load, setLoad] = useState<Load>({ kind: 'loading' })
   /* Held here, not in the checklist: "Add selected" reloads the list, which unmounts the checklist. */
   const [taken, setTaken] = useState<readonly string[]>([])
+  const [failed, setFailed] = useState<readonly string[]>([])
 
   const refresh = useCallback(() => {
     setLoad({ kind: 'loading' })
@@ -81,8 +82,9 @@ export function MyGames(): JSX.Element {
       <GameList
         client={client}
         games={load.games}
-        onAdded={(refused) => {
+        onAdded={(refused, failed) => {
           setTaken(refused)
+          setFailed(failed)
           refresh()
         }}
       />
@@ -109,6 +111,16 @@ export function MyGames(): JSX.Element {
             </ul>
           </div>
         ) : null}
+        {failed.length > 0 ? (
+          <div className="mg-taken" role="alert">
+            Couldn't add these (try again):
+            <ul>
+              {failed.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
       <SigninNotice />
     </div>
@@ -122,7 +134,7 @@ function GameList({
 }: {
   client: MultiplayerClient
   games: readonly MyGame[]
-  onAdded: (refused: readonly string[]) => void
+  onAdded: (refused: readonly string[], failed: readonly string[]) => void
 }): JSX.Element {
   const local = rememberedSeats().filter((r) => !games.some((g) => g.gameId === r.gameId))
   return (
@@ -161,7 +173,7 @@ function AddFromBrowser({
 }: {
   client: MultiplayerClient
   local: readonly { gameId: string; seatToken: string }[]
-  onAdded: (refused: readonly string[]) => void
+  onAdded: (refused: readonly string[], failed: readonly string[]) => void
 }): JSX.Element {
   const [open, setOpen] = useState(false)
   const [candidates, setCandidates] = useState<readonly Candidate[] | null>(null)
@@ -194,16 +206,18 @@ function AddFromBrowser({
   const add = async (): Promise<void> => {
     setBusy(true)
     const refused: string[] = []
+    const failed: string[] = []
     for (const c of candidates ?? []) {
       if (!ticked.has(c.gameId)) continue
       try {
         await client.sit(c.gameId, c.seatToken)
       } catch (e) {
         if (e instanceof ApiError && e.status === 403) refused.push(c.label)
+        else failed.push(c.label)
       }
     }
     setBusy(false)
-    onAdded(refused)
+    onAdded(refused, failed)
   }
 
   if (!open)

@@ -631,7 +631,7 @@ class GameStore {
   }
 
   /** Who holds this game's locked seat, if the session's token names one it does not own. */
-  lockedSeat(): { faction: string; owner: string } | null {
+  lockedSeat(): { faction: string; owner: string; canUnlock?: boolean } | null {
     return this.session?.lockedSeat ?? null
   }
 

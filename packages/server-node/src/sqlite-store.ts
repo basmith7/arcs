@@ -189,6 +189,9 @@ export class SqliteStore implements GameStore {
     if (!have.has('discord_name')) this.db.exec('ALTER TABLE seat ADD COLUMN discord_name TEXT')
     if (!have.has('pings')) this.db.exec('ALTER TABLE seat ADD COLUMN pings INTEGER NOT NULL DEFAULT 1')
     if (!have.has('account_id')) this.db.exec('ALTER TABLE seat ADD COLUMN account_id TEXT')
+    // No FK to account(id): adding one to an existing column means rebuilding `seat` in place.
+    // Done after the column exists, so an old file gets it on this open.
+    this.db.exec('CREATE INDEX IF NOT EXISTS seat_account ON seat(account_id)')
     const gameCols = new Set((this.db.prepare('PRAGMA table_info(game)').all() as { name: string }[]).map((c) => c.name))
     if (!gameCols.has('updated_at')) this.db.exec('ALTER TABLE game ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0')
     // Every open, not just the one that added the column, so a crash between the two finishes here.

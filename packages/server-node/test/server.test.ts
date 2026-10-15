@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
 
 import WebSocket from 'ws'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Auth } from '../src/auth.js'
 import { EngineGate } from '../src/gate.js'
@@ -368,6 +368,40 @@ describe('createArcsServer', () => {
     await new Promise<void>((r) => owned.once('open', r))
     closers.push(() => owned.close())
     expect(presence.isActive(created.gameId, seatToken)).toBe(true)
+  })
+
+  it('a socket opened before someone locks the seat loses its presence', async () => {
+    const fetchFake = discordFake()
+    const auth = new Auth(new SqliteStore(':memory:'), {
+      clientId: 'id',
+      clientSecret: 's',
+      publicOrigin: 'http://127.0.0.1',
+      fetch: fetchFake.f,
+    })
+    const cookie = cookieOf((await signIn(auth, '#/g/abc', 'http://127.0.0.1'))!, 'arcs_session')!
+    const presence = new Presence()
+    const { base, ws } = await listen(undefined, presence, auth)
+    const created = (await (
+      await fetch(`${base}/games`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ options: ONE_HUMAN, factions: ONE_HUMAN.factions, bots: ['yellow', 'blue'] }),
+      })
+    ).json()) as { gameId: string; seats: { seatToken: string }[] }
+    const seatToken = created.seats[0]!.seatToken
+
+    const early = new WebSocket(`${ws}/games/${created.gameId}/live?seat=${seatToken}`)
+    await new Promise<void>((r) => early.once('open', r))
+    closers.push(() => early.close())
+    expect(presence.isActive(created.gameId, seatToken)).toBe(true)
+
+    await fetch(`${base}/games/${created.gameId}/sit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: `arcs_session=${cookie}` },
+      body: JSON.stringify({ seatToken }),
+    })
+    // The seats push to the early socket drops it.
+    await vi.waitFor(() => expect(presence.isActive(created.gameId, seatToken)).toBe(false))
   })
 
   it('without Discord configured, a claimed-but-unauthenticated connection still gets presence', async () => {
