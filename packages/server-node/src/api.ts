@@ -11,7 +11,8 @@ import { cookiePostRefusal, type Auth } from './auth.js'
 import type { DiscordBot } from './discord.js'
 import { askedFactions, type EngineGate } from './gate.js'
 import { seatAccess } from './seat-access.js'
-import type { SqliteStore } from './sqlite-store.js'
+import type { AccountSeat, SqliteStore } from './sqlite-store.js'
+import { buildStats, type ClaimedGame } from './stats.js'
 
 export interface Api {
   readonly store: SqliteStore
@@ -118,6 +119,24 @@ export function publicSeats(store: SqliteStore, gameId: string): PublicSeat[] {
   }))
 }
 
+/**
+ * The account's claimed seats with their replayed results. A game that will not replay (prod still
+ * holds malformed probes) drops out rather than failing the whole page. Shared by `/me/games` and
+ * `/me/stats`.
+ */
+function claimedSeats(store: SqliteStore, gate: EngineGate, accountId: string): { row: AccountSeat; result: RuleResult }[] {
+  const out: { row: AccountSeat; result: RuleResult }[] = []
+  for (const row of store.accountSeats(accountId)) {
+    try {
+      const result = gate.resultOf(row.gameId)
+      if (result !== undefined) out.push({ row, result })
+    } catch {
+      // skipped: see above
+    }
+  }
+  return out
+}
+
 const MAX_BODY_BYTES = 65536
 
 export class TooLargeError extends Error {}
@@ -168,27 +187,13 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   if (path === '/me/games' && request.method === 'GET') {
     if (api.auth === undefined) return bad(404, 'not found')
     if (account === undefined) return bad(401, 'signed out')
-    const rows = store
-      .accountSeats(account.id)
-      .map((row) => {
-        // A game that will not replay (prod still holds malformed probes) drops out of the list
-        // rather than failing the whole page.
-        let result: ReturnType<typeof gate.resultOf>
-        try {
-          result = gate.resultOf(row.gameId)
-        } catch {
-          return undefined
-        }
-        if (result === undefined) return undefined
-        return {
-          ...row,
-          length: store.journalLength(row.gameId),
-          chapter: result.state.chapter,
-          ...gameStatus(result, row.faction),
-          seats: publicSeats(store, row.gameId),
-        }
-      })
-      .filter((g): g is NonNullable<typeof g> => g !== undefined)
+    const rows = claimedSeats(store, gate, account.id).map(({ row, result }) => ({
+      ...row,
+      length: store.journalLength(row.gameId),
+      chapter: result.state.chapter,
+      ...gameStatus(result, row.faction),
+      seats: publicSeats(store, row.gameId),
+    }))
     // One row per game: an account holding several seats in one (hotseat) gets the seat whose turn
     // it is, else its first. A Map keeps first-insertion order, so the sort survives.
     const byGame = new Map<string, (typeof rows)[number]>()
@@ -198,6 +203,30 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     }
     const games = [...byGame.values()]
     return new Response(JSON.stringify({ games }), {
+      status: 200,
+      headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...CORS },
+    })
+  }
+  if (path === '/me/stats' && request.method === 'GET') {
+    if (api.auth === undefined) return bad(404, 'not found')
+    if (account === undefined) return bad(401, 'signed out')
+    // Group the account's seats by game (newest first, as accountSeats orders them).
+    const byGame = new Map<string, ClaimedGame>()
+    for (const { row, result } of claimedSeats(store, gate, account.id)) {
+      const held = byGame.get(row.gameId)
+      if (held !== undefined) {
+        held.held.push({ faction: row.faction, seatToken: row.seatToken })
+      } else {
+        byGame.set(row.gameId, {
+          gameId: row.gameId,
+          updatedAt: row.updatedAt,
+          held: [{ faction: row.faction, seatToken: row.seatToken }],
+          result,
+          seats: publicSeats(store, row.gameId),
+        })
+      }
+    }
+    return new Response(JSON.stringify(buildStats([...byGame.values()])), {
       status: 200,
       headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...CORS },
     })
