@@ -169,7 +169,7 @@ html.phone .srcm-actions {
 
 /* --- settings: the label column gives up room so the segmented choices can wrap --- */
 html.phone .set-row {
-  grid-template-columns: 84px minmax(0, 1fr) 40px;
+  grid-template-columns: 84px minmax(0, 1fr) minmax(40px, max-content);
   gap: 8px;
 }
 

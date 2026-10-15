@@ -357,6 +357,12 @@ button {
   height: calc(100 * var(--vh, 1vh));
   display: flex;
   flex-direction: column;
+  /*
+   * The game is exactly one screen tall. The hand cards' invisible hover strips (`.hand-card::after`)
+   * hang below the window, and unclipped they made the page scroll onto an empty band. `clip`, not
+   * `hidden`: it makes no scroll container, and the fixed overlays escape it either way.
+   */
+  overflow-y: clip;
 }
 /*
  * A phone held upright: the game is a fixed band at the top of a page far taller than it (see
@@ -6356,7 +6362,8 @@ html.phone-portrait body {
  */
 .set-row {
   display: grid;
-  grid-template-columns: 92px 1fr 44px;
+  /* The readout column grows for a button ("Unlink") rather than letting it spill out. */
+  grid-template-columns: 92px minmax(0, 1fr) minmax(44px, max-content);
   align-items: center;
   gap: 10px;
   padding: 5px 0;
@@ -6376,6 +6383,9 @@ html.phone-portrait body {
 }
 .set-row-actions .da-ghost {
   flex: none;
+  white-space: nowrap;
+}
+.set-row > .da-ghost {
   white-space: nowrap;
 }
 .set-label {
@@ -6661,6 +6671,8 @@ p.rules-trail {
   min-width: 0;
 }
 .sit-bar .primary {
+  text-decoration: none;
+  white-space: nowrap;
   color: #14100a;
   background: var(--gold);
   border: none;
@@ -6692,11 +6704,15 @@ p.rules-trail {
   right: 0;
   z-index: 50;
 }
-/* The sign-in and My games links wear the button classes; drop the link underline. */
-.newgame-load a.ghost,
-a.da-ghost {
+/* The lobby's sign-in and My games links wear the button classes; drop the link underline. */
+.newgame-load a.ghost {
   text-decoration: none;
   font-size: inherit;
+}
+/* In Settings the links sit beside real buttons, so they keep the button's own small type. */
+a.da-ghost {
+  display: inline-block;
+  text-decoration: none;
 }
 
 /* My Games (`#/me`, MyGames.tsx): the lobby's shell with a list of the account's games. */

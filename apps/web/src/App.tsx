@@ -1,9 +1,10 @@
 import { isWaiting } from '@arcs/engine'
 import { useEffect, useRef, useState } from 'react'
 
-import { useAccount } from './account.js'
+import { takeSitOnReturn, useAccount } from './account.js'
+import { parseLink } from './multiplayer/link.js'
 import { NAME_MAX } from './seat-form.js'
-import { LockedBanner, SignInButton, SigninNotice, SitHereBar } from './components/AccountBits.js'
+import { LockedBanner, SignInButton, SignInNudge, SigninNotice, SitHereBar } from './components/AccountBits.js'
 import { AskModal } from './components/AskModal.js'
 import { AskStrip } from './components/AskStrip.js'
 import { AmbitionTrack } from './components/AmbitionTrack.js'
@@ -94,6 +95,15 @@ export function App(): JSX.Element {
    */
   const account = useAccount()
   const [sitDismissed, setSitDismissed] = useState(false)
+  // Back from a sign-in started in this seat: sit there, as the sign-in promised (`takeSitOnReturn`).
+  const signedInHere = account.account !== null
+  const seatKind = store.seatView().kind
+  const seatOwner = store.mySeatOwner()
+  useEffect(() => {
+    if (!signedInHere || seatKind !== 'seat' || seatOwner !== undefined || store.lockedSeat() !== null) return
+    const gameId = parseLink(location.hash)?.gameId
+    if (gameId !== undefined && takeSitOnReturn(gameId)) void store.sitHere()
+  }, [signedInHere, seatKind, seatOwner])
   /*
    * The music. Mounted here rather than in `main.tsx` so it lives exactly as long as the app
    * does, and started before the early return: the title screen is where most first clicks
@@ -365,6 +375,7 @@ export function App(): JSX.Element {
       {seatView.kind === 'seat' && !needsName && signedIn && owner === undefined && !sitDismissed ? (
         <SitHereBar onSit={() => void store.sitHere()} onDismiss={() => setSitDismissed(true)} />
       ) : null}
+      {seatView.kind === 'seat' && !needsName && locked === null ? <SignInNudge /> : null}
       {locked !== null ? <LockedBanner owner={locked.owner} /> : null}
       <SigninNotice />
 

@@ -69,8 +69,46 @@ export function getAccount(): AccountState {
 
 /** Record that a sign-in attempt failed, so the UI can say so once. */
 export function setSigninFailed(v: boolean): void {
+  if (v) forgetSitOnReturn()
   state = { ...state, signinFailed: v }
   emit()
+}
+
+/*
+ * Signing in from a seat you are playing is the explicit act that locks it, so the round trip ends
+ * seated without a second "Sit here" tap. Only a sign-in started from that seat counts: opening a
+ * forwarded link while already signed in still asks first (docs/superpowers/specs/
+ * 2026-10-04-optional-login-design.md). Session storage, because the flag must survive exactly one
+ * same-tab trip through Discord and nothing longer.
+ */
+const SIT_ON_RETURN_KEY = 'arcs.signin.sitOnReturn'
+
+export function markSitOnReturn(gameId: string): void {
+  try {
+    sessionStorage.setItem(SIT_ON_RETURN_KEY, gameId)
+  } catch {
+    // Storage off: the "Sit here" bar still offers the tap.
+  }
+}
+
+function forgetSitOnReturn(): void {
+  try {
+    sessionStorage.removeItem(SIT_ON_RETURN_KEY)
+  } catch {
+    // Nothing stored, nothing to forget.
+  }
+}
+
+/** Whether sign-in was started from a seat in `gameId`; reading it clears it. */
+export function takeSitOnReturn(gameId: string): boolean {
+  try {
+    const marked = sessionStorage.getItem(SIT_ON_RETURN_KEY)
+    if (marked === null) return false
+    sessionStorage.removeItem(SIT_ON_RETURN_KEY)
+    return marked === gameId
+  } catch {
+    return false
+  }
 }
 
 /**

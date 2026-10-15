@@ -1,18 +1,34 @@
 /**
  * The small pieces of the optional Discord login (docs/superpowers/specs/2026-10-04-optional-login-design.md):
- * the sign-in link, the Settings account section, the "Sit here" bar, the locked-seat banner and the
- * failed-sign-in notice. Each renders nothing when the server has login off, so a deploy without
+ * the sign-in link, the Settings account section, the sign-in nudge, the "Sit here" bar, the
+ * locked-seat banner and the failed-sign-in notice. Each renders nothing when the server has login off, so a deploy without
  * Discord credentials looks exactly as it did before.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
-import { setSigninFailed, signInHref, signOut, useAccount } from '../account.js'
+import { markSitOnReturn, setSigninFailed, signInHref, signOut, useAccount } from '../account.js'
 import { MULTIPLAYER_URL } from '../multiplayer/config.js'
+import { parseLink } from '../multiplayer/link.js'
+import { store } from '../store.js'
 
 /** Where sign-in returns to: wherever the player is now, so a game link survives the round trip. */
 function signInLink(): string {
   return signInHref(MULTIPLAYER_URL!, location.hash)
+}
+
+/** Every sign-in link: one started from an unlocked seat sits there on the way back (`markSitOnReturn`). */
+function SignInLink({ className, children }: { className: string; children: string }): JSX.Element {
+  function onClick(): void {
+    const gameId = parseLink(location.hash)?.gameId
+    if (gameId !== undefined && store.seatView().kind === 'seat' && store.mySeatOwner() === undefined)
+      markSitOnReturn(gameId)
+  }
+  return (
+    <a className={className} href={signInLink()} onClick={onClick}>
+      {children}
+    </a>
+  )
 }
 
 export function SignInButton({ hideMyGames = false }: { hideMyGames?: boolean } = {}): JSX.Element | null {
@@ -20,9 +36,7 @@ export function SignInButton({ hideMyGames = false }: { hideMyGames?: boolean } 
   if (!enabled) return null
   if (account === null)
     return (
-      <a className="ghost" href={signInLink()}>
-        Sign in with Discord
-      </a>
+      <SignInLink className="ghost">Sign in with Discord</SignInLink>
     )
   if (hideMyGames) return null
   return (
@@ -39,15 +53,16 @@ export function AccountSection(): JSX.Element | null {
     <section className="set-section">
       <h3 className="set-heading">Account</h3>
       {account === null ? (
-        <p className="set-row">
-          <a className="da-ghost" href={signInLink()}>
-            Sign in with Discord
-          </a>
+        <p className="set-row set-row-actions">
+          <SignInLink className="da-ghost">Sign in with Discord</SignInLink>
         </p>
       ) : (
         <>
           <p className="set-row">
-            Signed in as {account.displayName} (@{account.discordName})
+            <span className="set-label">Signed in</span>
+            <span className="set-value">
+              {account.displayName} (@{account.discordName})
+            </span>
           </p>
           <p className="set-row set-row-actions">
             <a className="da-ghost" href="#/me">
@@ -60,6 +75,44 @@ export function AccountSection(): JSX.Element | null {
         </>
       )}
     </section>
+  )
+}
+
+/** Where a dismissed sign-in nudge is remembered: once per browser, not once per page load. */
+const SIGNIN_NUDGE_KEY = 'arcs.signin.nudgeDismissed'
+
+function nudgeDismissed(): boolean {
+  try {
+    return localStorage.getItem(SIGNIN_NUDGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Tells a signed-out player in a seat that Discord sign-in exists and what it buys them. Shown
+ * until they sign in or dismiss it; the dismissal sticks in this browser, so it asks once.
+ */
+export function SignInNudge(): JSX.Element | null {
+  const { enabled, account } = useAccount()
+  const [dismissed, setDismissed] = useState(nudgeDismissed)
+  if (!enabled || account !== null || dismissed) return null
+  function dismiss(): void {
+    try {
+      localStorage.setItem(SIGNIN_NUDGE_KEY, '1')
+    } catch {
+      // Private mode or storage off: it still goes for this page's life.
+    }
+    setDismissed(true)
+  }
+  return (
+    <div className="sit-bar" role="status">
+      <span>Sign in with Discord to lock this seat to you and get your turn pings on Discord.</span>
+      <SignInLink className="primary">Sign in</SignInLink>
+      <button className="ghost" onClick={dismiss} aria-label="Dismiss">
+        ×
+      </button>
+    </div>
   )
 }
 
@@ -87,9 +140,7 @@ export function LockedBanner({ owner }: { owner: string }): JSX.Element {
     <div className="locked-banner" role="status">
       <span>This seat is @{owner}'s. Sign in to play.</span>
       {enabled && account === null ? (
-        <a className="ghost" href={signInLink()}>
-          Sign in with Discord
-        </a>
+        <SignInLink className="ghost">Sign in with Discord</SignInLink>
       ) : null}
     </div>
   )

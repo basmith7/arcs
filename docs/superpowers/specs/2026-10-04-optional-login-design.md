@@ -98,6 +98,10 @@ opens the normal NamePrompt). Tapping either calls `POST /games/:id/sit {seatTok
 player already playing an unclaimed seat (named before signing in) gets the same **Sit here as @name**
 as a one-line bar above the board until they tap it or dismiss it.
 
+*Since v0.14.1:* signing in *from* an unlocked seat is that tap — the sign-in round trip ends seated
+(a session-storage flag set by the sign-in link, read once on return). Only opening a seat link while
+already signed in still asks.
+
 **Discord id has one source.** For a claimed seat, the notifier (`notify.ts`) and `publicSeats` read the
 Discord id and name through `seat.account_id → account`; the seat's own `discord_id`/`discord_name`
 columns are used only for unclaimed seats (today's pasted id and name matching). A Discord rename

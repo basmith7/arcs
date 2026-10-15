@@ -5,7 +5,7 @@
 Live at https://arcs.basmith.net; deploy, ports and paths are in Vault-13 Infrastructure.md (arcs row).
 Release: tag `vX.Y.Z` → `scripts/deploy-now.sh vX.Y.Z`.
 
-Current release: v0.14.0; see CHANGELOG.md.
+Current release: v0.14.1; see CHANGELOG.md.
 
 Still open (verified 2026-09-22 unless noted): webhook transport — the
 `game.webhook_url` column is wired but never exercised live; grace timers are in-memory in
@@ -14,7 +14,7 @@ still to spec; the `Deploy` (cloudflare) job still runs on every fork
 push as a no-op; `x-forwarded-for` is trusted blindly in `api.ts` (fine behind Traefik).
 
 **Optional Discord login** (spec `docs/superpowers/specs/2026-10-04-optional-login-design.md`):
-on only when `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are set (redirect
+on in production since v0.14.1 (Pikachu app); on only when `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are set (redirect
 `${PUBLIC_ORIGIN}/auth/discord/callback`); unset, every seat plays by link as before, including seats
 claimed while it was on. Seat links stay the way in; a signed-in player's "Sit here" tap locks a seat
 to their account (`seat.account_id`), and pings then use the account's Discord id. Still open: the
