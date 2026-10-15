@@ -91,7 +91,6 @@ export function NewGame(): JSX.Element {
   /** Seats played by a bot. Order follows seating, not click order — see `enterGame`. */
   const [bots, setBots] = useState<string[]>([])
   const [botLevel, setBotLevel] = useState<BotLevel>('normal')
-  const [webhookUrl, setWebhookUrl] = useState('')
 
   const byName = new Map(boardsFor(players).map((b) => [b.name, b]))
 
@@ -142,7 +141,6 @@ export function NewGame(): JSX.Element {
       setCreated(
         await client.create(withoutSeed, options.factions, {
           ...(options.bots === undefined ? {} : { bots: options.bots }),
-          ...(webhookUrl.trim() === '' ? {} : { webhookUrl: webhookUrl.trim() }),
         }),
       )
     } catch (e) {
@@ -429,16 +427,6 @@ export function NewGame(): JSX.Element {
         {/* Absent entirely when the build has no server configured — see `multiplayer/config.ts`. */}
         {multiplayerEnabled() ? (
           <div className="ng-online">
-            <div className="ng-field">
-              <span className="ng-label">Discord turn pings (optional)</span>
-              <input
-                className="mp-link"
-                placeholder="https://discord.com/api/webhooks/…"
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-                spellCheck={false}
-              />
-            </div>
             <button
               className="ghost ng-online-go"
               onClick={() => void createShared()}

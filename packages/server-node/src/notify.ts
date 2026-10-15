@@ -20,6 +20,8 @@ import type { PendingPing, Reminder, SeatRow } from './sqlite-store.js'
 import type { SqliteStore } from './sqlite-store.js'
 
 const DAY_MS = 86_400_000
+/** How long after the daily slot a reminder may still go out. */
+const SLOT_WINDOW_MS = 3_600_000
 /** Reminders per stall; after this, silence until someone moves. */
 export const MAX_REMINDERS = 7
 
@@ -170,6 +172,9 @@ export class Notifier {
     const due = r.count === 0 ? nextSlotAfter(lastMove + DAY_MS - 1, time, tz) : nextSlotAfter(r.lastAt, time, tz)
     const now = this.now()
     if (now < due) return
+    // Only in the hour after the slot: a stall found late (a long-idle game, a server that was down
+    // over 16:30) waits for the next 16:30 instead of pinging at whatever hour it is.
+    if (now - nextSlotAfter(now - DAY_MS, time, tz) > SLOT_WINDOW_MS) return
     const seat = this.store.seats(gameId).find((s) => s.seatToken === r.seatToken)
     if (seat === undefined || seat.isBot || !seat.pings) return
     // Counted before the post: like every ping here, a failed one is forgotten, not retried every sweep.

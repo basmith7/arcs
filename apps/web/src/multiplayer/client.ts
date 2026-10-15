@@ -98,7 +98,6 @@ export interface MyGame {
 
 export interface CreateExtra {
   readonly bots?: readonly string[]
-  readonly webhookUrl?: string
 }
 
 /**
@@ -164,7 +163,6 @@ export class MultiplayerClient {
         options,
         factions,
         ...(extra.bots !== undefined && extra.bots.length > 0 ? { bots: extra.bots } : {}),
-        ...(extra.webhookUrl !== undefined && extra.webhookUrl !== '' ? { webhookUrl: extra.webhookUrl } : {}),
       }),
     })
   }

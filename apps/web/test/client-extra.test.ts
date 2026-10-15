@@ -12,19 +12,18 @@ afterEach(() => {
 })
 
 describe('MultiplayerClient extras', () => {
-  it('sends bots and webhookUrl on create', async () => {
+  it('sends bots on create', async () => {
     vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
       calls.push({ url, init })
       return reply({ gameId: 'g', seats: [] }, 201)
     })
     const c = new MultiplayerClient('')
-    await c.create({ board: 'b' }, ['red', 'blue'], { bots: ['blue'], webhookUrl: 'https://discord.com/api/webhooks/1/x' })
+    await c.create({ board: 'b' }, ['red', 'blue'], { bots: ['blue'] })
     expect(calls[0]!.url).toBe('/games')
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({
       options: { board: 'b' },
       factions: ['red', 'blue'],
       bots: ['blue'],
-      webhookUrl: 'https://discord.com/api/webhooks/1/x',
     })
   })
 

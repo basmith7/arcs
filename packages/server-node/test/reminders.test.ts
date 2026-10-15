@@ -96,13 +96,17 @@ describe('daily stall reminder', () => {
     expect(t.sent[6]!.content).toContain('7 days since the last move')
   })
 
-  it('sends one message, not a backlog, after the server was down for days', async () => {
+  it('after days of downtime, waits for the next 16:30 and sends one message, not a backlog', async () => {
     const t = await setup()
-    t.at('2026-10-15T01:00:00Z')
+    t.at('2026-10-15T01:00:00Z') // 18:00 local: past today's slot window
+    await t.notifier.sweep()
+    expect(t.sent).toHaveLength(0)
+    t.at('2026-10-15T23:30:00Z')
     await t.notifier.sweep()
     await t.notifier.sweep()
     expect(t.sent).toHaveLength(1)
-    t.at('2026-10-15T23:30:00Z')
+    expect(t.sent[0]!.content).toContain('5 days since the last move')
+    t.at('2026-10-16T23:45:00Z') // still inside the hour after the slot
     await t.notifier.sweep()
     expect(t.sent).toHaveLength(2)
   })
