@@ -1,25 +1,34 @@
 /**
- * Discord turn pings. Best effort: a failed POST is logged and forgotten.
+ * Discord turn pings and stall reminders. Best effort: a failed post is logged and forgotten.
  *
  * Fires from the gate's `onSettled`, i.e. once the bots have finished after a human action, so a
  * ping always names a human who can actually act. Rate-limited per game to one message per window
  * except for chapter changes and game over, which always go out.
+ *
+ * Two things are deferred and so must outlive a restart; both sit in SQLite and one periodic
+ * `sweep()` sends whatever has come due:
+ *  - a turn ping held for the idle grace (player has the page open) or leave grace (they just left);
+ *  - a daily reminder for a game that has waited on the same human for 24 h or more.
  */
 import type { DiscordBot } from './discord.js'
 import { askedOf } from './gate.js'
 import type { Settled } from './gate.js'
 import type { Presence } from './presence.js'
-import type { SeatRow } from './sqlite-store.js'
+import { nextSlotAfter } from './reminder-time.js'
+import type { DailyTime } from './reminder-time.js'
+import type { PendingPing, Reminder, SeatRow } from './sqlite-store.js'
 import type { SqliteStore } from './sqlite-store.js'
+
+const DAY_MS = 86_400_000
+/** Reminders per stall; after this, silence until someone moves. */
+export const MAX_REMINDERS = 7
 
 export interface Message {
   readonly content: string
   readonly mentions: readonly string[]
 }
 
-export type Poster = (url: string, message: Message) => Promise<void>
-
-/** A game with no webhook of its own posts here instead, when configured. */
+/** Where pings go. Without one the notifier stays quiet. */
 export interface FallbackChannel {
   readonly channelId: string
   readonly bot: DiscordBot
@@ -31,7 +40,6 @@ export interface Schedule {
 
 export interface NotifierOptions {
   readonly publicOrigin: string
-  readonly post?: Poster
   readonly now?: () => number
   readonly windowMs?: number
   readonly fallbackChannel?: FallbackChannel
@@ -40,21 +48,17 @@ export interface NotifierOptions {
   readonly graceMs?: number
   /** Milliseconds to wait after the player's last socket closes before pinging. Default 60000. */
   readonly leaveGraceMs?: number
-  readonly schedule?: (fn: () => void, ms: number) => Schedule
+  /** Daily stall reminder time of day in `tz`; leave unset for no reminders. */
+  readonly reminder?: { readonly time: DailyTime; readonly tz: string }
+  /** How often `start()` sweeps, in ms. Default 30000. */
+  readonly sweepMs?: number
+  /** Repeating-timer seam for `start()`; defaults to an unref'd `setInterval`. */
+  readonly every?: (fn: () => void, ms: number) => Schedule
 }
 
 export function seatLink(origin: string, gameId: string, seatToken?: string): string {
   const seat = seatToken === undefined ? '' : `/s/${encodeURIComponent(seatToken)}`
   return `${origin.replace(/\/+$/, '')}/#/g/${encodeURIComponent(gameId)}${seat}`
-}
-
-export async function postToDiscord(url: string, message: Message): Promise<void> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ content: message.content, allowed_mentions: { parse: [], users: message.mentions } }),
-  })
-  if (!res.ok) throw new Error(`discord webhook -> ${res.status}`)
 }
 
 interface Line {
@@ -71,21 +75,13 @@ function mentionOf(seat: { readonly name?: string; readonly faction: string; rea
   return { text: `**${seat.name ?? seat.faction}**` }
 }
 
-interface Pending {
-  readonly seatToken: string
-  readonly length: number
-  readonly chapter: number
-  timer: Schedule
-}
-
-function defaultSchedule(fn: () => void, ms: number): Schedule {
-  const handle = setTimeout(fn, ms)
+function defaultEvery(fn: () => void, ms: number): Schedule {
+  const handle = setInterval(fn, ms)
   handle.unref?.()
-  return { cancel: () => clearTimeout(handle) }
+  return { cancel: () => clearInterval(handle) }
 }
 
 export class Notifier {
-  private readonly post: Poster
   private readonly now: () => number
   private readonly windowMs: number
   private readonly origin: string
@@ -93,14 +89,16 @@ export class Notifier {
   private readonly presence: Presence | undefined
   private readonly graceMs: number
   private readonly leaveGraceMs: number
-  private readonly schedule: (fn: () => void, ms: number) => Schedule
-  private readonly pending = new Map<string, Pending>()
+  private readonly reminder: NotifierOptions['reminder']
+  private readonly sweepMs: number
+  private readonly every: (fn: () => void, ms: number) => Schedule
+  private ticker: Schedule | undefined
+  private sweeping = false
 
   constructor(
     private readonly store: SqliteStore,
     opts: NotifierOptions,
   ) {
-    this.post = opts.post ?? postToDiscord
     this.now = opts.now ?? Date.now
     this.windowMs = opts.windowMs ?? 60_000
     this.origin = opts.publicOrigin
@@ -108,46 +106,100 @@ export class Notifier {
     this.presence = opts.presence
     this.graceMs = opts.graceMs ?? 600_000
     this.leaveGraceMs = opts.leaveGraceMs ?? 60_000
-    this.schedule = opts.schedule ?? defaultSchedule
+    this.reminder = opts.reminder
+    this.sweepMs = opts.sweepMs ?? 30_000
+    this.every = opts.every ?? defaultEvery
     this.presence?.onLeave((gameId, seatToken) => this.onLeave(gameId, seatToken))
   }
 
-  private onLeave(gameId: string, seatToken: string): void {
-    const pending = this.pending.get(gameId)
-    if (pending === undefined || pending.seatToken !== seatToken) return
-    pending.timer.cancel()
-    pending.timer = this.schedule(() => void this.checkPending(gameId), this.leaveGraceMs)
+  /** Starts the periodic sweep. Anything already overdue (say, across a restart) goes out on the first tick. */
+  start(): void {
+    this.ticker ??= this.every(() => void this.sweep(), this.sweepMs)
   }
 
-  private async checkPending(gameId: string): Promise<void> {
-    const pending = this.pending.get(gameId)
-    if (pending === undefined) return
-    this.pending.delete(gameId)
-    if (this.store.journalLength(gameId) !== pending.length) return
+  stop(): void {
+    this.ticker?.cancel()
+    this.ticker = undefined
+  }
+
+  private onLeave(gameId: string, seatToken: string): void {
+    const pending = this.store.pendingPing(gameId)
+    if (pending === undefined || pending.seatToken !== seatToken) return
+    this.store.setPendingPing({ ...pending, dueAt: this.now() + this.leaveGraceMs })
+  }
+
+  /** Sends every deferred ping and stall reminder that has come due. Safe to call at any time. */
+  async sweep(): Promise<void> {
+    if (this.sweeping) return
+    this.sweeping = true
+    try {
+      for (const pending of this.store.duePendingPings(this.now())) {
+        this.store.clearPendingPing(pending.gameId)
+        await this.sendPending(pending)
+      }
+      if (this.reminder !== undefined) {
+        for (const r of this.store.allReminders()) await this.remind(r, this.reminder)
+      }
+    } catch (e) {
+      console.warn('[notify] sweep failed:', (e as Error).message)
+    } finally {
+      this.sweeping = false
+    }
+  }
+
+  private async sendPending(pending: PendingPing): Promise<void> {
+    const { gameId } = pending
+    if (this.store.journalLength(gameId) !== pending.journalLength) return
     const meta = this.store.meta(gameId)
     if (meta !== undefined && this.now() - meta.lastNotifiedAt < this.windowMs) return
     const seat = this.store.seats(gameId).find((s) => s.seatToken === pending.seatToken)
     if (seat === undefined) return
     const line = this.turnLine(gameId, seat, pending.chapter)
     if (line === undefined) return
-    await this.postLines(gameId, [line], pending.length)
+    await this.postLines(gameId, [line], pending.journalLength)
+  }
+
+  /** Sends the stall reminder for one game if the seat is still the one being waited on and its slot is due. */
+  private async remind(r: Reminder, { time, tz }: { time: DailyTime; tz: string }): Promise<void> {
+    if (r.count >= MAX_REMINDERS || this.fallbackChannel === undefined) return
+    const { gameId } = r
+    if (this.store.journalLength(gameId) !== r.journalLength) return
+    const lastMove = this.store.updatedAt(gameId)
+    if (lastMove === undefined) return
+    // First reminder: the first slot at least 24 h after the last move. Then the first slot after the last send.
+    const due = r.count === 0 ? nextSlotAfter(lastMove + DAY_MS - 1, time, tz) : nextSlotAfter(r.lastAt, time, tz)
+    const now = this.now()
+    if (now < due) return
+    const seat = this.store.seats(gameId).find((s) => s.seatToken === r.seatToken)
+    if (seat === undefined || seat.isBot || !seat.pings) return
+    // Counted before the post: like every ping here, a failed one is forgotten, not retried every sweep.
+    this.store.noteReminded(gameId, now)
+    const days = Math.max(1, Math.floor((now - lastMove) / DAY_MS))
+    const who = mentionOf(seat)
+    const line: Line = {
+      text: `${who.text} still your turn in Arcs — ${days} ${days === 1 ? 'day' : 'days'} since the last move: ${seatLink(this.origin, gameId)}`,
+      mentions: who.mention === undefined ? [] : [who.mention],
+    }
+    await this.post(line)
   }
 
   async onSettled({ gameId, before, after }: Settled): Promise<void> {
-    const existingPending = this.pending.get(gameId)
-    if (existingPending !== undefined) {
-      existingPending.timer.cancel()
-      this.pending.delete(gameId)
-    }
+    const length = after.state.journal.length
+    // A held ping is stale once the journal has moved. Same length means a restart re-settling the game: keep it.
+    if (this.store.pendingPing(gameId)?.journalLength !== length) this.store.clearPendingPing(gameId)
 
     const meta = this.store.meta(gameId)
     if (meta === undefined) return
-    const hasWebhook = meta.webhookUrl !== undefined
-    if (!hasWebhook && this.fallbackChannel === undefined) return
-    const length = after.state.journal.length
+    if (this.fallbackChannel === undefined) return
+    const seats = this.store.seats(gameId)
+
+    // Who the game now waits on, for the stall reminder. A new mover or a longer journal restarts the count.
+    const waitingOn = after.state.isOver ? undefined : seats.find((s) => s.faction === askedOf(after))
+    if (waitingOn !== undefined && !waitingOn.isBot) this.store.watchStall(gameId, waitingOn.seatToken, length)
+    else this.store.clearStall(gameId)
+
     if (length <= meta.lastNotifiedLength) return
 
-    const seats = this.store.seats(gameId)
     const lines: Line[] = []
 
     if (after.state.isOver) {
@@ -170,9 +222,14 @@ export class Notifier {
       if (seat !== undefined && !seat.isBot && changed) {
         this.presence?.send(gameId, seat.seatToken, { turn: { faction: seat.faction, chapter: after.state.chapter, length } })
         if (seat.pings && this.presence?.isActive(gameId, seat.seatToken) === true) {
-          // Defer: wait to see if the journal moves before pinging Discord.
-          const timer = this.schedule(() => void this.checkPending(gameId), this.graceMs)
-          this.pending.set(gameId, { seatToken: seat.seatToken, length, chapter: after.state.chapter, timer })
+          // Defer: wait to see if the journal moves before pinging Discord. Held in SQLite, sent by `sweep`.
+          this.store.setPendingPing({
+            gameId,
+            seatToken: seat.seatToken,
+            journalLength: length,
+            chapter: after.state.chapter,
+            dueAt: this.now() + this.graceMs,
+          })
         } else {
           const inWindow = this.now() - meta.lastNotifiedAt < this.windowMs
           if (!inWindow || lines.length > 0) {
@@ -210,24 +267,24 @@ export class Notifier {
     }
   }
 
-  private async postLines(gameId: string, lines: readonly Line[], length: number): Promise<void> {
-    if (lines.length === 0) return
-    const meta = this.store.meta(gameId)
-    if (meta === undefined) return
-    const hasWebhook = meta.webhookUrl !== undefined
+  /** Posts to the channel; false when it failed or there is no channel. */
+  private async post(...lines: Line[]): Promise<boolean> {
+    if (this.fallbackChannel === undefined) return false
     const message: Message = {
       content: lines.map((l) => l.text).join('\n'),
       mentions: [...new Set(lines.flatMap((l) => l.mentions))],
     }
     try {
-      if (hasWebhook) {
-        await this.post(meta.webhookUrl!, message)
-      } else {
-        await this.fallbackChannel!.bot.postMessage(this.fallbackChannel!.channelId, message)
-      }
-      this.store.markNotified(gameId, length, this.now())
+      await this.fallbackChannel.bot.postMessage(this.fallbackChannel.channelId, message)
+      return true
     } catch (e) {
-      console.warn(`[notify] post failed for ${gameId}:`, (e as Error).message)
+      console.warn('[notify] post failed:', (e as Error).message)
+      return false
     }
+  }
+
+  private async postLines(gameId: string, lines: readonly Line[], length: number): Promise<void> {
+    if (lines.length === 0) return
+    if (await this.post(...lines)) this.store.markNotified(gameId, length, this.now())
   }
 }

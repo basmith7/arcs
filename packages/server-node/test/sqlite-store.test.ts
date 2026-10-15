@@ -12,11 +12,10 @@ describeStoreContract('SqliteStore (memory)', () => new SqliteStore(':memory:'))
 describeStoreContract('SqliteStore (file)', () => new SqliteStore(tempDbPath()))
 
 describe('SqliteStore extras', () => {
-  it('marks bot seats and keeps a webhook url out of read()', async () => {
+  it('marks bot seats', async () => {
     const store = new SqliteStore(':memory:')
     const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions, {
       bots: ['blue'],
-      webhookUrl: 'https://discord.test/hook',
     })
     const seats = store.seats(game.gameId)
     expect(seats.map((s) => [s.faction, s.isBot])).toEqual([
@@ -24,10 +23,7 @@ describe('SqliteStore extras', () => {
       ['yellow', false],
       ['blue', true],
     ])
-    const tail = await store.read(game.gameId, 0)
-    expect(JSON.stringify(tail)).not.toContain('discord.test')
     expect(store.meta(game.gameId)).toEqual({
-      webhookUrl: 'https://discord.test/hook',
       lastNotifiedLength: -1,
       lastNotifiedAt: 0,
     })
@@ -61,7 +57,7 @@ describe('SqliteStore extras', () => {
         PRIMARY KEY (game_id, idx)
       );
     `)
-    raw.prepare('INSERT INTO game (id, options, created_at) VALUES (?, ?, ?)').run('g1', JSON.stringify(THREE_PLAYER), 1)
+    raw.prepare('INSERT INTO game (id, options, created_at, webhook_url) VALUES (?, ?, ?, ?)').run('g1', JSON.stringify(THREE_PLAYER), 1, 'https://discord.com/api/webhooks/1/x')
     raw.prepare('INSERT INTO seat (game_id, ord, faction, token) VALUES (?, ?, ?, ?)').run('g1', 0, 'red', 'tok1')
     raw.close()
 
@@ -77,6 +73,15 @@ describe('SqliteStore extras', () => {
       pings: true,
     })
     store.close()
+
+    // The webhook column is dropped; the row survives, the new tables exist, and a second open is a no-op.
+    const check = new DatabaseSync(path)
+    const cols = (check.prepare('PRAGMA table_info(game)').all() as { name: string }[]).map((c) => c.name)
+    expect(cols).not.toContain('webhook_url')
+    expect(check.prepare('SELECT id FROM game').all()).toHaveLength(1)
+    expect(check.prepare("SELECT name FROM sqlite_master WHERE name IN ('pending_ping','reminder')").all()).toHaveLength(2)
+    check.close()
+    new SqliteStore(path).close()
   })
 
   it('defaults every seat to pings on, flips and persists it', async () => {
