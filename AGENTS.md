@@ -17,9 +17,12 @@ push as a no-op; `x-forwarded-for` is trusted blindly in `api.ts` (fine behind T
 on in production since v0.14.1 (Pikachu app); on only when `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are set (redirect
 `${PUBLIC_ORIGIN}/auth/discord/callback`); unset, every seat plays by link as before, including seats
 claimed while it was on. Seat links stay the way in; a signed-in player's "Sit here" tap locks a seat
-to their account (`seat.account_id`), and pings then use the account's Discord id. Still open: the
-old name-matching (`bot.resolveMember`) and pasted-id Discord links coexist with sign-in (issue #20); a player who
-loses their Discord account is unlocked by hand (`UPDATE seat SET account_id = NULL WHERE token = ?`).
+to their account (`seat.account_id`), and pings then use the account's Discord id. Kept on purpose
+(issue #20): the old name-matching (`bot.resolveMember`) and pasted-id Discord links coexist with
+sign-in, because friends who never sign in still need their pings; a claimed seat ignores both and
+reads its Discord id through the account. A seat locked to the wrong account is unlocked by its owner
+or by any signed-in account holding another seat in the same game (Settings "Release seat", or the
+locked banner's "Unlock seat"; `POST /games/:id/release`).
 
 Two rules deviations are known and deliberate, both in docs/15 section 5: the chapter-end ambition
 **marker flip** is modelled as HRF's sliding window rather than the rulebook's flip-the-lowest

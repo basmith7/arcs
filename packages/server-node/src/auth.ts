@@ -56,11 +56,27 @@ function sanitizeReturn(raw: string | null): string {
   return raw !== null && HASH_ROUTE.test(raw) ? raw : ''
 }
 
+/**
+ * Cookie-authorised POSTs (`/sit`, `/release`, `/auth/logout`) are same-origin `fetch`es sending
+ * JSON. SameSite is site-wide, so a sibling `*.basmith.net` page could otherwise ride the cookie
+ * with a CORS-simple `text/plain` POST: refuse a foreign `Origin` and anything but JSON.
+ */
+export function cookiePostRefusal(request: Request, publicOrigin: string): Response | undefined {
+  const origin = request.headers.get('origin')
+  const type = request.headers.get('content-type') ?? ''
+  const foreign = origin !== null && origin !== publicOrigin
+  if (!foreign && /^application\/json\b/i.test(type)) return undefined
+  return new Response(JSON.stringify({ error: foreign ? 'bad-origin' : 'json-required' }), {
+    status: foreign ? 403 : 415,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
 export class Auth {
   private readonly store: SqliteStore
   private readonly clientId: string
   private readonly clientSecret: string
-  private readonly publicOrigin: string
+  readonly publicOrigin: string
   private readonly fetchFn: typeof fetch
   private readonly now: () => number
   private readonly secure: boolean
@@ -99,7 +115,7 @@ export class Auth {
       return this.discordCallback(request, url)
     }
     if (path === '/auth/logout' && request.method === 'POST') {
-      return this.logout(request)
+      return cookiePostRefusal(request, this.publicOrigin) ?? this.logout(request)
     }
     if (path === '/me' && request.method === 'GET') {
       return this.me(request)

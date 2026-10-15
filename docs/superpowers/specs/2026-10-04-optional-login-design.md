@@ -67,8 +67,8 @@ Expired sessions are deleted lazily on lookup and in a sweep at startup.
 
 Sessions slide: a lookup more than a day after the last extension pushes `expires_at` out to 90 days again.
 
-CSRF: the only cookie-authorised writes are same-origin `fetch` POSTs, and SameSite=Lax keeps the
-cookie off cross-site POSTs. The `access-control-allow-origin: *` header stays for the token API (it
+CSRF: the only cookie-authorised writes are same-origin `fetch` POSTs (`/sit`, `/release`, `/auth/logout`), and SameSite=Lax keeps the
+cookie off cross-site POSTs. SameSite is site-wide, so those three also refuse a present `Origin` other than `PUBLIC_ORIGIN` and any non-JSON content type (issue #24). The `access-control-allow-origin: *` header stays for the token API (it
 does not allow credentials, so a foreign origin can never ride the cookie).
 
 ## Locking
@@ -112,8 +112,11 @@ A bot seat is never claimable. One account may hold several seats in a game (hot
 **Releasing.** `POST /games/:id/release {seatToken}` by the owner clears `account_id` (keeps the name;
 the seat falls back to its own Discord columns, which a claim never wrote, so it stops mentioning the
 old owner). Settings shows **Release seat**, behind a confirm: "Anyone with this seat's link will be
-able to play it. Release?" A player who has lost their Discord account is unlocked by hand in SQL; the
-spec does not add an admin page.
+able to play it. Release?" *Since v0.14.2 (issue #23):* the same endpoint also accepts any signed-in
+account that holds another seat in the same game, so a seat locked by the wrong account (a `/claim`
+link then "Sit here") is freed without SQL. The locked banner shows **Unlock seat** to such a viewer
+(`lockedSeat.canUnlock` on the read), behind a confirm. A player who lost their Discord account asks
+a tablemate to unlock; the spec does not add an admin page.
 
 ## My Games
 
@@ -197,7 +200,7 @@ and the Discord id is read through the account. A small hash router handles the 
 
 - Copying the account's Discord id onto the seat: two sources of truth, with stale names after a rename or release. **Fixed in this spec**: read it through `account_id`.
 - Silent claim on opening a link. **Fixed**: claim only on a tap.
-- Three ways to link Discord coexist (name matching, pasted id, OAuth). **Track**: drop name matching once most players sign in.
+- Three ways to link Discord coexist (name matching, pasted id, OAuth). **Kept (issue #20, decided 2026-10-14)**: friends who never sign in still get pings through name-matching or the pasted id. A claimed seat ignores both (`/seat` skips them) and Settings shows only the account's Discord line.
 - Routes the app can't handle (`#/me`, the failure landing). **Fixed**: a `hashchange` reload plus boot routing.
 - "Newest activity first" had no data behind it. **Fixed**: `game.updated_at`.
 

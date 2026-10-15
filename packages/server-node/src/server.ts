@@ -212,16 +212,28 @@ export function createArcsServer(opts: ServerOptions): http.Server {
         sockets.add(ws)
         alive.add(ws)
         ws.on('pong', () => alive.add(ws))
+        const unpresence = seat === undefined ? undefined : presence.connect(gameId, seat, ws)
+        // Access was decided at the upgrade; a later /sit by someone else can lock the seat under
+        // this socket, so seat pushes and activity pings re-ask and drop its presence if so.
+        let holding = seat !== undefined
+        const recheck = (): void => {
+          if (!holding || seat === undefined || api.auth === undefined) return
+          const row = api.store.seatByToken(gameId, seat)
+          if (row !== undefined && seatAccess(row, account?.id) === 'ok') return
+          holding = false
+          unpresence?.()
+        }
         const unsubscribe = api.gate.subscribe(gameId, (push) => {
+          if (push.seats !== undefined) recheck()
           if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(push))
         })
-        const unpresence = seat === undefined ? undefined : presence.connect(gameId, seat, ws)
         if (seat !== undefined) {
           ws.on('message', (data) => {
             try {
               const msg = JSON.parse(String(data)) as unknown
               if (typeof msg === 'object' && msg !== null && (msg as { t?: unknown }).t === 'active') {
-                presence.touch(gameId, seat)
+                recheck()
+                if (holding) presence.touch(gameId, seat)
               }
             } catch {
               // ignore malformed messages

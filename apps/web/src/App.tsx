@@ -373,10 +373,10 @@ export function App(): JSX.Element {
         </div>
       </header>
       {seatView.kind === 'seat' && !needsName && signedIn && owner === undefined && !sitDismissed ? (
-        <SitHereBar onSit={() => void store.sitHere()} onDismiss={() => setSitDismissed(true)} />
+        <SitHereBar onSit={() => store.sitHere()} onDismiss={() => setSitDismissed(true)} />
       ) : null}
       {seatView.kind === 'seat' && !needsName && locked === null ? <SignInNudge /> : null}
-      {locked !== null ? <LockedBanner owner={locked.owner} /> : null}
+      {locked !== null ? <LockedBanner owner={locked.owner} canUnlock={locked.canUnlock === true} /> : null}
       <SigninNotice />
 
       <main className={logPinned && !phone ? 'layout log-pinned' : 'layout'}>

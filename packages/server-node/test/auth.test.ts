@@ -59,7 +59,7 @@ describe('Auth', () => {
     const auth = new Auth(new SqliteStore(':memory:'), { clientId: 'id', clientSecret: 's', publicOrigin: ORIGIN, fetch: discordFake().f })
     const session = cookieOf((await signIn(auth))!, 'arcs_session')!
     const cookie = { cookie: `arcs_session=${session}` }
-    await auth.route(new Request(`${ORIGIN}/auth/logout`, { method: 'POST', headers: cookie }))
+    await auth.route(new Request(`${ORIGIN}/auth/logout`, { method: 'POST', headers: { ...cookie, 'content-type': 'application/json' } }))
     expect(auth.accountOf(new Request(`${ORIGIN}/me`, { headers: cookie }))).toBeUndefined()
   })
 })

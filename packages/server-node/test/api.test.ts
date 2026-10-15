@@ -335,6 +335,53 @@ describe('seat locks', () => {
     expect(res!.status).toBe(200)
   })
 
+  it('release: the owner or an account seated elsewhere in the game may unlock; a stranger may not', async () => {
+    const { a, gameId, red, me, eve } = await setup()
+    const blue = a.store.seats(gameId).find((s) => s.faction === 'blue')!.seatToken
+    const release = (cookie: string) => route(post(`/games/${gameId}/release`, { seatToken: red }, { cookie }), a)
+    await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: me }), a)
+    // Eve holds no seat here yet: refused, and the read does not offer her an unlock.
+    expect((await release(eve))!.status).toBe(403)
+    let tail = await (await route(get(`/games/${gameId}`, { 'x-seat-token': red, cookie: eve }), a))!.json()
+    expect(tail.lockedSeat).toEqual({ faction: 'red', owner: 'Brian' })
+    // Holding another seat in the game is the key.
+    await route(post(`/games/${gameId}/sit`, { seatToken: blue }, { cookie: eve }), a)
+    tail = await (await route(get(`/games/${gameId}`, { 'x-seat-token': red, cookie: eve }), a))!.json()
+    expect(tail.lockedSeat).toEqual({ faction: 'red', owner: 'Brian', canUnlock: true })
+    expect((await release(eve))!.status).toBe(200)
+    expect(a.store.seatByToken(gameId, red)?.accountId).toBeUndefined()
+    // Her own seat is still hers, and an unclaimed seat cannot be "released".
+    expect(a.store.seatByToken(gameId, blue)?.accountId).toBeDefined()
+    expect((await release(eve))!.status).toBe(403)
+  })
+
+  it('cookie POSTs refuse a foreign Origin and a non-JSON content type', async () => {
+    const { a, gameId, red, me } = await setup()
+    const sit = (headers: Record<string, string>) =>
+      route(new Request(`${BASE}/games/${gameId}/sit`, { method: 'POST', headers: { cookie: me, ...headers }, body: JSON.stringify({ seatToken: red }) }), a)
+    expect((await sit({ 'content-type': 'application/json', origin: 'https://evil.basmith.net' }))!.status).toBe(403)
+    expect((await sit({ 'content-type': 'text/plain' }))!.status).toBe(415)
+    expect(a.store.seatByToken(gameId, red)?.accountId).toBeUndefined()
+    expect((await sit({ 'content-type': 'application/json', origin: BASE }))!.status).toBe(200)
+    const out = (headers: Record<string, string>) =>
+      route(new Request(`${BASE}/auth/logout`, { method: 'POST', headers: { cookie: me, ...headers } }), a)
+    expect((await out({ 'content-type': 'text/plain', origin: 'https://evil.basmith.net' }))!.status).toBe(403)
+    expect((await out({ 'content-type': 'text/plain' }))!.status).toBe(415)
+    expect((await out({ 'content-type': 'application/json', origin: BASE }))!.status).toBe(204)
+    const rel = route(new Request(`${BASE}/games/${gameId}/release`, { method: 'POST', headers: { cookie: me, 'content-type': 'text/plain', origin: BASE }, body: JSON.stringify({ seatToken: red }) }), a)
+    expect((await rel)!.status).toBe(415)
+  })
+
+  it('renaming a claimed seat does not write a pasted Discord id on the seat', async () => {
+    const { a, gameId, red, me } = await setup()
+    await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: me }), a)
+    const res = await route(post(`/games/${gameId}/seat`, { seatToken: red, name: 'Bri', discordId: '222222222222222222' }, { cookie: me }), a)
+    expect(res!.status).toBe(200)
+    await route(post(`/games/${gameId}/release`, { seatToken: red }, { cookie: me }), a)
+    expect(a.store.seatByToken(gameId, red)).toMatchObject({ name: 'Bri' })
+    expect(a.store.seatByToken(gameId, red)?.discordId).toBeUndefined()
+  })
+
   it('Who are you? refuses a locked seat to anyone but its owner', async () => {
     const { a, gameId, red, me, eve } = await setup()
     await route(post(`/games/${gameId}/sit`, { seatToken: red }, { cookie: me }), a)

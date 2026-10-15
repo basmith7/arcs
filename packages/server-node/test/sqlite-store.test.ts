@@ -255,6 +255,10 @@ describe('accounts', () => {
     const a = s.upsertAccount({ discordId: '111111111111111111', discordName: 'bri', displayName: 'Brian' })
     s.claim('g', 't', a.id, 'Brian')
     expect(s.accountSeats(a.id)).toEqual([{ gameId: 'g', seatToken: 't', faction: 'red', createdAt: 42, updatedAt: 42 }])
+    // Existing rows survive and the account_id index is added to the old table.
+    const idx = new DatabaseSync(path)
+    expect(idx.prepare("SELECT name FROM pragma_index_list('seat') WHERE name = 'seat_account'").all()).toHaveLength(1)
+    idx.close()
     // A crash between adding updated_at and backfilling it: the next open finishes the job.
     s.close()
     const half = new DatabaseSync(path)

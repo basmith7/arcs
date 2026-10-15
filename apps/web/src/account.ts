@@ -131,7 +131,11 @@ export function signInHref(baseUrl: string, hash: string): string {
  */
 export async function signOut(baseUrl: string): Promise<void> {
   try {
-    await fetch(`${baseUrl}/auth/logout`, { method: 'POST' })
+    await fetch(`${baseUrl}/auth/logout`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    })
   } finally {
     if (typeof location !== 'undefined') location.reload()
   }

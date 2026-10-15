@@ -47,7 +47,7 @@ export interface GameTail {
    * Set instead of `yourFaction` when the seat token names a seat someone else has claimed: who
    * holds it, so the UI can say so rather than silently falling back to watching.
    */
-  readonly lockedSeat?: { readonly faction: string; readonly owner: string }
+  readonly lockedSeat?: { readonly faction: string; readonly owner: string; readonly canUnlock?: boolean }
 }
 
 /** One of this account's games, as `GET /me/games` lists it. */

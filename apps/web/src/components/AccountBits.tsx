@@ -116,15 +116,23 @@ export function SignInNudge(): JSX.Element | null {
   )
 }
 
-export function SitHereBar({ onSit, onDismiss }: { onSit: () => void; onDismiss: () => void }): JSX.Element | null {
+export function SitHereBar({ onSit, onDismiss }: { onSit: () => Promise<void>; onDismiss: () => void }): JSX.Element | null {
   const { account } = useAccount()
+  const [error, setError] = useState(false)
   if (account === null) return null
   return (
     <div className="sit-bar" role="status">
       <span>
         Sit here as @{account.displayName} to lock this seat to you and get turn pings on Discord.
       </span>
-      <button className="primary" onClick={onSit}>
+      {error ? <span role="alert">Couldn't sit here. Try again.</span> : null}
+      <button
+        className="primary"
+        onClick={() => {
+          setError(false)
+          onSit().catch(() => setError(true))
+        }}
+      >
         Sit here
       </button>
       <button className="ghost" onClick={onDismiss} aria-label="Dismiss">
@@ -134,13 +142,31 @@ export function SitHereBar({ onSit, onDismiss }: { onSit: () => void; onDismiss:
   )
 }
 
-export function LockedBanner({ owner }: { owner: string }): JSX.Element {
+export function LockedBanner({ owner, canUnlock = false }: { owner: string; canUnlock?: boolean }): JSX.Element {
   const { enabled, account } = useAccount()
+  const [error, setError] = useState(false)
   return (
     <div className="locked-banner" role="status">
-      <span>This seat is @{owner}'s. Sign in to play.</span>
+      <span>
+        This seat is @{owner}'s. {account === null ? "If it's yours, sign in to play." : "You're watching."}
+      </span>
       {enabled && account === null ? (
         <SignInLink className="ghost">Sign in with Discord</SignInLink>
+      ) : null}
+      {canUnlock ? (
+        <>
+          {error ? <span role="alert">Couldn't unlock. Try again.</span> : null}
+          <button
+            className="ghost"
+            onClick={() => {
+              if (!window.confirm(`Unlock @${owner}'s seat? Anyone with its link can then play it.`)) return
+              setError(false)
+              store.releaseSeat().catch(() => setError(true))
+            }}
+          >
+            Unlock seat
+          </button>
+        </>
       ) : null}
     </div>
   )

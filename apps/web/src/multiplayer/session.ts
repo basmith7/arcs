@@ -86,7 +86,9 @@ export class Session {
    * `yourFaction` to go with it — the token still names a seat, but not one this client may act for
    * — so the session reads as spectating until it is released or a claim transfers it.
    */
-  lockedSeat: { faction: string; owner: string } | null = null
+  lockedSeat: { faction: string; owner: string; canUnlock?: boolean } | null = null
+  /** Who held this client's seat (or the locked one it names) at the last read; a change means resync. */
+  private ownerSeen: string | undefined = undefined
   /** The poll currently in flight, if any — awaited by `claimName` so a stale read cannot clobber a claim. */
   private inflight: Promise<void> | null = null
   /** The live socket, or `null` while falling back to polling. */
@@ -288,7 +290,14 @@ export class Session {
     if (typeof from !== 'number' || !Array.isArray(entries)) return
 
     const seats = (push as { seats?: unknown }).seats
-    if (Array.isArray(seats)) this.host.seats(seats as PublicSeat[])
+    if (Array.isArray(seats)) {
+      this.host.seats(seats as PublicSeat[])
+      // Someone sat in or released this seat: the lock banner and `yourFaction` are stale until a read.
+      if (this.ownerOf(seats as PublicSeat[]) !== this.ownerSeen) {
+        void this.resync()
+        return
+      }
+    }
 
     const have = this.host.current()?.state.journal.length ?? 0
     if (from > have) {
@@ -328,7 +337,13 @@ export class Session {
     this.lockedSeat = tail.lockedSeat ?? null
     this.host.adopt(options, replayGame(options, [...tail.entries]))
     this.host.seats(tail.seats ?? [])
+    this.ownerSeen = this.ownerOf(tail.seats ?? [])
     void this.fetchCatchup()
+  }
+
+  private ownerOf(seats: readonly PublicSeat[]): string | undefined {
+    const faction = this.seatFaction ?? this.lockedSeat?.faction
+    return seats.find((s) => s.faction === faction)?.owner
   }
 
   /**
@@ -370,7 +385,10 @@ export class Session {
         return
       }
       for (const entry of tail.entries) this.host.applyRemote(decodeAction(entry))
-      if (tail.seats !== undefined) this.host.seats(tail.seats)
+      if (tail.seats !== undefined) {
+        this.host.seats(tail.seats)
+        if (this.ownerOf(tail.seats) !== this.ownerSeen) await this.resync()
+      }
     } catch (e) {
       /*
        * Only a 404 stops us. Anything else — a dropped connection, a 500, a proxy hiccup — is

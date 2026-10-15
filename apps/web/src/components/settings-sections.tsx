@@ -110,7 +110,7 @@ export function PlayerSection({ faction }: { faction: string }): JSX.Element {
           </p>
         </>
       )}
-      {!validDiscordId ? <p className="set-note set-error">That doesn't look like a Discord user ID</p> : null}
+      {!owned && !validDiscordId ? <p className="set-note set-error">That doesn't look like a Discord user ID</p> : null}
       {error === null ? null : <p className="set-note set-error">{error}</p>}
     </section>
   )
@@ -165,7 +165,7 @@ export function NotificationsSection(): JSX.Element {
           />
         </label>
       ) : null}
-      {discordLinked !== true ? <p className="set-note">Link Discord to get pinged</p> : null}
+      {discordLinked !== true && store.mySeatOwner() === undefined ? <p className="set-note">Link Discord to get pinged</p> : null}
       <p className="set-note">
         If you're on the board we notify here first and only ping Discord after 10 minutes without
         a move.

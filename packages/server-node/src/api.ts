@@ -7,7 +7,7 @@
 import { seatTurn, startGame } from '@arcs/engine'
 import type { FactionId, NewGameOptions, RuleResult } from '@arcs/engine'
 
-import type { Auth } from './auth.js'
+import { cookiePostRefusal, type Auth } from './auth.js'
 import type { DiscordBot } from './discord.js'
 import { askedFactions, type EngineGate } from './gate.js'
 import { seatAccess } from './seat-access.js'
@@ -131,6 +131,11 @@ async function body<T>(request: Request): Promise<T | undefined> {
     if (e instanceof TooLargeError) throw e
     return undefined
   }
+}
+
+/** Whether the account holds a seat in this game other than the one with `seatToken`. */
+function holdsOtherSeat(store: SqliteStore, gameId: string, seatToken: string, accountId: string): boolean {
+  return store.seats(gameId).some((s) => s.seatToken !== seatToken && s.accountId === accountId)
 }
 
 export async function route(request: Request, api: Api): Promise<Response | undefined> {
@@ -267,7 +272,15 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
       ...tail,
       seats: publicSeats(store, gameId),
       ...(locked
-        ? { lockedSeat: { faction: presentedSeat!.faction, owner: presentedSeat!.ownerName ?? '' } }
+        ? {
+            lockedSeat: {
+              faction: presentedSeat!.faction,
+              owner: presentedSeat!.ownerName ?? '',
+              ...(account !== undefined && holdsOtherSeat(store, gameId, presentedSeat!.seatToken, account.id)
+                ? { canUnlock: true }
+                : {}),
+            },
+          }
         : {}),
     })
   }
@@ -402,7 +415,10 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
       // alone, null clears it, an object sets it.
       let discord: { id: string; name?: string } | null | undefined
       const rawId = typeof b.discordId === 'string' ? b.discordId.trim() : b.discordId
-      if (rawId === null || rawId === '') {
+      if (api.auth !== undefined && store.seatByToken(gameId, b.seatToken)?.accountId !== undefined) {
+        // A claimed seat's Discord id is its account's; a rename must not match or store another.
+        discord = undefined
+      } else if (rawId === null || rawId === '') {
         discord = null
       } else if (typeof rawId === 'string') {
         const id = normaliseDiscordId(rawId)
@@ -436,6 +452,8 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   // "Sit here": lock the seat a token names to the signed-in account. Not `/claim`, which is
   // "Who are you?" handing a tokenless visitor a seat's token.
   if (sit !== null && request.method === 'POST') {
+    const refused = api.auth === undefined ? undefined : cookiePostRefusal(request, api.auth.publicOrigin)
+    if (refused) return refused
     const gameId = decodeURIComponent(sit[1]!)
     const b = await body<{ seatToken?: unknown; name?: unknown }>(request)
     if (b === undefined) return bad(400, 'body must be JSON')
@@ -462,6 +480,8 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
 
   // --- POST /games/:id/release ----------------------------------------------
   if (release !== null && request.method === 'POST') {
+    const refused = api.auth === undefined ? undefined : cookiePostRefusal(request, api.auth.publicOrigin)
+    if (refused) return refused
     const gameId = decodeURIComponent(release[1]!)
     const b = await body<{ seatToken?: unknown }>(request)
     if (b === undefined) return bad(400, 'body must be JSON')
@@ -470,7 +490,10 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     const seat = store.seatByToken(gameId, b.seatToken)
     if (seat === undefined) return bad(403, 'seat token does not belong to this game')
     if (seat.accountId === undefined) return bad(403, 'not-claimed')
-    const locked = lockedFor(gameId, b.seatToken)
+    // The owner may release; so may any signed-in account holding another seat at this table, so a
+    // seat locked by the wrong account (a /claim'd link then "Sit here") can be freed without SQL.
+    const fellow = holdsOtherSeat(store, gameId, b.seatToken, account.id)
+    const locked = fellow ? undefined : lockedFor(gameId, b.seatToken)
     if (locked) return locked
 
     store.release(gameId, b.seatToken)
