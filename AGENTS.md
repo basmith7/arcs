@@ -5,7 +5,7 @@
 Live at https://arcs.basmith.net; deploy, ports and paths are in Vault-13 Infrastructure.md (arcs row).
 Release: tag `vX.Y.Z` → `scripts/deploy-now.sh vX.Y.Z`.
 
-Current release: v0.14.1; see CHANGELOG.md.
+Current release: v0.15.0; see CHANGELOG.md.
 
 Still open (verified 2026-09-22 unless noted): webhook transport — the
 `game.webhook_url` column is wired but never exercised live; grace timers are in-memory in
