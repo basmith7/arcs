@@ -137,8 +137,10 @@ export function NewGame(): JSX.Element {
     setCreateError(null)
     try {
       const client = new MultiplayerClient(MULTIPLAYER_URL)
+      // The server picks an online game's seed; sending ours would be ignored.
+      const { seed: _ignored, ...withoutSeed } = options
       setCreated(
-        await client.create(options, options.factions, {
+        await client.create(withoutSeed, options.factions, {
           ...(options.bots === undefined ? {} : { bots: options.bots }),
           ...(webhookUrl.trim() === '' ? {} : { webhookUrl: webhookUrl.trim() }),
         }),

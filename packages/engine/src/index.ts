@@ -53,6 +53,7 @@ export * from './guild-actions.js'
 export * from './control.js'
 export * from './dice.js'
 export * from './chapter-report.js'
+export * from './standings.js'
 export * from './facts.js'
 export * from './heads-ups.js'
 export {

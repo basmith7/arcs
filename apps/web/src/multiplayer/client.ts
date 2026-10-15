@@ -51,6 +51,37 @@ export interface GameTail {
 }
 
 /** One of this account's games, as `GET /me/games` lists it. */
+export interface StatsGame {
+  readonly gameId: string
+  readonly seatToken: string
+  readonly updatedAt: number
+  readonly over: boolean
+  readonly won?: boolean
+  readonly place?: number
+  readonly players: number
+  readonly power: number
+  readonly colour: string
+  readonly leader?: string
+  readonly chapter: number
+  readonly withBots: boolean
+  readonly soloHotseat: boolean
+  readonly table: readonly { colour: string; name?: string; power: number; isBot: boolean; owner?: string }[]
+}
+
+/** `GET /me/stats`: the record over finished games, per table size where a number would mix them. */
+export interface MyStats {
+  readonly summary: {
+    readonly played: number
+    readonly won: number
+    readonly inProgress: number
+    readonly averagePower: Readonly<Record<string, number>>
+    readonly averagePlace: Readonly<Record<string, number>>
+  }
+  readonly byLeader: Readonly<Record<string, { played: number; won: number }>>
+  readonly byColour: Readonly<Record<string, { played: number; won: number }>>
+  readonly games: readonly StatsGame[]
+}
+
 export interface MyGame {
   readonly gameId: string
   readonly seatToken: string
@@ -232,6 +263,10 @@ export class MultiplayerClient {
   async myGames(): Promise<readonly MyGame[]> {
     const body = await this.json<{ games: readonly MyGame[] }>('/me/games')
     return body.games
+  }
+
+  async myStats(): Promise<MyStats> {
+    return this.json<MyStats>('/me/stats')
   }
 
   /**

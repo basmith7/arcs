@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App.js'
 import { loadAccount, setSigninFailed } from './account.js'
 import { MyGames } from './components/MyGames.js'
+import { PlayerStats } from './components/PlayerStats.js'
 import { MULTIPLAYER_URL } from './multiplayer/config.js'
 import { parseLink, recall } from './multiplayer/link.js'
 import { store } from './store.js'
@@ -42,10 +43,11 @@ if (MULTIPLAYER_URL !== null) void loadAccount(MULTIPLAYER_URL)
  * enters a game.
  */
 /*
- * `#/me` is the My Games page: no game to join and no autosave to restore. Without a server there
+ * `#/me` is the My Games page and `#/me/stats` the stats page: no game to join and no autosave to restore. Without a server there
  * is nothing to list, so a no-server build falls through to the ordinary boot.
  */
-const myGames = window.location.hash === '#/me' && MULTIPLAYER_URL !== null
+const page = MULTIPLAYER_URL === null ? null : ({ '#/me': 'games', '#/me/stats': 'stats' } as const)[window.location.hash as '#/me']
+const myGames = page !== null && page !== undefined
 
 const link = parseLink(window.location.hash)
 if (myGames) {
@@ -65,6 +67,6 @@ if (myGames) {
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {myGames ? <MyGames /> : <App />}
+    {page === 'games' ? <MyGames /> : page === 'stats' ? <PlayerStats /> : <App />}
   </React.StrictMode>,
 )

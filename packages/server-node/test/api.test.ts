@@ -19,7 +19,7 @@ const get = (path: string, headers: Record<string, string> = {}): Request => new
 
 function api(auth?: Auth): Api {
   const store = new SqliteStore(':memory:', { accounts: auth !== undefined })
-  return { store, gate: new EngineGate(store, { pace: 0 }), ...(auth === undefined ? {} : { auth }) }
+  return { store, gate: new EngineGate(store, { pace: 0 }), newSeed: () => THREE_PLAYER.seed, ...(auth === undefined ? {} : { auth }) }
 }
 
 interface Created {
@@ -33,6 +33,21 @@ describe('route', () => {
     expect((await route(get('/healthz'), a))?.status).toBe(200)
     expect(await route(get('/'), a)).toBeUndefined()
     expect(await route(get('/assets/x.png'), a)).toBeUndefined()
+  })
+
+  it('picks an online game\'s seed itself: a seed in the body is ignored and two creates differ', async () => {
+    const store = new SqliteStore(':memory:')
+    const a: Api = { store, gate: new EngineGate(store, { pace: 0 }) } // no pinned seed: the production path
+    const make = async (ip: string) => {
+      const res = await route(post('/games', { options: { ...THREE_PLAYER, seed: 1 }, factions: THREE_PLAYER.factions }, { 'x-forwarded-for': ip }), a)
+      const { gameId } = (await res!.json()) as Created
+      return (await (await route(get(`/games/${gameId}`), a))!.json()).options as { seed: number }
+    }
+    const first = await make('10.7.0.1')
+    const second = await make('10.7.0.2')
+    expect(first.seed).not.toBe(1)
+    expect(first.seed).not.toBe(second.seed)
+    expect(Number.isInteger(first.seed) && first.seed >= 1 && first.seed < 2 ** 32).toBe(true)
   })
 
   it('creates a game with bots, hands out human seats only, stores bots in options', async () => {
@@ -288,7 +303,7 @@ describe('seat locks', () => {
     const auth = new Auth(store, { clientId: 'i', clientSecret: 's', publicOrigin: BASE, fetch: discordFake().f })
     const other = new Auth(store, { clientId: 'i', clientSecret: 's', publicOrigin: BASE,
       fetch: discordFake({ id: '333333333333333333', username: 'eve', global_name: 'Eve' }).f })
-    const a: Api = { store, gate: new EngineGate(store, { pace: 0 }), auth }
+    const a: Api = { store, gate: new EngineGate(store, { pace: 0 }), auth, newSeed: () => THREE_PLAYER.seed }
     const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }, nextIp()), a))!.json()) as Created
     const red = created.seats.find((s) => s.faction === 'red')!.seatToken
     const me = `arcs_session=${cookieOf((await signIn(auth))!, 'arcs_session')}`
@@ -439,5 +454,90 @@ describe('seat locks', () => {
     const seat = tail.seats.find((s: { faction: string }) => s.faction === 'red')
     expect(seat.owner).toBeUndefined()
     expect(seat.discordLinked).toBeUndefined()
+  })
+})
+
+describe('GET /me/stats', () => {
+  let ip = 0
+  const nextIp = () => ({ 'x-forwarded-for': `10.8.0.${++ip}` })
+
+  /** A finished result with just the fields stats reads (full games are too slow to play here). */
+  const finished = (
+    power: Record<string, number>,
+    initiativeOrder: string[],
+    winners: string[],
+    extra: Record<string, unknown> = {},
+  ): RuleResult =>
+    ({
+      state: { isOver: true, chapter: 5, factions: Object.keys(power), power, initiativeOrder, winners, leaders: {}, leadersAndLore: undefined, ...extra },
+      continue: { kind: 'gameOver', winners, reason: '' },
+    }) as unknown as RuleResult
+
+  async function setup() {
+    const store = new SqliteStore(':memory:')
+    const auth = new Auth(store, { clientId: 'i', clientSecret: 's', publicOrigin: BASE, fetch: discordFake().f })
+    const evesAuth = new Auth(store, { clientId: 'i', clientSecret: 's', publicOrigin: BASE,
+      fetch: discordFake({ id: '333333333333333333', username: 'eve', global_name: 'Eve' }).f })
+    const gate = new EngineGate(store, { pace: 0 })
+    const stubbed = new Map<string, RuleResult>()
+    const real = gate.resultOf.bind(gate)
+    gate.resultOf = (id: string) => stubbed.get(id) ?? real(id)
+    const a: Api = { store, gate, auth, newSeed: () => THREE_PLAYER.seed }
+    const me = `arcs_session=${cookieOf((await signIn(auth))!, 'arcs_session')}`
+    const eve = `arcs_session=${cookieOf((await signIn(evesAuth))!, 'arcs_session')}`
+    const game = async (sits: [string, string][], result?: RuleResult) => {
+      const c = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }, nextIp()), a))!.json()) as Created
+      for (const [faction, cookie] of sits) {
+        const seatToken = c.seats.find((s) => s.faction === faction)!.seatToken
+        await route(post(`/games/${c.gameId}/sit`, { seatToken }, { cookie }), a)
+      }
+      if (result !== undefined) stubbed.set(c.gameId, result)
+      return c
+    }
+    return { a, game, me, eve }
+  }
+
+  it('adds up record, per-table averages, leaders and history, with the hotseat rules', async () => {
+    const { a, game, me, eve } = await setup()
+    const lore = { leadersAndLore: {} as never }
+    // Won, with a leader.
+    await game([['red', me]], finished({ red: 30, yellow: 20, blue: 10 }, ['red', 'yellow', 'blue'], ['red'], { ...lore, leaders: { red: 'L1' } }))
+    // Lost a power tie: initiative (not seating) puts yellow first, so red is 2nd.
+    await game([['red', me]], finished({ red: 28, yellow: 28, blue: 5 }, ['yellow', 'red', 'blue'], ['yellow']))
+    // In progress (real, unfinished).
+    await game([['red', me]])
+    // Hotseat with another human: my best-placed seat (yellow, 2nd) represents me.
+    const shared = await game([['red', me], ['yellow', me], ['blue', eve]], finished({ red: 10, yellow: 25, blue: 30 }, ['red', 'yellow', 'blue'], ['blue']))
+    // Solo hotseat: in history, out of the record.
+    await game([['red', me], ['yellow', me], ['blue', me]], finished({ red: 30, yellow: 1, blue: 1 }, ['red', 'yellow', 'blue'], ['red']))
+
+    const res = (await route(get('/me/stats', { cookie: me }), a))!
+    expect(res.status).toBe(200)
+    expect(res.headers.get('cache-control')).toBe('no-store')
+    const s = await res.json()
+
+    expect(s.summary.played).toBe(3)
+    expect(s.summary.won).toBe(1)
+    expect(s.summary.inProgress).toBe(1)
+    expect(s.summary.averagePower).toEqual({ 3: (30 + 28 + 25) / 3 })
+    expect(s.summary.averagePlace).toEqual({ 3: (1 + 2 + 2) / 3 })
+    expect(s.byLeader).toEqual({ L1: { played: 1, won: 1 } })
+    expect(s.byColour).toEqual({ red: { played: 2, won: 1 }, yellow: { played: 1, won: 0 } })
+
+    expect(s.games).toHaveLength(5)
+    const tie = s.games.find((g: { power: number }) => g.power === 28)
+    expect(tie).toMatchObject({ won: false, place: 2, colour: 'red', soloHotseat: false })
+    const hot = s.games.find((g: { gameId: string }) => g.gameId === shared.gameId)
+    expect(hot).toMatchObject({ colour: 'yellow', place: 2, power: 25, soloHotseat: false })
+    expect(hot.seatToken).toBe(shared.seats.find((x) => x.faction === 'yellow')!.seatToken)
+    expect(hot.table.map((t: { colour: string }) => t.colour)).toEqual(['blue', 'yellow', 'red'])
+    expect(hot.table[0]).toMatchObject({ owner: 'Eve', power: 30 })
+    expect(s.games.filter((g: { soloHotseat: boolean }) => g.soloHotseat)).toHaveLength(1)
+  })
+
+  it('is 404 with login off and 401 signed out', async () => {
+    expect((await route(get('/me/stats'), api()))!.status).toBe(404)
+    const { a } = await setup()
+    expect((await route(get('/me/stats'), a))!.status).toBe(401)
   })
 })
