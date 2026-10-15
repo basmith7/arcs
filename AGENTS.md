@@ -7,11 +7,16 @@ Release: tag `vX.Y.Z` → `scripts/deploy-now.sh vX.Y.Z`.
 
 Current release: v0.15.0; see CHANGELOG.md.
 
-Still open (verified 2026-09-22 unless noted): webhook transport — the
-`game.webhook_url` column is wired but never exercised live; grace timers are in-memory in
-`packages/server-node/src/main.ts`, so a deploy drops that turn's follow-up; `normal` still has the pip-menu tie that `hard` no longer has (needs its own gate); bot thinking is one worker per server, so two games' bots take turns thinking; the Blighted Reach campaign is
-still to spec; the `Deploy` (cloudflare) job still runs on every fork
-push as a no-op; `x-forwarded-for` is trusted blindly in `api.ts` (fine behind Traefik).
+Still open (verified 2026-09-22 unless noted): `normal` still has the pip-menu tie that `hard`
+no longer has (needs its own gate); bot thinking is one worker per server, so two games' bots take
+turns thinking; the Blighted Reach campaign is still to spec; `x-forwarded-for` is trusted blindly
+in `api.ts` (fine behind Traefik).
+
+**Durable pings and daily reminder** (`notify.ts`): held turn pings and stall reminders live in
+SQLite (`pending_ping`, `reminder`) and one 30 s sweep sends what is due, so a deploy drops nothing.
+A game waiting on the same human for 24 h or more gets a Discord ping at the next 16:30
+America/Phoenix, then daily, up to 7 per stall; env `REMINDER_TIME` (default `16:30`, `off`
+disables) and `REMINDER_TZ`. Pings go through the channel bot only; the per-game webhook is gone.
 
 **Optional Discord login** (spec `docs/superpowers/specs/2026-10-04-optional-login-design.md`):
 on in production since v0.14.1 (Pikachu app); on only when `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are set (redirect

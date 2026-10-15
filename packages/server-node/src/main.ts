@@ -8,6 +8,7 @@ import { deepseekChat } from './deepseek.js'
 import { DiscordBot } from './discord.js'
 import { EngineGate } from './gate.js'
 import { Notifier } from './notify.js'
+import { parseDailyTime, validZone } from './reminder-time.js'
 import { Presence } from './presence.js'
 import { createArcsServer } from './server.js'
 import { SqliteStore } from './sqlite-store.js'
@@ -27,6 +28,8 @@ const DISCORD_CLIENT_SECRET = process.env['DISCORD_CLIENT_SECRET'] || undefined
 const PRESENCE_ACTIVE_MS = Number(process.env['PRESENCE_ACTIVE_MS'] || 120_000)
 const PING_GRACE_MS = Number(process.env['PING_GRACE_MS'] || 600_000)
 const LEAVE_GRACE_MS = Number(process.env['LEAVE_GRACE_MS'] || 60_000)
+const REMINDER_TIME = process.env['REMINDER_TIME'] || '16:30'
+const REMINDER_TZ = process.env['REMINDER_TZ'] || 'America/Phoenix'
 const DEEPSEEK_API_KEY = process.env['DEEPSEEK_API_KEY'] || undefined
 // Ids as `GET https://api.deepseek.com/models` listed them on 2026-10-05.
 const CATCHUP_WRITER_MODEL = process.env['CATCHUP_WRITER_MODEL'] || 'deepseek-v4-pro'
@@ -54,12 +57,21 @@ const auth =
     ? new Auth(store, { clientId: DISCORD_CLIENT_ID, clientSecret: DISCORD_CLIENT_SECRET, publicOrigin: PUBLIC_ORIGIN })
     : undefined
 
+// Daily "still your turn" reminder for a stalled game; REMINDER_TIME=off disables it.
+const reminderTime = REMINDER_TIME.toLowerCase() === 'off' ? undefined : parseDailyTime(REMINDER_TIME)
+if (reminderTime === undefined && REMINDER_TIME.toLowerCase() !== 'off') {
+  console.warn(`[notify] REMINDER_TIME "${REMINDER_TIME}" is not HH:MM or "off"; reminders disabled`)
+}
+const reminderOn = reminderTime !== undefined && validZone(REMINDER_TZ)
+if (reminderTime !== undefined && !reminderOn) console.warn(`[notify] REMINDER_TZ "${REMINDER_TZ}" is not a time zone; reminders disabled`)
+
 const presence = new Presence({ activeMs: PRESENCE_ACTIVE_MS })
 const notifier = new Notifier(store, {
   publicOrigin: PUBLIC_ORIGIN,
   presence,
   graceMs: PING_GRACE_MS,
   leaveGraceMs: LEAVE_GRACE_MS,
+  ...(reminderOn ? { reminder: { time: reminderTime, tz: REMINDER_TZ } } : {}),
   ...(bot !== undefined && DISCORD_CHANNEL_ID !== undefined
     ? { fallbackChannel: { channelId: DISCORD_CHANNEL_ID, bot } }
     : {}),
@@ -98,14 +110,16 @@ const server = createArcsServer({
 })
 
 void gate.resumeAll()
+notifier.start()
 server.listen(PORT, '0.0.0.0', () => {
   console.log(
-    `arcs server on :${PORT}  db=${DATABASE_PATH}  static=${STATIC_DIR}  origin=${PUBLIC_ORIGIN}  discord=${discordStatus}  login=${auth === undefined ? 'off' : 'discord'}`,
+    `arcs server on :${PORT}  db=${DATABASE_PATH}  static=${STATIC_DIR}  origin=${PUBLIC_ORIGIN}  discord=${discordStatus}  login=${auth === undefined ? 'off' : 'discord'}  reminders=${reminderOn ? `${REMINDER_TIME} ${REMINDER_TZ}` : 'off'}`,
   )
   console.log(`catch-up stories: ${DEEPSEEK_API_KEY === undefined ? 'off (no DEEPSEEK_API_KEY)' : `on (${CATCHUP_WRITER_MODEL}, checked by ${CATCHUP_CHECKER_MODEL})`}`)
 })
 
 const stop = (): void => {
+  notifier.stop()
   server.close(() => {
     store.close()
     process.exit(0)

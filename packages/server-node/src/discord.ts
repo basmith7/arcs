@@ -1,7 +1,7 @@
 /**
  * Thin wrapper around the Discord REST API for the bot ("Pikachu") that already lives on the same
  * server. Used to resolve a claimed seat name to a guild member (so players do not have to paste
- * their Discord user ID) and to post turn pings to a channel when a game has no webhook of its own.
+ * their Discord user ID) and to post turn pings to the configured channel.
  *
  * Every call is best-effort: a failed lookup returns `undefined` and logs a warning rather than
  * throwing, since a broken Discord integration must never block naming a seat or playing the game.

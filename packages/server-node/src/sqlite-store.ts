@@ -1,6 +1,6 @@
 /**
  * The upstream `GameStore` contract on `node:sqlite`, plus what the self-hosted server needs on
- * top: which seats are bots, seat names, the notification webhook and its bookkeeping.
+ * top: which seats are bots, seat names, notification bookkeeping (pending pings, stall reminders).
  *
  * Turn order is deliberately NOT checked here — `packages/server/test/contract.ts` pins that for
  * every store, and it is the gate's job (`gate.ts`). This class stays a dumb journal.
@@ -55,11 +55,27 @@ export type DiscordLink = { readonly id: string; readonly name?: string } | null
 
 export interface CreateExtra {
   readonly bots?: readonly string[]
-  readonly webhookUrl?: string
+}
+
+/** A turn ping held back until `dueAt` (the idle or leave grace); one per game. */
+export interface PendingPing {
+  readonly gameId: string
+  readonly seatToken: string
+  readonly journalLength: number
+  readonly chapter: number
+  readonly dueAt: number
+}
+
+/** The human a game is waiting on, and how many stall reminders that wait has had. */
+export interface Reminder {
+  readonly gameId: string
+  readonly seatToken: string
+  readonly journalLength: number
+  readonly count: number
+  readonly lastAt: number
 }
 
 export interface GameMeta {
-  readonly webhookUrl?: string
   readonly lastNotifiedLength: number
   readonly lastNotifiedAt: number
 }
@@ -69,7 +85,6 @@ CREATE TABLE IF NOT EXISTS game (
   id TEXT PRIMARY KEY,
   options TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  webhook_url TEXT,
   last_notified_length INTEGER NOT NULL DEFAULT -1,
   last_notified_at INTEGER NOT NULL DEFAULT 0,
   updated_at INTEGER NOT NULL DEFAULT 0
@@ -113,7 +128,51 @@ CREATE TABLE IF NOT EXISTS catchup (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (game_id, faction, journal_len)
 );
+CREATE TABLE IF NOT EXISTS pending_ping (
+  game_id TEXT PRIMARY KEY,
+  seat_token TEXT NOT NULL,
+  journal_length INTEGER NOT NULL,
+  chapter INTEGER NOT NULL,
+  due_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reminder (
+  game_id TEXT PRIMARY KEY,
+  seat_token TEXT NOT NULL,
+  journal_length INTEGER NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  last_at INTEGER NOT NULL DEFAULT 0
+);
 `
+
+interface PendingPingDb {
+  game_id: string
+  seat_token: string
+  journal_length: number
+  chapter: number
+  due_at: number
+}
+const pendingOf = (r: PendingPingDb): PendingPing => ({
+  gameId: r.game_id,
+  seatToken: r.seat_token,
+  journalLength: r.journal_length,
+  chapter: r.chapter,
+  dueAt: r.due_at,
+})
+
+interface ReminderDb {
+  game_id: string
+  seat_token: string
+  journal_length: number
+  count: number
+  last_at: number
+}
+const reminderOf = (r: ReminderDb): Reminder => ({
+  gameId: r.game_id,
+  seatToken: r.seat_token,
+  journalLength: r.journal_length,
+  count: r.count,
+  lastAt: r.last_at,
+})
 
 interface SeatDb {
   faction: string
@@ -196,6 +255,8 @@ export class SqliteStore implements GameStore {
     if (!gameCols.has('updated_at')) this.db.exec('ALTER TABLE game ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0')
     // Every open, not just the one that added the column, so a crash between the two finishes here.
     this.db.exec('UPDATE game SET updated_at = created_at WHERE updated_at = 0')
+    // The per-game webhook transport is gone (channel bot only). Forward-only; needs SQLite 3.35+.
+    if (gameCols.has('webhook_url')) this.db.exec('ALTER TABLE game DROP COLUMN webhook_url')
   }
 
   close(): void {
@@ -216,8 +277,8 @@ export class SqliteStore implements GameStore {
     try {
       const now = Date.now()
       this.db
-        .prepare('INSERT INTO game (id, options, created_at, updated_at, webhook_url) VALUES (?, ?, ?, ?, ?)')
-        .run(gameId, JSON.stringify(options), now, now, extra.webhookUrl ?? null)
+        .prepare('INSERT INTO game (id, options, created_at, updated_at) VALUES (?, ?, ?, ?)')
+        .run(gameId, JSON.stringify(options), now, now)
       const insert = this.db.prepare(
         'INSERT INTO seat (game_id, ord, faction, token, is_bot) VALUES (?, ?, ?, ?, ?)',
       )
@@ -377,13 +438,10 @@ export class SqliteStore implements GameStore {
 
   meta(gameId: GameId): GameMeta | undefined {
     const row = this.db
-      .prepare('SELECT webhook_url, last_notified_length, last_notified_at FROM game WHERE id = ?')
-      .get(gameId) as
-      | { webhook_url: string | null; last_notified_length: number; last_notified_at: number }
-      | undefined
+      .prepare('SELECT last_notified_length, last_notified_at FROM game WHERE id = ?')
+      .get(gameId) as { last_notified_length: number; last_notified_at: number } | undefined
     if (row === undefined) return undefined
     return {
-      ...(row.webhook_url === null ? {} : { webhookUrl: row.webhook_url }),
       lastNotifiedLength: row.last_notified_length,
       lastNotifiedAt: row.last_notified_at,
     }
@@ -393,6 +451,67 @@ export class SqliteStore implements GameStore {
     this.db
       .prepare('UPDATE game SET last_notified_length = ?, last_notified_at = ? WHERE id = ?')
       .run(length, at, gameId)
+  }
+
+  /** When anyone last moved in the game (ms), or undefined for an unknown game. */
+  updatedAt(gameId: GameId): number | undefined {
+    const row = this.db.prepare('SELECT updated_at FROM game WHERE id = ?').get(gameId) as
+      | { updated_at: number }
+      | undefined
+    return row?.updated_at
+  }
+
+  setPendingPing(p: PendingPing): void {
+    this.db
+      .prepare(
+        `INSERT INTO pending_ping (game_id, seat_token, journal_length, chapter, due_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(game_id) DO UPDATE SET seat_token = excluded.seat_token,
+           journal_length = excluded.journal_length, chapter = excluded.chapter, due_at = excluded.due_at`,
+      )
+      .run(p.gameId, p.seatToken, p.journalLength, p.chapter, p.dueAt)
+  }
+
+  pendingPing(gameId: GameId): PendingPing | undefined {
+    const row = this.db.prepare('SELECT * FROM pending_ping WHERE game_id = ?').get(gameId) as PendingPingDb | undefined
+    return row === undefined ? undefined : pendingOf(row)
+  }
+
+  duePendingPings(now: number): PendingPing[] {
+    return (this.db.prepare('SELECT * FROM pending_ping WHERE due_at <= ?').all(now) as unknown as PendingPingDb[]).map(pendingOf)
+  }
+
+  clearPendingPing(gameId: GameId): void {
+    this.db.prepare('DELETE FROM pending_ping WHERE game_id = ?').run(gameId)
+  }
+
+  reminder(gameId: GameId): Reminder | undefined {
+    const row = this.db.prepare('SELECT * FROM reminder WHERE game_id = ?').get(gameId) as ReminderDb | undefined
+    return row === undefined ? undefined : reminderOf(row)
+  }
+
+  allReminders(): Reminder[] {
+    return (this.db.prepare('SELECT * FROM reminder').all() as unknown as ReminderDb[]).map(reminderOf)
+  }
+
+  /** Records who the game waits on; a different seat or journal length starts a fresh stall (count 0). */
+  watchStall(gameId: GameId, seatToken: string, journalLength: number): void {
+    const have = this.reminder(gameId)
+    if (have?.seatToken === seatToken && have.journalLength === journalLength) return
+    this.db
+      .prepare(
+        `INSERT INTO reminder (game_id, seat_token, journal_length, count, last_at) VALUES (?, ?, ?, 0, 0)
+         ON CONFLICT(game_id) DO UPDATE SET seat_token = excluded.seat_token,
+           journal_length = excluded.journal_length, count = 0, last_at = 0`,
+      )
+      .run(gameId, seatToken, journalLength)
+  }
+
+  noteReminded(gameId: GameId, at: number): void {
+    this.db.prepare('UPDATE reminder SET count = count + 1, last_at = ? WHERE game_id = ?').run(at, gameId)
+  }
+
+  clearStall(gameId: GameId): void {
+    this.db.prepare('DELETE FROM reminder WHERE game_id = ?').run(gameId)
   }
 
   gameIds(): string[] {

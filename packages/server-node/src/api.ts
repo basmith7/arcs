@@ -58,10 +58,6 @@ function normaliseDiscordId(raw: string): string | undefined {
 
 export const NAME_MAX = 24
 
-// The server POSTs to this URL from inside the LAN, so accepting arbitrary URLs here would be an
-// SSRF hole. Only real Discord webhook endpoints are allowed.
-const DISCORD_WEBHOOK = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//
-
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
@@ -246,7 +242,7 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   // --- POST /games ---------------------------------------------------------
   if (path === '/games' && request.method === 'POST') {
     if (rateLimited(request)) return bad(429, 'rate-limited')
-    const b = await body<{ options?: unknown; factions?: unknown; bots?: unknown; webhookUrl?: unknown }>(request)
+    const b = await body<{ options?: unknown; factions?: unknown; bots?: unknown }>(request)
     if (b === undefined) return bad(400, 'body must be JSON')
     if (!isStringArray(b.factions) || b.factions.length === 0) {
       return bad(400, 'factions must be a non-empty array of strings')
@@ -255,13 +251,6 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     if (b.bots !== undefined && !isStringArray(b.bots)) return bad(400, 'bad-options')
     const bots = isStringArray(b.bots) ? b.bots : []
     if (bots.some((f) => !(b.factions as string[]).includes(f))) return bad(400, 'bad-options')
-    let webhookUrl: string | undefined
-    if (b.webhookUrl !== undefined) {
-      if (typeof b.webhookUrl !== 'string' || !DISCORD_WEBHOOK.test(b.webhookUrl.trim())) {
-        return bad(400, 'webhookUrl must be a Discord webhook URL')
-      }
-      webhookUrl = b.webhookUrl.trim()
-    }
     // Bots travel in options so every client's replay knows which seats are bots.
     // The server picks the seed; one in the request is ignored (a table can't choose a seed it has
     // already played). Old games keep the seed they were stored with.
@@ -273,10 +262,7 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
     } catch (e) {
       return json({ error: 'bad-options', detail: String((e as Error).message) }, 400)
     }
-    const created = await store.create(options, b.factions, {
-      bots,
-      ...(webhookUrl === undefined ? {} : { webhookUrl }),
-    })
+    const created = await store.create(options, b.factions, { bots })
     const humans = created.seats.filter((s) => !bots.includes(s.faction))
     return json({ gameId: created.gameId, seats: humans }, 201)
   }

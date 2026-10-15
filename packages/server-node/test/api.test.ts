@@ -57,7 +57,6 @@ describe('route', () => {
         options: ONE_HUMAN,
         factions: ONE_HUMAN.factions,
         bots: ['yellow', 'blue'],
-        webhookUrl: 'https://discord.com/api/webhooks/1/abc',
       }),
       a,
     )
@@ -72,7 +71,6 @@ describe('route', () => {
       { faction: 'blue', isBot: true },
     ])
     expect(JSON.stringify(tail)).not.toContain('discord.com')
-    expect(a.store.meta(created.gameId)?.webhookUrl).toBe('https://discord.com/api/webhooks/1/abc')
   })
 
   it('rejects options that fail to start a game, and bot factions outside the roster', async () => {
@@ -109,19 +107,6 @@ describe('route', () => {
     expect((await eleventh!.json()).error).toBe('rate-limited')
     // A different IP is unaffected.
     expect((await create('10.1.1.2'))!.status).toBe(201)
-  })
-
-  it('rejects a non-Discord webhookUrl and accepts a missing one', async () => {
-    const a = api()
-    const rejected = await route(
-      post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions, webhookUrl: 'https://evil.test/steal' }),
-      a,
-    )
-    expect(rejected?.status).toBe(400)
-    const accepted = await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }), a)
-    expect(accepted?.status).toBe(201)
-    const created = (await accepted!.json()) as Created
-    expect(a.store.meta(created.gameId)?.webhookUrl).toBeUndefined()
   })
 
   it('rejects an out-of-turn action with 403 wrong-turn and accepts the right one', async () => {
