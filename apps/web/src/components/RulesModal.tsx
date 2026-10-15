@@ -17,11 +17,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useBackClose } from '../back-close.js'
 import { useModalDrag } from '../modal-drag.js'
 import { RULES, rulesPage, rulesPdf, type RulesDoc } from '../rules.js'
 import { RulesSearch } from './RulesSearch.js'
 
 export function RulesModal({ onClose }: { onClose: () => void }): JSX.Element {
+  useBackClose(onClose)
   const drag = useModalDrag()
   /**
    * Which tab is showing: one of the page-image documents, or the searchable text (`'text'`).

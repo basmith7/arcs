@@ -10,6 +10,7 @@
  * standing on the card, a secured pile passes nothing.
  */
 
+import { useBackClose } from '../back-close.js'
 import { courtCard } from '@arcs/engine'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -24,6 +25,7 @@ export function CardZoom({
   onClose: () => void
   children?: React.ReactNode
 }): JSX.Element {
+  useBackClose(onClose)
   const card = courtCard(cardId)
 
   // Escape closes, as any modal should.

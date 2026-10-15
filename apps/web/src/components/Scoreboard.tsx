@@ -14,6 +14,7 @@ import type { AmbitionAward, FactionId, GameFacts, GameState } from '@arcs/engin
 import { useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useBackClose } from '../back-close.js'
 import { useModalDrag } from '../modal-drag.js'
 import { store } from '../store.js'
 import { colorOf } from '../theme.js'
@@ -119,6 +120,7 @@ export function ScoreboardPanel({ state }: { state: GameState }): JSX.Element {
 
 /** The desktop dialog, in the Settings shell: ✕, Esc and a backdrop click close it. */
 export function ScoreboardModal({ state, onClose }: { state: GameState; onClose: () => void }): JSX.Element {
+  useBackClose(onClose)
   const drag = useModalDrag()
   const pressedBackdrop = useRef(false)
   useEffect(() => {

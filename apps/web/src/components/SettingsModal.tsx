@@ -17,6 +17,7 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useBackClose } from '../back-close.js'
 import { useModalDrag } from '../modal-drag.js'
 import type { GameLink } from '../multiplayer/link.js'
 import { setSettings, useSettings } from '../settings.js'
@@ -93,6 +94,7 @@ export function SettingsModal({
   onClose: () => void
   seat?: { faction: string; link: GameLink | null }
 }): JSX.Element {
+  useBackClose(onClose)
   const drag = useModalDrag()
   const settings = useSettings()
   /** Where the press that might close this started — see the note on the backdrop above. */
