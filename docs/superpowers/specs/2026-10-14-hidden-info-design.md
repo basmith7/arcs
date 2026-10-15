@@ -1,8 +1,8 @@
 # Hidden information: what the browser holds — design
 
-Issue basmith7/arcs#18. Planned 2026-10-14; **not yet agreed with Brian**. The recommendation below
-departs from the issue's fix direction on purpose, so the issue's "Done when" needs rewriting
-if it is accepted.
+Issue basmith7/arcs#18. Planned 2026-10-14; reviewed by Fable (approve-with-changes, applied).
+**Decision (Brian, friends-only table, keep it simple): trust the table.** #18 closes on this spec,
+with a revisit trigger.
 
 ## Problem
 
@@ -21,19 +21,27 @@ Checked in the code, 2026-10-14:
 
 | Effort | What it shows |
 | --- | --- |
-| Look at the screen, Elements panel | Your own hand only. Rivals show as counts (`PlayerBoards.tsx:119` reads `.length`); no rival card ids in the DOM (unverified by test; slice 3 adds one) |
-| Network tab | `options.seed` and a list of encoded actions. Played cards are public anyway; draws are not actions. Nothing readable about hands without running code |
-| Console | Nothing: no `window.store` or other global (grep, 2026-10-14) |
-| React DevTools extension | The store's `RuleResult` through component props: every hand, readable by clicking through `state.cards` |
-| Load `@arcs/engine`, replay with the seed | Everything, including future shuffles and dice |
-| **Create the game** | **The creator picks the seed.** `NewGame.tsx:84` makes it a visible, editable field, and `POST /games` stores it as sent. Pre-playing a start offline needs no devtools at all |
+| Look at the screen, Elements panel | Your own hand only. Rivals show as counts (`PlayerBoards.tsx:119` reads `.length`); no rival card ids seen in the DOM (by reading, not tested) |
+| Console | Nothing: there's no `window.store` or other global |
+| Network tab / open `GET /games/:id` in a tab | Plain JSON: `options.seed`, the setup options and the encoded actions. That's enough to cheat with, as the next row shows |
+| Type that seed into a local game | Hands and the deck order. The local New Game screen has a seed field (`NewGame.tsx:84`). Copy the seed, match the setup (a few retries if the board was chosen blind), and replay the visible moves |
+| React DevTools extension | Every hand, by clicking through `state.cards` in component props |
+| Load `@arcs/engine` and replay | Everything, including future shuffles and dice |
 
-Two facts change the picture from the issue's framing:
+So the shared seed is the hole, and it can't be closed while the client replays. Any player with a
+browser and a few minutes can see hands. What stops them is that it's a deliberate act, the same
+as at a real table. Who chose the seed matters little: today the creator chooses it, but every
+player can read it once the game exists.
+
+Other facts that change the issue's framing:
 
 - **Bots already don't run in players' browsers in joined games.** `store.botsAvailable()` is
   `session === null`; joined games' bots run in the server's gate (`gate.ts`, `thinker.ts`,
   `packages/server-node/src/bot-worker.ts`). The page's `bot-worker.ts` serves only local games,
   where one device holds everything anyway. That Done-when item is already met.
+- **Tokenless watchers already see who sits where.** `publicSeats` returns owner display names
+  and seat names to anyone with the bare link. That's intended (it's how the table shows who's who)
+  and unchanged here.
 - **The client is a journal replayer through and through.** 23 files in `apps/web/src` read
   `GameState`/`RuleResult` directly. Optimistic moves, the legal-action list a seat is offered,
   `takeBackBlock` for the undo button, catch-up (`store.ts:720` replays slices), the interlude's
@@ -41,18 +49,16 @@ Two facts change the picture from the issue's framing:
   docs/17 section 5 costs server-authoritative play as "the randomness change alone"; that is true
   of the engine and leaves out the client.
 
-## Recommendation: keep "trust the table", close the cheap holes, say it out loud
+## Recommendation: trust the table, and write it down
 
-Keep the shared-journal design. Do three small things that remove the low-effort routes, and
-state the trust model where players can see it. Plan to revisit if Arcs ever seats strangers
-(public lobby, open links posted outside the friend group). That trigger, not this issue, is
-when server-side redaction earns its cost.
+Keep the shared-journal design. Do one optional piece of cheap hygiene (the server picks the seed
+for online games, which is also option A's first step), add one line for players, and correct
+docs/17. Revisit only if Arcs ever seats strangers (a public lobby, or links posted outside the
+friend group). That trigger, not this issue, is when server-side redaction earns its cost.
 
 Why: everyone at this table is a friend, and in a physical game they could just as easily look at
-each other's hands. After this change, cheating takes deliberate work: installing React DevTools
-and digging through component props, or replaying the journal by hand. Someone doing that has
-chosen to cheat, and no protocol stops that at a friends' table. The one low-effort hole is the
-chosen seed, and it costs about an hour to close.
+each other's hands. Peeking here takes a deliberate act, and nothing short of option A changes that.
+Option A's cost (below) is out of proportion for a friends' table.
 
 ### Alternatives considered
 
@@ -61,109 +67,82 @@ server, randomness enters the journal as outcomes, and each seat gets `observe(s
 Rejected *for now* for its cost:
 - Engine: dice, deck shuffles, court draws, lore and the setup draft must carry their outcomes
   (`rules/battle.ts`, `turn.ts`, `setup.ts`, `leaders.ts`, `vox.ts` all read `state.rng`).
-  Existing journals have no outcomes, so old games need a seed-replay compatibility path, against
-  the issue's "no journal migration" item.
+  Existing journals have no outcomes, so old games need a seed-replay compatibility path.
 - Client: everything above that replays has to move. The server would offer each seat its
   legal actions and send views, and every one of the 23 state-reading files would be ported to a
   widened `ObservedState`. Optimistic moves go, so every click waits a round trip through Pangolin.
-- Catch-up, the interlude and the game-over history would need server-side builders or retained
-  views.
-- Estimate: several weeks, and it touches the rules engine where the arena-tested bots live. It
-  defends against a friend deliberately cheating.
+- Catch-up, the interlude and the game-over history would need server-side builders.
+- Estimate: several weeks, and it touches the rules engine where the arena-tested bots live.
 
-**B. Redacted `GameState` snapshots.** The server sends a full-shaped `GameState` with rivals'
-hands and deck order replaced by placeholders, and the client keeps its engine for rendering and
-for its own seat's legal moves. Rejected: it's only cheaper if the engine copes with placeholder
-cards everywhere it looks them up (an open-ended audit). It still gives up optimistic moves and
-still needs the server-side randomness from A, because the next draw would otherwise be
-computable from a real rng. It's most of A's cost and gives a more fragile result.
+**B. Redacted `GameState` snapshots.** The server sends a full-shaped state with rivals' hands and
+deck order replaced by placeholders; the client keeps its engine for rendering. Rejected: the engine
+would have to cope with placeholder cards wherever it looks cards up, it still loses optimistic
+moves, and it still needs A's server-side randomness. It's most of A's cost and gives a more
+fragile result.
 
-**C. Obfuscation (encrypt the journal, minify state names, block the devtools hook).** Rejected:
-the key and the engine have to be on the page, so it slows a determined player down by minutes and
-makes our own debugging worse.
+**C. Obfuscation (encrypt the journal, hide the devtools hook).** Rejected: the key and the engine
+must be on the page, so it buys minutes against a determined player and costs our own debugging.
 
-**D. Do nothing.** Rejected only narrowly. The chosen seed is a real low-effort hole, and the
-issue deserves a written answer rather than staying open.
+**D. Do nothing at all.** Close to what this spec does. The difference is a written answer, a
+corrected docs/17, and the optional seed slice.
 
 ## Design
 
-### 1. The server mints the seed for shared games
+### 1. The server picks the seed for online games (optional hygiene)
 
-- `POST /games` (`api.ts`, the create branch) replaces `options.seed` with a server-drawn value
-  (`crypto.randomInt` over the engine's seed range) before `startGame` validates it and
-  `store.create` stores it. Whatever seed the client sent is ignored. Local games are unchanged.
-- `NewGame.tsx`: the seed field is shown only on the local path (it's useful for reproducing a
-  local game). The shared path stops sending it.
-- Old games keep their stored seed. Nothing migrates.
-- Effect: nobody knows a shared game's seed until it exists, so nobody can pre-play the start.
-  After creation it's in the `GET` response like today, which is the deliberate-effort route.
+- The create branch of `packages/server-node/src/api.ts` (lines 206-241, `POST /games`) replaces
+  `options.seed` with `crypto.randomInt(1, 2 ** 32)` before `startGame` and `store.create`. A seed in
+  the request body is ignored for online games. `startGame` doesn't validate seeds (`rng.ts` folds
+  any number to 32 bits), so this range is simply the full space without the 0 that `rng()` remaps.
+- `NewGame.tsx`: the shared path stops sending a seed. The seed field may stay for local games,
+  where it's useful for reproducing one.
+- The Cloudflare worker (`packages/server/src/api.ts`, upstream's) is left as-is. It isn't deployed
+  here, and the upstream merges stay additive.
+- Old games keep their stored seed; nothing migrates.
+- What it buys, honestly: nobody can pick a seed they've already played. It doesn't stop anyone
+  reading the seed afterwards (see the table above).
 
-### 2. Hands never reach the DOM
+### 2. One line for players, plus docs/17
 
-Most of this already holds. The slice pins it with a test and fixes anything the test finds, for
-example a rival's card id in a `data-` attribute, a `title`, an `alt`, or a card-back image named
-after the card. The phone layout (`phone.ts`, `PhonePlays.tsx`) and the zoom and reader modals
-(`CardZoom.tsx`, `MapZoom.tsx`) are in scope, since they render cards by id.
-
-### 3. Say it where players see it
-
-- One line in the Rules/About surface (`RulesModal.tsx` or the share step in `ShareGame.tsx`,
-  whichever the implementer finds players actually read): "Hands are hidden on screen, not locked:
-  like a real table, a determined peek is possible. Play nice."
-- docs/17 section 2a gets a row for the seed ("chosen by: server, since v0.14.x"). Section 5's cost
-  paragraph is corrected to include the client work listed above, so a future reader doesn't
-  inherit the "randomness change alone" estimate.
-- `Hand.tsx`'s comment already states the boundary and stays.
+- One short line in the share step (`ShareGame.tsx`): "Hands are hidden on screen, not locked —
+  play nice." If it doesn't fit as one line, drop it.
+- docs/17: add a row to section 2a for the seed (who picks it, and that every client can read it),
+  and correct section 5's cost to include the client work listed above.
 
 ### Not changed
 
-`GET /games/:id` still returns options and the journal to tokenless watchers. Watching needs replay,
-and a watcher who could see hands still has to make the same deliberate effort as a player.
-Undo, the watch feed, the interlude, saves and loads, catch-up and the bot worker are untouched.
+`GET /games/:id`, the watch feed, undo, the interlude, saves/loads, catch-up, the phone layout and
+the bot worker are untouched.
 
 ## Slices
 
-Each slice is its own commit, and each can ship alone.
-
-1. **Server-minted seed.** `api.ts` create branch plus `NewGame.tsx` shared path.
+1. **Server-picked seed.** The create branch in `packages/server-node/src/api.ts` plus the
+   `NewGame.tsx` shared path.
    *Verify:* an API test that POSTs `seed: 1` and reads back `options.seed !== 1`, and that two
-   creates with the same body get different seeds. A local game with a typed seed still reproduces.
-2. **Trust line plus docs/17.** Copy in one surface, the 2a row, and the section 5 correction.
-   *Verify:* screenshot of the line on desktop and phone, and docs diff reviewed.
-3. **DOM hygiene test.** Render a joined, seated game mid-round (desktop and phone layouts). Collect
-   every card id held in rivals' hands from the full state, and assert none appears in the
-   serialized DOM (text and attributes). Fix any hits.
-   *Verify:* the test fails against a planted leak (temporarily render a rival's id) and passes
-   without it. Paste both runs.
-4. **Close #18** with a comment linking this spec and the revisit trigger, after Brian agrees.
+   identical creates get different seeds. A local game with a typed seed still reproduces.
+   Paste the run.
+2. **Docs and the line.** The docs/17 2a row, the section 5 correction, and the share-step line
+   (if it fits).
+   *Verify:* docs diff reviewed, plus one screenshot of the line if it shipped.
+3. **Close #18** with a comment linking this spec and the revisit trigger.
 
 ## Test plan
 
-- `packages/server-node/test`: create-seed test (slice 1). The existing API/gate suites must stay
-  green, since `startGame` validates the minted seed like any other.
-- `apps/web/test`: the DOM hygiene test (slice 3), using whatever DOM environment the existing
-  web tests use. If none renders `<App/>`, use the interaction harness in docs/18 instead, and say
-  which in the commit.
-- Live: create a shared game on arcs.basmith.net and confirm the stored seed isn't the one in the
-  page's form. Play a round to confirm nothing else moved.
+- `packages/server-node/test`: the create-seed test (slice 1). Existing API and gate suites stay green.
+- Live: create a shared game on arcs.basmith.net, check that the stored seed isn't what the client
+  would have sent, and play a round.
 
 ## Risks
 
-- **Brian may want the real guarantee anyway** (for example, he's planning to seat strangers). Then
-  this spec is the wrong one. Option A should get its own spec, and slice 1 still stands as a
-  first step: the server owning the seed is A's first move too.
-- Seed range: the minted value must fall inside whatever `startGame`/`rng()` accepts (`rng.ts` takes
-  any number and folds 0 to a constant). Use a 32-bit unsigned range.
-- Any tooling that relies on a shared game's chosen seed (arena runs, bug repros of shared games)
-  loses it. Repros already work from the stored options and journal, so this is likely a non-issue
-  (unverified).
+- **Strangers arrive.** Then this spec no longer applies. Option A gets its own spec, and slice 1 is
+  already its first step.
+- Any tooling that relied on choosing a shared game's seed loses that. Repros work from the stored
+  options and journal, so this is likely a non-issue (unverified).
 
-## Done when (replaces the issue's list if accepted)
+## Done when
 
-- [ ] A shared game's seed is chosen by the server; a seed in the create body is ignored (API test).
-- [ ] No rival's hand card id appears in the DOM of a seated or watching page, desktop or phone (test).
-- [ ] The trust model is stated in one player-visible line, and in docs/17 2a/5 with corrected costs.
-- [ ] Bots in joined games run on the server (already true; noted in the issue when closing).
-- [ ] Existing games, moves, undo, watching, interlude, saves/loads and phone layout are unchanged:
-      existing tests pass and a live round is played.
+- [ ] An online game's seed is picked by the server; a seed in the create body is ignored (API test pasted).
+- [ ] docs/17 2a/5 record the trust model and the corrected cost of option A.
+- [ ] Bots in joined games run on the server (already true; said so when closing).
+- [ ] Existing tests pass, and a live round is played after deploy.
 - [ ] #18 closed with the revisit trigger (strangers at the table → option A spec).
