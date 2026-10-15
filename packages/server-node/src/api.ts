@@ -4,6 +4,8 @@
  * their wire shapes (docs/17 section 4b); this adds bots on create, `seats` on read, a name claim,
  * `403 wrong-turn`, and `/healthz`.
  */
+import { randomInt } from 'node:crypto'
+
 import { seatTurn, startGame } from '@arcs/engine'
 import type { FactionId, NewGameOptions, RuleResult } from '@arcs/engine'
 
@@ -13,6 +15,8 @@ import { askedFactions, type EngineGate } from './gate.js'
 import { seatAccess } from './seat-access.js'
 import type { AccountSeat, SqliteStore } from './sqlite-store.js'
 import { buildStats, type ClaimedGame } from './stats.js'
+
+const defaultSeed = (): number => randomInt(1, 2 ** 32)
 
 export interface Api {
   readonly store: SqliteStore
@@ -24,6 +28,8 @@ export interface Api {
   readonly auth?: Auth
   /** Whether turn catch-up stories are written (a DeepSeek key is configured); the page holds space for one. */
   readonly catchupEnabled?: boolean
+  /** Picks the seed of a new online game. Tests pin it so the opening is known; production uses a random one. */
+  readonly newSeed?: () => number
 }
 
 export interface PublicSeat {
@@ -257,7 +263,9 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
       webhookUrl = b.webhookUrl.trim()
     }
     // Bots travel in options so every client's replay knows which seats are bots.
-    const rawOptions = b.options as NewGameOptions
+    // The server picks the seed; one in the request is ignored (a table can't choose a seed it has
+    // already played). Old games keep the seed they were stored with.
+    const rawOptions = { ...(b.options as NewGameOptions), seed: (api.newSeed ?? defaultSeed)() }
     const options: NewGameOptions =
       bots.length > 0 ? { ...rawOptions, bots: bots as readonly FactionId[] } : rawOptions
     try {

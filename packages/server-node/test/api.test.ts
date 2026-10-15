@@ -19,7 +19,7 @@ const get = (path: string, headers: Record<string, string> = {}): Request => new
 
 function api(auth?: Auth): Api {
   const store = new SqliteStore(':memory:', { accounts: auth !== undefined })
-  return { store, gate: new EngineGate(store, { pace: 0 }), ...(auth === undefined ? {} : { auth }) }
+  return { store, gate: new EngineGate(store, { pace: 0 }), newSeed: () => THREE_PLAYER.seed, ...(auth === undefined ? {} : { auth }) }
 }
 
 interface Created {
@@ -33,6 +33,21 @@ describe('route', () => {
     expect((await route(get('/healthz'), a))?.status).toBe(200)
     expect(await route(get('/'), a)).toBeUndefined()
     expect(await route(get('/assets/x.png'), a)).toBeUndefined()
+  })
+
+  it('picks an online game\'s seed itself: a seed in the body is ignored and two creates differ', async () => {
+    const store = new SqliteStore(':memory:')
+    const a: Api = { store, gate: new EngineGate(store, { pace: 0 }) } // no pinned seed: the production path
+    const make = async (ip: string) => {
+      const res = await route(post('/games', { options: { ...THREE_PLAYER, seed: 1 }, factions: THREE_PLAYER.factions }, { 'x-forwarded-for': ip }), a)
+      const { gameId } = (await res!.json()) as Created
+      return (await (await route(get(`/games/${gameId}`), a))!.json()).options as { seed: number }
+    }
+    const first = await make('10.7.0.1')
+    const second = await make('10.7.0.2')
+    expect(first.seed).not.toBe(1)
+    expect(first.seed).not.toBe(second.seed)
+    expect(Number.isInteger(first.seed) && first.seed >= 1 && first.seed < 2 ** 32).toBe(true)
   })
 
   it('creates a game with bots, hands out human seats only, stores bots in options', async () => {
@@ -288,7 +303,7 @@ describe('seat locks', () => {
     const auth = new Auth(store, { clientId: 'i', clientSecret: 's', publicOrigin: BASE, fetch: discordFake().f })
     const other = new Auth(store, { clientId: 'i', clientSecret: 's', publicOrigin: BASE,
       fetch: discordFake({ id: '333333333333333333', username: 'eve', global_name: 'Eve' }).f })
-    const a: Api = { store, gate: new EngineGate(store, { pace: 0 }), auth }
+    const a: Api = { store, gate: new EngineGate(store, { pace: 0 }), auth, newSeed: () => THREE_PLAYER.seed }
     const created = (await (await route(post('/games', { options: THREE_PLAYER, factions: THREE_PLAYER.factions }, nextIp()), a))!.json()) as Created
     const red = created.seats.find((s) => s.faction === 'red')!.seatToken
     const me = `arcs_session=${cookieOf((await signIn(auth))!, 'arcs_session')}`
@@ -467,7 +482,7 @@ describe('GET /me/stats', () => {
     const stubbed = new Map<string, RuleResult>()
     const real = gate.resultOf.bind(gate)
     gate.resultOf = (id: string) => stubbed.get(id) ?? real(id)
-    const a: Api = { store, gate, auth }
+    const a: Api = { store, gate, auth, newSeed: () => THREE_PLAYER.seed }
     const me = `arcs_session=${cookieOf((await signIn(auth))!, 'arcs_session')}`
     const eve = `arcs_session=${cookieOf((await signIn(evesAuth))!, 'arcs_session')}`
     const game = async (sits: [string, string][], result?: RuleResult) => {
