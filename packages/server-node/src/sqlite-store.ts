@@ -128,6 +128,19 @@ CREATE TABLE IF NOT EXISTS catchup (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (game_id, faction, journal_len)
 );
+CREATE TABLE IF NOT EXISTS catchup_attempt (
+  game_id TEXT NOT NULL,
+  faction TEXT NOT NULL,
+  journal_len INTEGER NOT NULL,
+  attempt INTEGER NOT NULL,
+  writer TEXT NOT NULL,
+  checker TEXT NOT NULL,
+  draft TEXT NOT NULL,
+  verdict TEXT NOT NULL,
+  passed INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS catchup_attempt_game ON catchup_attempt(game_id);
 CREATE TABLE IF NOT EXISTS pending_ping (
   game_id TEXT PRIMARY KEY,
   seat_token TEXT NOT NULL,
@@ -143,6 +156,22 @@ CREATE TABLE IF NOT EXISTS reminder (
   last_at INTEGER NOT NULL DEFAULT 0
 );
 `
+
+/** One `catchup_attempt` row: a draft the catch-up writer made and what the checker said. */
+export interface CatchupAttempt {
+  readonly gameId: string
+  readonly faction: string
+  readonly journalLen: number
+  /** 0 for the first draft, 1 for the rewrite. */
+  readonly attempt: number
+  readonly writer: string
+  readonly checker: string
+  readonly draft: string
+  /** The checker's reply in full, or `too long: N words` when the draft never reached it. */
+  readonly verdict: string
+  readonly passed: boolean
+  readonly createdAt: number
+}
 
 interface PendingPingDb {
   game_id: string
@@ -543,6 +572,48 @@ export class SqliteStore implements GameStore {
   deleteCatchups(gameId: GameId, fromLength?: number): void {
     if (fromLength === undefined) this.db.prepare('DELETE FROM catchup WHERE game_id = ?').run(gameId)
     else this.db.prepare('DELETE FROM catchup WHERE game_id = ? AND journal_len > ?').run(gameId, fromLength)
+  }
+
+  /**
+   * Every draft the catch-up writer made, kept for good (the game's end does not clear it): why a
+   * seat got bullets only, and what to tune the prompts against. No endpoint reads it, so a draft
+   * naming a seat's hand never reaches another client.
+   */
+  putCatchupAttempt(a: CatchupAttempt): void {
+    this.db
+      .prepare(
+        `INSERT INTO catchup_attempt
+           (game_id, faction, journal_len, attempt, writer, checker, draft, verdict, passed, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(a.gameId, a.faction, a.journalLen, a.attempt, a.writer, a.checker, a.draft, a.verdict, a.passed ? 1 : 0, a.createdAt)
+  }
+
+  catchupAttempts(gameId: GameId): CatchupAttempt[] {
+    const rows = this.db.prepare('SELECT * FROM catchup_attempt WHERE game_id = ? ORDER BY rowid').all(gameId) as {
+      game_id: string
+      faction: string
+      journal_len: number
+      attempt: number
+      writer: string
+      checker: string
+      draft: string
+      verdict: string
+      passed: number
+      created_at: number
+    }[]
+    return rows.map((r) => ({
+      gameId: r.game_id,
+      faction: r.faction,
+      journalLen: r.journal_len,
+      attempt: r.attempt,
+      writer: r.writer,
+      checker: r.checker,
+      draft: r.draft,
+      verdict: r.verdict,
+      passed: r.passed === 1,
+      createdAt: r.created_at,
+    }))
   }
 
   /** The seat a token belongs to in this game, if it does. */

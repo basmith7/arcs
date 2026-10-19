@@ -19,7 +19,7 @@ import type { Chat } from './deepseek.js'
 import { askedFactions } from './gate.js'
 import type { Settled } from './gate.js'
 import type { Presence } from './presence.js'
-import type { SqliteStore } from './sqlite-store.js'
+import type { CatchupAttempt, SqliteStore } from './sqlite-store.js'
 
 export interface CatchupOptions {
   /** The game's live result, to drop a story the game has moved past while it was written. */
@@ -87,6 +87,37 @@ export function storyPrompt(facts: SeatFacts): { system: string; user: string } 
 
 export function checkPrompt(facts: SeatFacts, story: string): { system: string; user: string } {
   return { system: CHECK_SYSTEM, user: `${hero(facts)}\n\n${factSheet(facts)}\n---\n${story}` }
+}
+
+/** One try at a story, as `catchup_attempt` keeps it. */
+export type StoryAttempt = Pick<CatchupAttempt, 'draft' | 'verdict' | 'passed'>
+
+/**
+ * Write and check, with one rewrite told the first refusal. Returns the first draft the checker
+ * passed, unnamed. `onAttempt` hears each try as it finishes, so a call that fails later still leaves
+ * the earlier tries recorded.
+ */
+export async function draftStory(
+  ask: (model: string, p: { system: string; user: string }, reason?: boolean) => Promise<string>,
+  facts: SeatFacts,
+  models: { readonly writerModel: string; readonly checkerModel: string },
+  onAttempt: (a: StoryAttempt, index: number) => void = () => {},
+): Promise<string | undefined> {
+  let refusal: string | undefined
+  for (let index = 0; index < 2; index++) {
+    const prompt = storyPrompt(facts)
+    if (refusal !== undefined) prompt.user += `\n\nA checker rejected your previous draft: ${refusal}\nWrite it again without that.`
+    const draft = await ask(models.writerModel, prompt, true)
+    const words = draft.split(/\s+/).length
+    const verdict =
+      words > MAX_WORDS ? `too long: ${words} words` : await ask(models.checkerModel, checkPrompt(facts, draft), true)
+    // A bare PASS only: "PASS, though…" is a hedge, and hedges are how advice slips through.
+    const passed = /^\W*PASS\W*$/i.test(verdict)
+    onAttempt({ draft, verdict, passed }, index)
+    if (passed) return draft
+    refusal = verdict.slice(0, 300).replace(/\s+/g, ' ')
+  }
+  return undefined
 }
 
 export class CatchupWriter {
@@ -193,29 +224,26 @@ export class CatchupWriter {
       return Promise.race([chat(model, p.system, p.user, signal, { reason }), timedOut])
     }
 
-    let story: string | undefined
-    const refusals: string[] = []
-    for (let attempt = 0; attempt < 2 && story === undefined; attempt++) {
-      const prompt = storyPrompt(facts)
-      const last = refusals.at(-1)
-      if (last !== undefined) prompt.user += `\n\nA checker rejected your previous draft: ${last}\nWrite it again without that.`
-      const draft = await ask(this.opts.writerModel, prompt, true)
-      const words = draft.split(/\s+/).length
-      if (words > MAX_WORDS) {
-        refusals.push(`it ran to ${words} words`)
-        continue
-      }
-      const verdict = await ask(this.opts.checkerModel, checkPrompt(facts, draft), true)
-      // A bare PASS only: "PASS, though…" is a hedge, and hedges are how advice slips through.
-      if (/^\W*PASS\W*$/i.test(verdict)) story = draft
-      else refusals.push(verdict.slice(0, 300).replace(/\s+/g, ' '))
-    }
-    if (story !== undefined) story = withNames(story, facts.factions.map((f) => f.faction), name)
-    if (story === undefined) {
-      // The refusals can quote the story, and the story can name this seat's hand: count only.
-      console.log(`[catchup] bullets only for ${gameId} ${faction}: ${refusals.length} drafts refused`)
+    const { writerModel, checkerModel } = this.opts
+    const unnamed = await draftStory(ask, facts, this.opts, (a, attempt) =>
+      this.store.putCatchupAttempt({
+        gameId,
+        faction,
+        journalLen: journal.length,
+        attempt,
+        writer: writerModel,
+        checker: checkerModel,
+        draft: a.draft,
+        verdict: a.verdict,
+        passed: a.passed,
+        createdAt: this.now(),
+      }),
+    )
+    if (unnamed === undefined) {
+      console.log(`[catchup] bullets only for ${gameId} ${faction}: both drafts refused (see catchup_attempt)`)
       return
     }
+    const story = withNames(unnamed, facts.factions.map((f) => f.faction), name)
     if (!this.stillCurrent(options, gameId, faction, journal)) return
     this.store.putCatchup(gameId, faction, journal.length, story, this.now())
     const push: CatchupPush = { catchup: { length: journal.length, story } }

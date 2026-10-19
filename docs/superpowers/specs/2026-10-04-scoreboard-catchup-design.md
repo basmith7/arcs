@@ -97,6 +97,9 @@ heads-ups of its own.
 - 30 s timeout per call. A single in-process queue (one game at a time); it never blocks a move.
 - Stored in a new table `catchup(game_id, faction, journal_len, text, created_at)`; rows for a game
   are deleted when it ends. A deploy mid-write loses that one story; bullets still show.
+- Every draft and the checker's full verdict also go to `catchup_attempt`, kept for good (v0.16.2):
+  why a seat got bullets only, and what to tune the prompts against. No endpoint reads it.
+  `npm run catchup-try -- <game> <faction>` re-runs the loop for a seat and prints fresh drafts.
 - No `DEEPSEEK_API_KEY` in Tower's `.env` → bullets only, no error.
 
 ### Serving and UI

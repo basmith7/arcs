@@ -28,6 +28,7 @@
     "profile": "vite-node scripts/profile-game.ts",
     "advise": "vite-node scripts/advise.ts",
     "recap": "vite-node scripts/recap.ts",
+    "catchup-try": "vite-node scripts/catchup-try.ts",
     "coverage": "vite-node scripts/coverage.ts",
     "b2": "vite-node scripts/b2-power.ts",
     "gate": "vite-node scripts/gate-pool.ts",

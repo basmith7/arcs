@@ -94,6 +94,22 @@ describe('CatchupWriter', () => {
     expect(t.pushed).toEqual([])
   })
 
+  it('records every draft and verdict, refused or kept', async () => {
+    const t = await setup(scripted('first', 'FAIL: invented', 'second', 'PASS'))
+    await t.handOff()
+    const rows = t.store.catchupAttempts(t.gameId)
+    expect(rows.map(({ faction, journalLen, attempt, draft, verdict, passed }) => ({ faction, journalLen, attempt, draft, verdict, passed }))).toEqual([
+      { faction: 'yellow', journalLen: LEN, attempt: 0, draft: 'first', verdict: 'FAIL: invented', passed: false },
+      { faction: 'yellow', journalLen: LEN, attempt: 1, draft: 'second', verdict: 'PASS', passed: true },
+    ])
+  })
+
+  it('keeps the refused draft when the rewrite call fails', async () => {
+    const t = await setup(scripted('first', 'FAIL: x', new Error('deepseek 500')))
+    await t.handOff()
+    expect(t.store.catchupAttempts(t.gameId).map((a) => a.draft)).toEqual(['first'])
+  })
+
   it('gives up quietly when a call times out', async () => {
     const hang: Chat = (_m, _s, _u, signal) =>
       new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)))
