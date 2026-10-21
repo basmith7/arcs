@@ -13,7 +13,12 @@ RUN npm run build:site && npm run build --workspace @arcs/server-node
 
 FROM node:22-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production \
+# eMudhra CA compromise (issue #25): Node's bundled roots still trust the revoked CAs, so trust the
+# patched OS store instead. The package is ca-certificates-bundle (>= 20261020-r0), not ca-certificates.
+# Drop both lines once the Node base image ships nodejs/node#66871.
+RUN apk upgrade --no-cache ca-certificates-bundle
+ENV NODE_OPTIONS=--use-openssl-ca \
+    NODE_ENV=production \
     PORT=3070 \
     DATABASE_PATH=/data/arcs.db \
     STATIC_DIR=/app/web
