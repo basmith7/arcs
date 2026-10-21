@@ -23,6 +23,8 @@ import { CardShelf } from './components/CardShelf.js'
 import { RaidModal } from './components/RaidModal.js'
 import { Hand } from './components/Hand.js'
 import { LogPanel } from './components/LogPanel.js'
+import { Notes } from './components/Notes.js'
+import { EndTurn } from './components/EndTurn.js'
 import { NewGame } from './components/NewGame.js'
 import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
@@ -42,7 +44,7 @@ import { MapZoom } from './components/MapZoom.js'
 import { PhonePlays } from './components/PhonePlays.js'
 import { PhoneTabs, SheetHead } from './components/PhoneTabs.js'
 import { canAct, hushed, viewFor, watchedActor } from './multiplayer/seat.js'
-import { setSettings, useSettings } from './settings.js'
+import { useSettings } from './settings.js'
 import { setupLabel } from './setups.js'
 import { colorOf } from './theme.js'
 import { store, useGame, useSeats } from './store.js'
@@ -53,29 +55,19 @@ export function App(): JSX.Element {
   // so this needs its own subscription; see the comment on `seatsVersion` in store.ts.
   useSeats()
   const fileInput = useRef<HTMLInputElement>(null)
-  /*
-   * The log drawer. Local state, deliberately: nothing else reads it, and it must not entangle
-   * with saves or undo. No backdrop either — the point of the drawer is reading the log while
-   * the game stays playable behind it.
-   */
-  const [logOpen, setLogOpen] = useState(false)
   /** Escape/cancel dismisses the name prompt for the rest of this session; it does not reappear. */
   const [nameDismissed, setNameDismissed] = useState(false)
   /** "Just watching" in Who-are-you: stay a spectator for this session. */
   const [watchChosen, setWatchChosen] = useState(false)
   /*
-   * The settings dialog. Local state like the log drawer, and mounted on both screens below —
+   * The settings dialog. Local state, and mounted on both screens below —
    * the music starts on the title screen, so the volume control has to be reachable there too.
    */
   const [settingsOpen, setSettingsOpen] = useState(false)
-  /*
-   * Pinning the log is a statement about how you like to play rather than a thing you did to this
-   * game, so it lives in settings. Open-but-unpinned stays local state, like the drawer always was.
-   */
-  const { watchTurns, logPinned, phoneLayout, phoneHand } = useSettings()
+  const { watchTurns, phoneLayout, phoneHand } = useSettings()
   /*
    * The phone layout (phone.ts, phone.css): the game screen rearranged for a narrow window. Its
-   * open sheet and folded-away menu are local state like the log drawer.
+   * open sheet and folded-away menu are local state.
    */
   const narrow = useNarrow()
   const [sheet, setSheet] = useState<Sheet | null>(null)
@@ -125,14 +117,6 @@ export function App(): JSX.Element {
       setScoreOpen(false)
     }
   }, [phone, phoneHand])
-  useEffect(() => {
-    if (!logOpen) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setLogOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [logOpen])
 
   function saveGame(): void {
     const json = store.toJSON()
@@ -242,11 +226,14 @@ export function App(): JSX.Element {
    * `cont`: it is not a decision surface and `handOwner` already decides whose cards it fans.
    */
   const boardCont = watched === null ? cont : hushed(cont)
+  const endTurnPending = store.endTurnPending()
   /*
    * The turn catch-up: a seated player, on their own turn. Dismissed per turn (its start in the
    * journal), so a reload keeps it closed and the next turn brings it back by itself.
    */
   const gameId = store.sessionLink()?.gameId
+  // Notes belong to a seat in an online game; remounting per seat keeps one seat's text out of another's.
+  const notesKey = gameId !== undefined && seatView.kind === 'seat' ? `${gameId}:${seatView.faction}` : null
   const catchupTurn =
     gameId !== undefined && seatView.kind === 'seat' && shouldShowCatchup(seatView, engineCont)
       ? store.seatTurn(seatView.faction)
@@ -352,11 +339,6 @@ export function App(): JSX.Element {
           <button className="ghost" onClick={saveGame}>
             Save
           </button>
-          {phone ? null : (
-            <button className="ghost" onClick={() => setLogOpen((v) => !v)}>
-              Log
-            </button>
-          )}
           {/* A phone has it as a bottom tab: views live in the tabs, the menu holds actions. */}
           {phone ? null : (
             <button className="ghost" onClick={() => setScoreOpen(true)}>
@@ -382,7 +364,7 @@ export function App(): JSX.Element {
       {locked !== null ? <LockedBanner owner={locked.owner} canUnlock={locked.canUnlock === true} /> : null}
       <SigninNotice />
 
-      <main className={logPinned && !phone ? 'layout log-pinned' : 'layout'}>
+      <main className={phone ? 'layout' : 'layout with-log'}>
         <section className="board-col">
           {phone ? null : <CourtPanel state={state} />}
           {phone ? null : <PlayedCards state={state} />}
@@ -406,8 +388,10 @@ export function App(): JSX.Element {
               </Watching>
             )}
             {phone ? <PhonePlays state={state} onOpen={() => setSheet('court')} /> : null}
+            {/* The turn's last move waits here for End turn (store `held`); it covers the catch-up. */}
+            {endTurnPending ? <EndTurn log={state.log} /> : null}
             {/* Over the map's foot, never the dock: the decision below does not move. */}
-            {catchupFaction !== null && !catchupClosed ? (
+            {catchupFaction !== null && !catchupClosed && !endTurnPending ? (
               <CatchUpSlot
                 faction={catchupFaction}
                 gameId={gameId!}
@@ -434,7 +418,10 @@ export function App(): JSX.Element {
                   ) : sheet === 'score' ? (
                     <ScoreboardPanel state={state} />
                   ) : (
-                    <LogPanel log={state.log} />
+                    <>
+                      <LogPanel log={state.log} />
+                      {notesKey === null ? null : <Notes seatKey={notesKey} />}
+                    </>
                   )}
                 </div>
               </div>
@@ -442,10 +429,10 @@ export function App(): JSX.Element {
             {/*
               * The turn feed, over the map's lower-left and outside `Watching` — it is narration,
               * not a control, and making it inert would take the one thing on screen that explains
-              * the pause out of the accessibility tree. Suppressed when the log is pinned, which is
-              * the same rows in a bigger frame a few hundred pixels to the right.
+              * the pause out of the accessibility tree. Phone only: the desktop log column is the
+              * same rows in a bigger frame a few hundred pixels to the right.
               */}
-            {watched !== null && (phone || !logPinned) ? (
+            {watched !== null && phone && !endTurnPending ? (
               <div className="turn-feed" role="status" aria-live="polite">
                 <LogPanel log={state.log} only="last-turn" />
               </div>
@@ -503,34 +490,16 @@ export function App(): JSX.Element {
             onSheet={setSheet}
           />
         ) : null}
-        {!phone && (logOpen || logPinned) ? (
-          <div className="log-drawer" role="complementary" aria-label="Game log">
-            <div className="log-drawer-head">
+        {/* The log is always a column on the desktop table: it is read while playing, not consulted. */}
+        {phone ? null : (
+          <div className="log-column" role="complementary" aria-label="Game log">
+            <div className="log-column-head">
               <span>Log</span>
-              <div className="log-drawer-tools">
-                <button
-                  className={logPinned ? 'ghost log-pin on' : 'ghost log-pin'}
-                  title={logPinned ? 'Unpin — float the log over the board' : 'Pin — give the log its own column'}
-                  aria-pressed={logPinned}
-                  onClick={() => setSettings({ logPinned: !logPinned })}
-                >
-                  ⇱
-                </button>
-                {/* Closing unpins. A drawer you shut that comes straight back is a broken button. */}
-                <button
-                  className="ghost"
-                  onClick={() => {
-                    setLogOpen(false)
-                    setSettings({ logPinned: false })
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
             </div>
             <LogPanel log={state.log} />
+            {notesKey === null ? null : <Notes seatKey={notesKey} />}
           </div>
-        ) : null}
+        )}
       </main>
 
       {/*

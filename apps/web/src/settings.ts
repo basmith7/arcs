@@ -38,8 +38,11 @@ export interface Settings {
    * one, and is why it is a preference rather than a rewrite.
    */
   watchTurns: boolean
-  /** Whether the log drawer is a column of the layout rather than a panel over the board. */
-  logPinned: boolean
+  /**
+   * Whether the move that ends your turn in an online game waits for an "End turn" press, with
+   * the chance to take the turn back first. Held on this device until then; nobody sees it.
+   */
+  confirmEndTurn: boolean
   /**
    * What a phone held upright shows during a game: the phone layout (`phone.css`), or the desktop
    * table shrunk to fit and pinch-zoomed (`phone-canvas.ts`). A phone held sideways always gets the
@@ -61,8 +64,7 @@ export const DEFAULTS: Readonly<Settings> = {
   // Off: the board looks the way it was painted until someone asks for otherwise.
   boardDim: 0,
   watchTurns: true,
-  // The board is the thing to look at; the log has to be asked for.
-  logPinned: false,
+  confirmEndTurn: true,
   phoneLayout: 'mobile',
   phoneHand: 'row',
 }
@@ -98,7 +100,7 @@ function parse(json: string): Settings {
     sfxVolume: unit(raw['sfxVolume'], DEFAULTS.sfxVolume),
     boardDim: unit(raw['boardDim'], DEFAULTS.boardDim),
     watchTurns: bool(raw['watchTurns'], DEFAULTS.watchTurns),
-    logPinned: bool(raw['logPinned'], DEFAULTS.logPinned),
+    confirmEndTurn: bool(raw['confirmEndTurn'], DEFAULTS.confirmEndTurn),
     phoneLayout: oneOf(raw['phoneLayout'], ['mobile', 'canvas'], DEFAULTS.phoneLayout),
     phoneHand: oneOf(raw['phoneHand'], ['row', 'grid'], DEFAULTS.phoneHand),
   }
@@ -145,7 +147,7 @@ export function setSettings(patch: Partial<Settings>): void {
     sfxVolume: patch.sfxVolume === undefined ? prev.sfxVolume : unit(patch.sfxVolume, prev.sfxVolume),
     boardDim: patch.boardDim === undefined ? prev.boardDim : unit(patch.boardDim, prev.boardDim),
     watchTurns: patch.watchTurns ?? prev.watchTurns,
-    logPinned: patch.logPinned ?? prev.logPinned,
+    confirmEndTurn: patch.confirmEndTurn ?? prev.confirmEndTurn,
     phoneLayout: oneOf(patch.phoneLayout, ['mobile', 'canvas'], prev.phoneLayout),
     phoneHand: oneOf(patch.phoneHand, ['row', 'grid'], prev.phoneHand),
   }

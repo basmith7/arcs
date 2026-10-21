@@ -53,7 +53,7 @@ const factionOf = (encoded: string): string | undefined => /faction="([a-z]+)"/.
 const typeOf = (encoded: string): string => /^([^(]*)/.exec(encoded)![1]!
 
 /** The plays that open a turn: every turn begins with exactly one, and nothing else does. */
-const OPENERS: ReadonlySet<string> = new Set(['turn/lead', 'turn/pass', 'turn/surpass', 'turn/copy', 'turn/pivot'])
+export const OPENERS: ReadonlySet<string> = new Set(['turn/lead', 'turn/pass', 'turn/surpass', 'turn/copy', 'turn/pivot'])
 
 /** What the engine is asking of a seat right now, as far as turns go. */
 export type SeatAsk = 'opener' | 'other' | 'none'

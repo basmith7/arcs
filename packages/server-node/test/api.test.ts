@@ -277,6 +277,35 @@ describe('GET /games/:id/catchup', () => {
   })
 })
 
+describe('/games/:id/note', () => {
+  it("keeps a seat's notes for that seat only, and an empty save clears them", async () => {
+    const a = api()
+    const created = await a.store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const other = await a.store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const id = created.gameId
+    const red = created.seats.find((s) => s.faction === 'red')!.seatToken
+    const yellow = created.seats.find((s) => s.faction === 'yellow')!.seatToken
+    const read = async (token: string) => (await route(get(`/games/${id}/note`, { 'x-seat-token': token }), a))!
+    const save = async (token: string, text: unknown) => (await route(post(`/games/${id}/note`, { seatToken: token, text }), a))!
+
+    expect(await (await read(red)).json()).toEqual({ text: '', updatedAt: null })
+    const saved = await (await save(red, 'take the gate at 4')).json()
+    expect(saved.text).toBe('take the gate at 4')
+    expect(typeof saved.updatedAt).toBe('number')
+    expect((await (await read(red)).json()).text).toBe('take the gate at 4')
+    // Another seat at the table, a seat from another game, and no token all see nothing of red's.
+    expect((await (await read(yellow)).json()).text).toBe('')
+    expect((await read(other.seats[0]!.seatToken)).status).toBe(403)
+    expect((await route(get(`/games/${id}/note`), a))!.status).toBe(403)
+    // Nor do the public read's answers carry it.
+    expect(JSON.stringify(await (await route(get(`/games/${id}`, { 'x-seat-token': yellow }), a))!.json())).not.toContain('gate at 4')
+
+    expect((await save(red, 'x'.repeat(4001))).status).toBe(400)
+    expect((await save(red, 7)).status).toBe(400)
+    expect(await (await save(red, '  \n ')).json()).toEqual({ text: '', updatedAt: null })
+  })
+})
+
 describe('seat locks', () => {
   // Each setup() creates a game; give each its own IP so the module-level create rate limit
   // (10 per unknown-IP bucket, shared by every test in this file) doesn't trip across this many tests.
@@ -322,6 +351,8 @@ describe('seat locks', () => {
     expect((await route(post(`/games/${gameId}/undo`, { seatToken: red, expectedLength: 0 }), a))!.status).toBe(403)
     expect((await route(post(`/games/${gameId}/seat`, { seatToken: red, name: 'Mallory' }), a))!.status).toBe(403)
     expect((await route(get(`/games/${gameId}/catchup`, { 'x-seat-token': red }), a))!.status).toBe(403)
+    expect((await route(get(`/games/${gameId}/note`, { 'x-seat-token': red }), a))!.status).toBe(403)
+    expect((await route(post(`/games/${gameId}/note`, { seatToken: red, text: 'hi' }), a))!.status).toBe(403)
   })
 
   it('claim is refused signed out, on a bot seat and on someone else’s seat; release unlocks', async () => {

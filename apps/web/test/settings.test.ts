@@ -39,20 +39,18 @@ afterEach(() => {
 })
 
 describe('the settings store', () => {
-  it('remembers the watch-mode and pinned-log flags', () => {
-    setSettings({ watchTurns: false, logPinned: true })
+  it('remembers the watch-mode flag', () => {
+    setSettings({ watchTurns: false })
     expect(getSettings().watchTurns).toBe(false)
-    expect(getSettings().logPinned).toBe(true)
     reloadSettings()
     expect(getSettings().watchTurns).toBe(false)
-    expect(getSettings().logPinned).toBe(true)
   })
 
   it('falls back per field when a stored flag is not a boolean', () => {
-    localStorage.setItem(KEY, JSON.stringify({ watchTurns: 'yes', logPinned: true }))
+    localStorage.setItem(KEY, JSON.stringify({ watchTurns: 'yes', musicEnabled: false }))
     reloadSettings()
     expect(getSettings().watchTurns).toBe(DEFAULTS.watchTurns)
-    expect(getSettings().logPinned).toBe(true)
+    expect(getSettings().musicEnabled).toBe(false)
   })
 
   it('remembers the phone layout and hand choices', () => {
@@ -76,9 +74,8 @@ describe('the settings store', () => {
     expect(getSettings().phoneLayout).toBe(DEFAULTS.phoneLayout)
   })
 
-  it('watches other players by default, and does not pin the log', () => {
+  it('watches other players by default', () => {
     expect(DEFAULTS.watchTurns).toBe(true)
-    expect(DEFAULTS.logPinned).toBe(false)
   })
 
   it('starts at the defaults when nothing is stored', () => {

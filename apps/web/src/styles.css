@@ -631,7 +631,7 @@ html.phone-portrait body {
 }
 /* The side column gives ground first — it is text, and text survives being narrower than
    the board does. */
-/* One column: the side panel is gone, the board owns the width. The drawer anchors here. */
+/* The board owns the width; on the desktop table the log takes a column beside it (`.with-log`). */
 .layout {
   flex: 1;
   display: grid;
@@ -2412,7 +2412,6 @@ html.phone-portrait body {
 @media (prefers-reduced-motion: reduce) {
   .ret-sweep,
   .route-flow,
-  .log-drawer,
   .amb-flag {
     animation: none;
   }
@@ -2569,59 +2568,30 @@ html.phone-portrait body {
   background: var(--gold);
 }
 
-/* --- log: the toggle drawer the side column became --- */
+/* --- log: a column of the desktop layout, with the seat's notes at its foot --- */
 /*
- * Pinned: the drawer stops floating and becomes a column of the layout, so the map is beside it
- * rather than under it. One reflow when you pin, and then nothing moves — which is the difference
- * between a panel you consult and a panel you read while you play.
+ * Always a column, so the map is beside the log rather than under it: nothing floats over the
+ * board and nothing moves while you play.
  */
-.layout.log-pinned {
+.layout.with-log {
   grid-template-columns: minmax(0, 1fr) clamp(260px, 24vw, 340px);
 }
 /*
- * The floating drawer is `position: absolute`, so its height was the layout's and the rows inside
- * it scrolled. Pinned it becomes a real grid item, and a grid item's automatic minimum is its
- * content — a long game's log then made the row taller than the viewport and pushed the whole app
- * past the bottom of the window instead of scrolling inside the panel. The row is capped and the
- * item is allowed to be shorter than its rows, which puts the overflow back on `.log`.
+ * The row is capped and the column allowed to be shorter than its content: a grid item's automatic
+ * minimum is its content, and a long game's log then made the row taller than the viewport and
+ * pushed the whole app past the bottom of the window instead of scrolling inside `.log`.
  */
-.log-pinned {
+.with-log {
   grid-template-rows: minmax(0, 1fr);
 }
-.log-pinned .log-drawer {
-  position: static;
+.log-column {
   min-height: 0;
-  box-shadow: none;
-  animation: none;
-}
-.log-drawer-tools {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-/* Pressed state for the pin, which is a toggle and has to look like one. */
-.log-drawer-tools .ghost.on {
-  color: var(--gold);
-  background: rgba(201, 169, 97, 0.14);
-}
-.log-drawer {
-  position: absolute;
-  inset: 0 0 0 auto;
-  width: clamp(260px, 24vw, 340px);
-  z-index: 260; /* over the boards (50) and trays (45); under decision modals (300+) and topbar (400) */
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--panel);
   border-left: 1px solid var(--line);
-  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.5);
-  animation: log-slide 160ms ease-out;
 }
-@keyframes log-slide {
-  from {
-    transform: translateX(100%);
-  }
-}
-.log-drawer-head {
+.log-column-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2669,6 +2639,65 @@ html.phone-portrait body {
   border-left: 3px solid transparent;
 }
 /* The first head in the panel has nothing above it to be separated from. */
+/* --- notes: the seat's own plan, under the log --- */
+.notes {
+  border-top: 1px solid var(--line);
+  padding: 8px 12px 12px;
+  display: grid;
+  gap: 6px;
+}
+.notes-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.notes-status {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.notes-retry {
+  font-size: 11px;
+  padding: 2px 6px;
+  color: #ff9a8f;
+}
+.notes-text {
+  width: 100%;
+  min-height: 96px;
+  height: 22vh;
+  max-height: 50vh;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 8px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.notes-text:focus {
+  outline: none;
+  border-color: var(--gold-dim);
+}
+.phone-sheet .notes {
+  margin-top: 10px;
+  padding: 10px 0 0;
+}
+.phone-sheet .notes-text {
+  height: 140px;
+}
 .log-head:first-child {
   margin-top: 0;
 }
@@ -2717,7 +2746,7 @@ html.phone-portrait body {
 
 /* --- the turn feed --------------------------------------------------------
  *
- * The same rows as the drawer, floated over the map's lower-left while somebody else plays. It is
+ * The same rows as the log column, floated over the map's lower-left while somebody else plays. It is
  * positioned inside `.board-cell` rather than laid out in the grid on purpose: watch mode comes and
  * goes on every turn change, and a feed that took space would move the map several times a round.
  */
@@ -2802,7 +2831,7 @@ html.phone-portrait body {
 /*
  * The card floated beside its name. Fixed, portalled to `body`, and positioned in viewport
  * coordinates by the panel — see `CardPreview`, and `CardZoom` for why anything positioned inside
- * the drawer or the feed would be clipped by it.
+ * the log column or the feed would be clipped by it.
  *
  * `pointer-events: none` is what keeps it from being a trap: the art can land over the very name
  * that opened it, and a card that swallowed the pointer would flicker between opening and closing
@@ -2810,7 +2839,7 @@ html.phone-portrait body {
  */
 .log-preview {
   position: fixed;
-  z-index: 320; /* over the drawer (260) and the trays; under the readers it opens (400+) */
+  z-index: 320; /* over the log column and the trays; under the readers it opens (400+) */
   pointer-events: none;
   animation: log-preview-in 90ms ease-out;
 }
@@ -7019,4 +7048,58 @@ a.da-ghost {
 .ps-foot {
   margin: 16px auto 0;
   width: min(520px, 100%);
+}
+
+/* --- end of turn: the held last move, waiting for End turn (EndTurn.tsx) --- */
+.end-turn {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 65; /* over the catch-up card (60) and the phone sheet's map; under modals */
+  width: min(440px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(10, 12, 18, 0.96);
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.7);
+}
+.end-turn-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.end-turn-moves {
+  min-height: 0;
+  display: grid;
+}
+.end-turn-moves .log {
+  padding: 0;
+}
+.end-turn-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.end-turn-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.end-turn-send {
+  padding: 6px 16px;
+  font-weight: 700;
+  color: #14100a;
+  background: var(--gold);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
 }

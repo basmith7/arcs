@@ -18,6 +18,7 @@
  * for what is clickable, and this is a label.
  */
 
+import { store } from '../store.js'
 import { colorOf } from '../theme.js'
 import type { SeatView } from '../multiplayer/seat.js'
 import type { FactionId } from '@arcs/engine'
@@ -48,7 +49,8 @@ export function SeatBadge({ view, current, nameOf, myDiscordName }: Props): JSX.
   }
 
   const seat = view.faction
-  const yourTurn = current === seat
+  // A turn-ending move held for End turn has not been sent: it is still this seat's turn.
+  const yourTurn = current === seat || store.endTurnPending()
   const tint = colorOf(seat)
 
   return (

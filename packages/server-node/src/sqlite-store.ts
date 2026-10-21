@@ -148,6 +148,13 @@ CREATE TABLE IF NOT EXISTS pending_ping (
   chapter INTEGER NOT NULL,
   due_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS seat_note (
+  game_id TEXT NOT NULL,
+  faction TEXT NOT NULL,
+  text TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (game_id, faction)
+);
 CREATE TABLE IF NOT EXISTS reminder (
   game_id TEXT PRIMARY KEY,
   seat_token TEXT NOT NULL,
@@ -548,6 +555,29 @@ export class SqliteStore implements GameStore {
       .prepare('SELECT id FROM game ORDER BY created_at')
       .all()
       .map((r) => (r as { id: string }).id)
+  }
+
+  // --- a seat's private notes (its plan, for when its next turn is days away) ---
+
+  /** The seat's note, or undefined if it never wrote one. Empty text deletes it. */
+  getNote(gameId: GameId, faction: string): { text: string; updatedAt: number } | undefined {
+    const row = this.db
+      .prepare('SELECT text, updated_at FROM seat_note WHERE game_id = ? AND faction = ?')
+      .get(gameId, faction) as { text: string; updated_at: number } | undefined
+    return row === undefined ? undefined : { text: row.text, updatedAt: row.updated_at }
+  }
+
+  putNote(gameId: GameId, faction: string, text: string, now: number): void {
+    if (text === '') {
+      this.db.prepare('DELETE FROM seat_note WHERE game_id = ? AND faction = ?').run(gameId, faction)
+      return
+    }
+    this.db
+      .prepare(
+        `INSERT INTO seat_note (game_id, faction, text, updated_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT (game_id, faction) DO UPDATE SET text = excluded.text, updated_at = excluded.updated_at`,
+      )
+      .run(gameId, faction, text, now)
   }
 
   // --- turn catch-up stories (catchup.ts) ----------------------------------

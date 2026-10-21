@@ -57,6 +57,8 @@ function normaliseDiscordId(raw: string): string | undefined {
 }
 
 export const NAME_MAX = 24
+/** A seat's notes: a plan, not a diary. Roomy enough that nobody hits it by accident. */
+export const NOTE_MAX = 4000
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -276,6 +278,7 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
   const sit = /^\/games\/([^/]+)\/sit$/.exec(path)
   const release = /^\/games\/([^/]+)\/release$/.exec(path)
   const catchup = /^\/games\/([^/]+)\/catchup$/.exec(path)
+  const note = /^\/games\/([^/]+)\/note$/.exec(path)
 
   if (live !== null) return bad(426, 'expected a websocket upgrade')
 
@@ -327,6 +330,32 @@ async function routeInner(request: Request, api: Api): Promise<Response | undefi
       story: turn?.inTurn === true ? (store.getCatchup(gameId, seat.faction, length) ?? null) : null,
       enabled: api.catchupEnabled ?? false,
     })
+  }
+
+  // --- GET/POST /games/:id/note — the seat's private notes -------------------
+  // Private to the seat's token, like the catch-up story: never in a read, a push or another seat's
+  // answer. A locked seat's link only watches, so it neither reads nor writes the owner's notes.
+  if (note !== null && (request.method === 'GET' || request.method === 'POST')) {
+    const gameId = decodeURIComponent(note[1]!)
+    let token: string | undefined
+    let text: string | undefined
+    if (request.method === 'GET') {
+      token = request.headers.get('x-seat-token') ?? undefined
+    } else {
+      const b = await body<{ seatToken?: unknown; text?: unknown }>(request)
+      if (b === undefined) return bad(400, 'body must be JSON')
+      if (typeof b.seatToken !== 'string') return bad(400, 'seatToken is required')
+      if (typeof b.text !== 'string' || b.text.length > NOTE_MAX) return bad(400, `text must be 0-${NOTE_MAX} characters`)
+      token = b.seatToken
+      text = b.text
+    }
+    const seat = token === undefined ? undefined : store.seatForToken(gameId, token)
+    if (seat === undefined) return bad(403, 'seat token does not belong to this game')
+    const locked = lockedFor(gameId, token!)
+    if (locked) return locked
+    if (text !== undefined) store.putNote(gameId, seat.faction, text.trim() === '' ? '' : text, Date.now())
+    const held = store.getNote(gameId, seat.faction)
+    return json({ text: held?.text ?? '', updatedAt: held?.updatedAt ?? null })
   }
 
   // --- POST /games/:id/actions --------------------------------------------

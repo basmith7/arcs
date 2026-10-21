@@ -127,6 +127,13 @@ export class ApiError extends Error {
   }
 }
 
+/** A seat's private notes, as the server holds them. */
+export interface SeatNote {
+  readonly text: string
+  /** Epoch ms of the last save, or null when there are none. */
+  readonly updatedAt: number | null
+}
+
 export class MultiplayerClient {
   /** `baseUrl` has no trailing slash; the endpoints supply their own. */
   constructor(private readonly baseUrl: string) {}
@@ -278,6 +285,20 @@ export class MultiplayerClient {
       body: JSON.stringify({ seatToken, ...(name === undefined ? {} : { name }) }),
     })
     return body.seats
+  }
+
+  /** This seat's private notes (`GET /games/:id/note`); `updatedAt` is null until written. */
+  async note(gameId: string, seatToken: string): Promise<SeatNote> {
+    return this.json(`/games/${encodeURIComponent(gameId)}/note`, { headers: { 'x-seat-token': seatToken } })
+  }
+
+  /** Replace this seat's notes; empty text clears them. */
+  async saveNote(gameId: string, seatToken: string, text: string): Promise<SeatNote> {
+    return this.json(`/games/${encodeURIComponent(gameId)}/note`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ seatToken, text }),
+    })
   }
 
   /** Release a seat this account claimed, so anyone holding the token may claim it again. */

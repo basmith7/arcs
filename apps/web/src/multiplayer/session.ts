@@ -31,7 +31,7 @@ import { decodeAction, encodeAction, replayGame } from '@arcs/engine'
 import type { Action, NewGameOptions, RuleResult } from '@arcs/engine'
 
 import { ApiError, MultiplayerClient } from './client.js'
-import type { PublicSeat } from './client.js'
+import type { PublicSeat, SeatNote } from './client.js'
 import type { GameLink } from './link.js'
 
 /** How often to ask for the tail. docs/17 section 4: adequate for a game where a turn takes a minute. */
@@ -511,6 +511,17 @@ export class Session {
     if (this.inflight !== null) await this.inflight.catch(() => {})
     this.host.seats(await this.client.sit(this.link.gameId, this.link.seatToken, name))
     await this.resync()
+  }
+
+  /** This seat's private notes; `null` for a spectator, who has none. */
+  async note(): Promise<SeatNote | null> {
+    if (this.link.seatToken === undefined) return null
+    return this.client.note(this.link.gameId, this.link.seatToken)
+  }
+
+  async saveNote(text: string): Promise<SeatNote | null> {
+    if (this.link.seatToken === undefined) return null
+    return this.client.saveNote(this.link.gameId, this.link.seatToken, text)
   }
 
   /** Release this client's seat, giving up this account's claim on it. */

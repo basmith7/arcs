@@ -26,6 +26,8 @@ import {
   replayGame,
   seatFacts,
   seatTurn,
+  seatAsk,
+  OPENERS,
 } from '@arcs/engine'
 import type {
   Action,
@@ -43,7 +45,7 @@ import type {
 import { useSyncExternalStore } from 'react'
 
 import { Session } from './multiplayer/session.js'
-import type { PublicSeat } from './multiplayer/client.js'
+import type { PublicSeat, SeatNote } from './multiplayer/client.js'
 import type { SeatView } from './multiplayer/seat.js'
 import { hashFor, remember } from './multiplayer/link.js'
 
@@ -52,6 +54,7 @@ import { eventActor, queueAt } from './turn-events.js'
 import type { TurnEvent } from './turn-events.js'
 import { buildGameHistory } from './game-history.js'
 import { clearAutosave, readAutosave, saveAutosave } from './persist.js'
+import { getSettings } from './settings.js'
 import type { GameHistory } from './game-history.js'
 import {
   canPopNotification,
@@ -157,7 +160,8 @@ class GameStore {
     return () => this.listeners.delete(cb)
   }
 
-  getSnapshot = (): RuleResult | null => this.result
+  /** The position on screen: the held turn-ending move when there is one (`held`), else the game's. */
+  getSnapshot = (): RuleResult | null => this.held?.next ?? this.result
 
   /**
    * How many games have been started this session.
@@ -440,6 +444,8 @@ class GameStore {
    */
   applyRemote(action: Action): void {
     if (this.result === null) return
+    // Someone else moved, so the position the held move was made on is gone.
+    this.held = null
     const prev = this.result
     const logBefore = prev.state.log.length
     this.result = applyExternal(prev, action, this.registry)
@@ -502,6 +508,8 @@ class GameStore {
       adopt: (options, result) => {
         this.options = options
         this.result = result
+        // A held move stays only on the position it was made from.
+        if (this.held !== null && this.held.expectedLength !== result.state.journal.length) this.held = null
         this.generation += 1
         // A take-back: a story for a turn past the new end is about moves that no longer exist.
         if (this.catchup !== null && this.catchup.length > result.state.journal.length) this.catchup = null
@@ -550,6 +558,7 @@ class GameStore {
   leaveSession(): void {
     this.session?.leave()
     this.session = null
+    this.held = null
     this.seats = []
     this.seatsVersion += 1
     this.catchup = null
@@ -638,6 +647,17 @@ class GameStore {
   /** "Sit here": lock this client's seat to the signed-in account. */
   async sitHere(name?: string): Promise<void> {
     await this.session?.sit(name)
+  }
+
+  /** This seat's private notes (components/Notes.tsx). `null` off a seat: hotseat and spectators have none. */
+  async loadNote(): Promise<SeatNote | null> {
+    if (this.seatView().kind !== 'seat') return null
+    return (await this.session?.note()) ?? null
+  }
+
+  async saveNote(text: string): Promise<SeatNote | null> {
+    if (this.seatView().kind !== 'seat') return null
+    return (await this.session?.saveNote(text)) ?? null
   }
 
   /** Release this client's seat. */
@@ -810,7 +830,7 @@ class GameStore {
   private lastApplyAt = Number.NEGATIVE_INFINITY
 
   apply(action: Action): void {
-    if (this.result === null) return
+    if (this.result === null || this.held !== null) return
     if (!this.mayAct(action)) return
     const at = this.now()
     if (at - this.lastApplyAt < this.tapGuardMs) return
@@ -824,7 +844,13 @@ class GameStore {
      */
     const expectedLength = this.result.state.journal.length
     const prev = this.result
-    this.result = applyExternal(prev, action, this.registry)
+    const next = applyExternal(prev, action, this.registry)
+    if (this.endsMyTurn(prev, next, action)) {
+      this.held = { action, expectedLength, next, plan: null }
+      this.emit()
+      return
+    }
+    this.result = next
     this.emit()
     /*
      * Published without waiting. The move is already on screen, and the only outcome needing a
@@ -874,6 +900,11 @@ class GameStore {
   }
 
   undo(): void {
+    if (this.held !== null) {
+      this.held = null
+      this.emit()
+      return
+    }
     if (this.result === null || this.options === null) return
     if (this.session !== null) {
       this.takeBack()
@@ -896,7 +927,130 @@ class GameStore {
   }
 
   canUndo(): boolean {
+    if (this.held !== null) return true
     return this.undoBlock() === undefined
+  }
+
+  // --- end-of-turn confirmation (components/EndTurn.tsx) ----------------------
+
+  /**
+   * The move that would end this seat's turn, on screen but not sent.
+   *
+   * Held rather than applied: `result` stays the server's position, so a resync or a poll never
+   * has to know about it, and `getSnapshot` shows `next` instead. Sending it is `endTurn`; dropping
+   * it is Undo. Only moves that reveal nothing are held (`takeBackBlock`) — holding a roll would
+   * let a player see the dice and then decide not to have thrown them.
+   */
+  private held: {
+    readonly action: Action
+    readonly expectedLength: number
+    readonly next: RuleResult
+    plan: StartOver | null
+  } | null = null
+
+  /** Whether a turn-ending move is waiting for End turn. */
+  endTurnPending(): boolean {
+    return this.held !== null
+  }
+
+  /**
+   * Whether `action` (prev → next) is this seat's last move of its turn, and one to hold.
+   *
+   * The turn test is `turnWindow`'s, one step at a time: the seat's turn is over once it is asked
+   * nothing, the chapter moves on, or it is asked to open a new one. A rival asked to decide
+   * mid-turn reads as the end too; confirming then just sends the move, so the cost is one extra
+   * press on a rare card.
+   */
+  private endsMyTurn(prev: RuleResult, next: RuleResult, action: Action): boolean {
+    if (this.session === null || !getSettings().confirmEndTurn) return false
+    const view = this.seatView()
+    if (view.kind !== 'seat' || action['faction'] !== view.faction) return false
+    const me = view.faction
+    const was = seatAsk(prev.continue, me)
+    if (was === 'none') return false
+    const now = seatAsk(next.continue, me)
+    const opensAgain = now === 'opener' && (was !== 'opener' || OPENERS.has(action.type))
+    const over = now === 'none' || next.state.chapter !== prev.state.chapter || opensAgain
+    return over && takeBackBlock(prev, next, action) === undefined
+  }
+
+  /** Send the held move: the turn is over. */
+  endTurn(): void {
+    const held = this.held
+    if (held === null || this.result === null) return
+    const prev = this.result
+    this.held = null
+    // The tap guard's clock (see `tapGuardMs`): a double tap on End turn must not land on what replaces it.
+    this.lastApplyAt = this.now()
+    this.result = held.next
+    this.emit()
+    void this.session?.publish(held.action, held.expectedLength)
+    if (!this.detectInterlude(prev)) this.scheduleBot()
+  }
+
+  /**
+   * How far Start over can go: back through this seat's own moves this turn, stopping at the first
+   * that revealed something (the same rule as Undo). `to` is a journal length; `blockedBy` says why
+   * it stops short of the turn's start. One replay to the turn's start, then the turn forward.
+   */
+  startOverPlan(): StartOver | null {
+    const held = this.held
+    if (held === null || this.result === null || this.options === null) return null
+    if (held.plan !== null) return held.plan
+    const view = this.seatView()
+    if (view.kind !== 'seat') return null
+    const journal = this.result.state.journal
+    const start = Math.min(this.seatTurn(view.faction)?.start ?? journal.length, journal.length)
+    const states = [replayGame(this.options, journal.slice(0, start), this.registry)]
+    const actions: Action[] = []
+    for (let i = start; i < journal.length; i++) {
+      const action = decodeAction(journal[i]!)
+      actions.push(action)
+      states.push(applyExternal(states.at(-1)!, action, this.registry))
+    }
+    let to = journal.length
+    let blockedBy: string | undefined
+    while (to > start) {
+      const action = actions[to - start - 1]!
+      if (action['faction'] !== view.faction) {
+        blockedBy = 'another player has moved since'
+        break
+      }
+      const why = takeBackBlock(states[to - start - 1]!, states[to - start]!, action)
+      if (why !== undefined) {
+        blockedBy = why
+        break
+      }
+      to--
+    }
+    held.plan = { to, moves: journal.length - to, position: states[to - start]!, ...(blockedBy === undefined ? {} : { blockedBy }) }
+    return held.plan
+  }
+
+  /**
+   * Back to the start of the turn (or as near as `startOverPlan` allows): drop the held move, show
+   * the earlier position at once, and take the sent moves back one by one, newest first. The
+   * session sends them in order; the first refusal resyncs to the server's journal and says why.
+   */
+  startOver(): void {
+    const plan = this.startOverPlan()
+    const session = this.session
+    if (plan === null || this.result === null || session === null) return
+    const from = this.result.state.journal.length
+    this.held = null
+    this.result = plan.position
+    this.turnEvents = []
+    this.undoNote = null
+    this.emit()
+    let refused = false
+    for (let length = from; length > plan.to; length--) {
+      void session.takeBack(length).then((why) => {
+        if (why === undefined || refused) return
+        refused = true
+        this.undoNote = `Start over stopped: ${why}`
+        return session.resync()
+      })
+    }
   }
 
   /**
@@ -990,6 +1144,14 @@ class GameStore {
   private emit(): void {
     for (const cb of this.listeners) cb()
   }
+}
+
+/** Where Start over lands: the position, how many sent moves it takes back, and why it stops there. */
+export interface StartOver {
+  readonly to: number
+  readonly moves: number
+  readonly position: RuleResult
+  readonly blockedBy?: string
 }
 
 export const store = new GameStore()

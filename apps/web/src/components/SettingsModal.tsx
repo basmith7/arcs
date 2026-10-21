@@ -10,7 +10,7 @@
  * invented its own would read as coming from a different program. It is *not* wrapped in
  * `Watching`: a spectator has ears.
  *
- * Escape closes, matching the log drawer. The backdrop closes on a click that started and ended
+ * Escape closes, like the other dialogs. The backdrop closes on a click that started and ended
  * on the backdrop itself, so releasing a slider drag outside the dialog does not dismiss it.
  */
 
@@ -156,6 +156,20 @@ export function SettingsModal({
             While a bot or another player decides, their menus are replaced by a feed of what they
             actually did. Off shows their surfaces instead, grayed out — slower, and the better way
             to learn the game by watching one.
+          </p>
+          <label className="set-row">
+            <span className="set-label">Confirm end of turn</span>
+            <input
+              className="set-check"
+              type="checkbox"
+              checked={settings.confirmEndTurn}
+              onChange={(e) => setSettings({ confirmEndTurn: e.target.checked })}
+            />
+            <span className="set-value">{settings.confirmEndTurn ? 'On' : 'Off'}</span>
+          </label>
+          <p className="set-note">
+            In an online game, the move that ends your turn waits for End turn, so you can look over
+            what you did and start over first. Nobody sees it until you press End turn.
           </p>
         </section>
 

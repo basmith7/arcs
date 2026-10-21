@@ -3,9 +3,9 @@
  *
  * `log-format.ts` does the reading; this only decides what a row looks like. The split matters
  * because the two are tested very differently — the parser against real engine lines, this against
- * markup — and because the same rows are drawn in two places: the drawer, and the turn feed that
+ * markup — and because the same rows are drawn in two places: the log column (the phone's Log sheet), and the turn feed that
  * replaces the decision surfaces while someone else plays (`only="last-turn"`). One renderer, so a
- * new kind of log line cannot arrive styled in the drawer and unstyled in the feed.
+ * new kind of log line cannot arrive styled in the column and unstyled in the feed.
  *
  * The faction is drawn as a colored bar and dropped from the text, which is the change that makes
  * a chapter of play skimmable: the actor moves from the start of every sentence — where it was
@@ -25,7 +25,7 @@
  *     which is what makes a move legible at a glance.
  *
  * Hover only, and nothing is pinned. There is no state here to get stuck in and nothing to clean
- * up when the drawer closes — a row that unmounts under the pointer takes its highlight with it.
+ * up when the panel goes away — a row that unmounts under the pointer takes its highlight with it.
  */
 
 import { useBackClose } from '../back-close.js'
@@ -48,7 +48,7 @@ interface Props {
 }
 
 /**
- * How much history the drawer draws.
+ * How much history the log draws.
  *
  * The whole log is kept in state and a long game runs past 600 lines; parsing and rendering all of
  * them on every append is work nobody scrolls back far enough to see. The slice is taken *before*
@@ -85,7 +85,7 @@ export function LogPanel({ log, only }: Props): JSX.Element | null {
   }, [log.length])
   /*
    * Whatever this panel was pointing at stops being pointed at when it goes away. The feed unmounts
-   * between turns and the drawer unmounts when it is closed, both of which can happen with the
+   * between turns and the phone's Log sheet unmounts when it is closed, both of which can happen with the
    * pointer resting on a row — and a reticle left burning on the map with nothing explaining it is
    * worse than no reticle at all.
    */
@@ -221,13 +221,12 @@ const GAP = 10
  * The card, floated beside the name.
  *
  * Portalled to `body` and positioned in viewport coordinates, for the reason `CardZoom` documents:
- * the drawer scrolls and the feed sits inside the board cell, so anything positioned within either
+ * the log scrolls and the feed sits inside the board cell, so anything positioned within either
  * would be clipped by it. Fixed positioning also means the art does not move when the log scrolls
  * under it — and the pointer is on the name, so it cannot scroll without leaving.
  *
- * Flipped to whichever side has room, because the unpinned drawer hugs the right edge of the
- * window: opening rightwards there would put the card mostly off screen, which is where the first
- * version of this put it.
+ * Flipped to whichever side has room, because the log column hugs the right edge of the
+ * window: opening rightwards there would put the card mostly off screen.
  */
 function CardPreview({ card, at }: { card: CardRef; at: DOMRect }): JSX.Element {
   const room = window.innerWidth - at.right

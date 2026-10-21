@@ -3,7 +3,7 @@
  *
  * ## Why a store and not a prop
  *
- * The log and the map are not near each other in the tree — the drawer is a sibling of the whole
+ * The log and the map are not near each other in the tree — the log column is a sibling of the whole
  * board column, and the same rows are also drawn as the turn feed *over* the map (`LogPanel`'s
  * `only="last-turn"`). Threading a callback from `App` down both paths would put a second copy of
  * the rule in the feed, which is precisely the split that `surfaces.ts` documents at length: one
@@ -17,7 +17,7 @@
  * can light the same reticles without going through the log at all.
  *
  * Hover only, deliberately: nothing here is pinned or persisted, so there is no state to get stuck
- * in and nothing to clean up when the drawer closes. The snapshot follows `settings.ts`'s contract
+ * in and nothing to clean up when the log goes away. The snapshot follows `settings.ts`'s contract
  * for `useSyncExternalStore` — identity *is* the change signal, so a no-op write must return the
  * very same array or the map re-renders on every mouse move across a row.
  */
