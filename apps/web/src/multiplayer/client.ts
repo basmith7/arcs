@@ -319,6 +319,8 @@ export class MultiplayerClient {
   ): Promise<AppendOutcome> {
     const res = await fetch(`${this.baseUrl}/games/${encodeURIComponent(gameId)}/actions`, {
       method: 'POST',
+      // A held turn is sent as the page goes away (store `endTurn`); keepalive lets it finish.
+      keepalive: true,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ seatToken, expectedLength, action }),
     })

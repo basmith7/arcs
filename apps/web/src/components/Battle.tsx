@@ -288,6 +288,7 @@ function RerollTray({
         </span>
       </div>
       <div className="da-actions">
+        {picked.length > 0 ? <span className="da-warn">Rerolling can't be undone</span> : null}
         {picked.length > 0 ? (
           <button className="da-ghost" onClick={() => setPicked([])}>
             Clear
@@ -298,7 +299,7 @@ function RerollTray({
           className="da-confirm"
           disabled={chosen === undefined}
           onClick={() => {
-            if (chosen !== undefined) store.apply(chosen)
+            if (chosen !== undefined) store.apply(chosen, { warned: true })
           }}
         >
           {picked.length === 0
@@ -395,10 +396,12 @@ function DiceGather({
         <span className="da-remaining">
           {total} of {maxTotal} dice
         </span>
+        {/* Said here rather than asked after: the Roll press is already the deliberate step. */}
+        <span className="da-warn">Can't be undone</span>
         <button
           className="da-confirm"
           disabled={chosen === undefined}
-          onClick={() => chosen && store.apply(chosen)}
+          onClick={() => chosen && store.apply(chosen, { warned: true })}
         >
           Roll
         </button>

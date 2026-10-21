@@ -39,10 +39,11 @@ export interface Settings {
    */
   watchTurns: boolean
   /**
-   * Whether the move that ends your turn in an online game waits for an "End turn" press, with
-   * the chance to take the turn back first. Held on this device until then; nobody sees it.
+   * Online, whether moves that commit you wait for a press: the move that ends your turn (held
+   * for End turn, with the chance to take the turn back), and any move that cannot be taken back
+   * (a draw, a look at a rival's hand) — except a roll, whose button already says so.
    */
-  confirmEndTurn: boolean
+  confirmMoves: boolean
   /**
    * What a phone held upright shows during a game: the phone layout (`phone.css`), or the desktop
    * table shrunk to fit and pinch-zoomed (`phone-canvas.ts`). A phone held sideways always gets the
@@ -64,7 +65,7 @@ export const DEFAULTS: Readonly<Settings> = {
   // Off: the board looks the way it was painted until someone asks for otherwise.
   boardDim: 0,
   watchTurns: true,
-  confirmEndTurn: true,
+  confirmMoves: true,
   phoneLayout: 'mobile',
   phoneHand: 'row',
 }
@@ -100,7 +101,7 @@ function parse(json: string): Settings {
     sfxVolume: unit(raw['sfxVolume'], DEFAULTS.sfxVolume),
     boardDim: unit(raw['boardDim'], DEFAULTS.boardDim),
     watchTurns: bool(raw['watchTurns'], DEFAULTS.watchTurns),
-    confirmEndTurn: bool(raw['confirmEndTurn'], DEFAULTS.confirmEndTurn),
+    confirmMoves: bool(raw['confirmMoves'], DEFAULTS.confirmMoves),
     phoneLayout: oneOf(raw['phoneLayout'], ['mobile', 'canvas'], DEFAULTS.phoneLayout),
     phoneHand: oneOf(raw['phoneHand'], ['row', 'grid'], DEFAULTS.phoneHand),
   }
@@ -147,7 +148,7 @@ export function setSettings(patch: Partial<Settings>): void {
     sfxVolume: patch.sfxVolume === undefined ? prev.sfxVolume : unit(patch.sfxVolume, prev.sfxVolume),
     boardDim: patch.boardDim === undefined ? prev.boardDim : unit(patch.boardDim, prev.boardDim),
     watchTurns: patch.watchTurns ?? prev.watchTurns,
-    confirmEndTurn: patch.confirmEndTurn ?? prev.confirmEndTurn,
+    confirmMoves: patch.confirmMoves ?? prev.confirmMoves,
     phoneLayout: oneOf(patch.phoneLayout, ['mobile', 'canvas'], prev.phoneLayout),
     phoneHand: oneOf(patch.phoneHand, ['row', 'grid'], prev.phoneHand),
   }

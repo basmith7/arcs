@@ -158,18 +158,20 @@ export function SettingsModal({
             to learn the game by watching one.
           </p>
           <label className="set-row">
-            <span className="set-label">Confirm end of turn</span>
+            <span className="set-label">Confirm moves</span>
             <input
               className="set-check"
               type="checkbox"
-              checked={settings.confirmEndTurn}
-              onChange={(e) => setSettings({ confirmEndTurn: e.target.checked })}
+              checked={settings.confirmMoves}
+              onChange={(e) => setSettings({ confirmMoves: e.target.checked })}
             />
-            <span className="set-value">{settings.confirmEndTurn ? 'On' : 'Off'}</span>
+            <span className="set-value">{settings.confirmMoves ? 'On' : 'Off'}</span>
           </label>
           <p className="set-note">
-            In an online game, the move that ends your turn waits for End turn, so you can look over
-            what you did and start over first. Nobody sees it until you press End turn.
+            In an online game, asks before a move that can't be taken back (a card draw, a look at a
+            hand; dice say so on the Roll button), and holds the move that ends your turn for End
+            turn so you can look it over or start over.
+            End turn sends itself after two minutes, or when you leave the page.
           </p>
         </section>
 

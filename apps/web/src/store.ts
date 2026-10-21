@@ -444,8 +444,8 @@ class GameStore {
    */
   applyRemote(action: Action): void {
     if (this.result === null) return
-    // Someone else moved, so the position the held move was made on is gone.
-    this.held = null
+    // Someone else moved, so the position a pending move was made on is gone.
+    this.dropPending()
     const prev = this.result
     const logBefore = prev.state.log.length
     this.result = applyExternal(prev, action, this.registry)
@@ -508,8 +508,9 @@ class GameStore {
       adopt: (options, result) => {
         this.options = options
         this.result = result
-        // A held move stays only on the position it was made from.
-        if (this.held !== null && this.held.expectedLength !== result.state.journal.length) this.held = null
+        // A pending move stays only on the position it was made from.
+        const pending = this.held ?? this.risky
+        if (pending !== null && pending.expectedLength !== result.state.journal.length) this.dropPending()
         this.generation += 1
         // A take-back: a story for a turn past the new end is about moves that no longer exist.
         if (this.catchup !== null && this.catchup.length > result.state.journal.length) this.catchup = null
@@ -558,7 +559,7 @@ class GameStore {
   leaveSession(): void {
     this.session?.leave()
     this.session = null
-    this.held = null
+    this.dropPending()
     this.seats = []
     this.seatsVersion += 1
     this.catchup = null
@@ -829,8 +830,12 @@ class GameStore {
   now: () => number = () => performance.now()
   private lastApplyAt = Number.NEGATIVE_INFINITY
 
-  apply(action: Action): void {
-    if (this.result === null || this.held !== null) return
+  /**
+   * `warned`: the surface that sent this already told the player it cannot be taken back (the
+   * battle window's Roll says so beside the button), so it skips the Go ahead prompt.
+   */
+  apply(action: Action, { warned = false }: { warned?: boolean } = {}): void {
+    if (this.result === null || this.held !== null || this.risky !== null) return
     if (!this.mayAct(action)) return
     const at = this.now()
     if (at - this.lastApplyAt < this.tapGuardMs) return
@@ -845,19 +850,35 @@ class GameStore {
     const expectedLength = this.result.state.journal.length
     const prev = this.result
     const next = applyExternal(prev, action, this.registry)
-    if (this.endsMyTurn(prev, next, action)) {
-      this.held = { action, expectedLength, next, plan: null }
-      this.emit()
-      return
+    if (this.confirming(action)) {
+      const why = takeBackBlock(prev, next, action)
+      if (why !== undefined) {
+        // Never held: holding a reveal would show its result and still let it be taken back.
+        if (!warned) {
+          this.risky = { action, expectedLength, next, why }
+          this.pendingVersion += 1
+          this.emit()
+          return
+        }
+      } else if (this.endsMyTurn(prev, next, action)) {
+        this.hold({ action, expectedLength, next })
+        return
+      }
     }
-    this.result = next
+    this.commit({ action, expectedLength, next })
+  }
+
+  /** Put a move on the board and send it. */
+  private commit(move: Move): void {
+    const prev = this.result!
+    this.result = move.next
     this.emit()
     /*
      * Published without waiting. The move is already on screen, and the only outcome needing a
      * response is a conflict — which `Session.publish` resolves by replaying the authoritative
      * journal, so there is nothing here to await or unwind.
      */
-    void this.session?.publish(action, expectedLength)
+    void this.session?.publish(move.action, move.expectedLength)
     this.persist()
     // A human's own action can end the chapter too; the interlude then holds the bots.
     if (!this.detectInterlude(prev)) this.scheduleBot()
@@ -900,8 +921,8 @@ class GameStore {
   }
 
   undo(): void {
-    if (this.held !== null) {
-      this.held = null
+    if (this.held !== null || this.risky !== null) {
+      this.dropPending()
       this.emit()
       return
     }
@@ -927,34 +948,66 @@ class GameStore {
   }
 
   canUndo(): boolean {
-    if (this.held !== null) return true
+    if (this.held !== null || this.risky !== null) return true
     return this.undoBlock() === undefined
   }
 
-  // --- end-of-turn confirmation (components/EndTurn.tsx) ----------------------
+  // --- confirming moves (components/EndTurn.tsx, components/RiskyMove.tsx) ----
 
   /**
    * The move that would end this seat's turn, on screen but not sent.
    *
    * Held rather than applied: `result` stays the server's position, so a resync or a poll never
    * has to know about it, and `getSnapshot` shows `next` instead. Sending it is `endTurn`; dropping
-   * it is Undo. Only moves that reveal nothing are held (`takeBackBlock`) — holding a roll would
-   * let a player see the dice and then decide not to have thrown them.
+   * it is Undo. Only moves that reveal nothing are held: a reveal goes through `risky` first, and
+   * holding a roll would let a player see the dice and then decide not to have thrown them.
    */
-  private held: {
-    readonly action: Action
-    readonly expectedLength: number
-    readonly next: RuleResult
-    plan: StartOver | null
-  } | null = null
+  private held: (Move & { readonly sendAt: number; plan: StartOver | null }) | null = null
+  private heldTimer: ReturnType<typeof setTimeout> | null = null
+
+  /**
+   * A move that cannot be taken back (`takeBackBlock`), waiting for Go ahead. Not on screen: its
+   * result is the very thing it would reveal.
+   */
+  private risky: (Move & { readonly why: string }) | null = null
+
+  /**
+   * How long End turn waits before sending itself. A seat that walks away from the prompt must
+   * not hold the table: nobody else can move until the turn is sent.
+   */
+  endTurnWaitMs = 120_000
+
+  /**
+   * Bumped whenever a move starts or stops waiting. A risky move changes nothing `getSnapshot`
+   * returns (it is not on screen), so like `seatsVersion` it needs its own signal to re-render.
+   */
+  pendingVersion = 0
+  getPendingSnapshot = (): number => this.pendingVersion
 
   /** Whether a turn-ending move is waiting for End turn. */
   endTurnPending(): boolean {
     return this.held !== null
   }
 
+  /** When the held move sends itself (epoch ms), or null when nothing is held. */
+  endTurnAt(): number | null {
+    return this.held?.sendAt ?? null
+  }
+
+  /** Why the move waiting for Go ahead cannot be taken back, or null when none is waiting. */
+  riskyMove(): string | null {
+    return this.risky?.why ?? null
+  }
+
+  /** Online, this seat's own move, with Confirm moves on. */
+  private confirming(action: Action): boolean {
+    if (this.session === null || !getSettings().confirmMoves) return false
+    const view = this.seatView()
+    return view.kind === 'seat' && action['faction'] === view.faction
+  }
+
   /**
-   * Whether `action` (prev → next) is this seat's last move of its turn, and one to hold.
+   * Whether this seat's move (prev → next) is its last of the turn.
    *
    * The turn test is `turnWindow`'s, one step at a time: the seat's turn is over once it is asked
    * nothing, the chapter moves on, or it is asked to open a new one. A rival asked to decide
@@ -962,30 +1015,63 @@ class GameStore {
    * press on a rare card.
    */
   private endsMyTurn(prev: RuleResult, next: RuleResult, action: Action): boolean {
-    if (this.session === null || !getSettings().confirmEndTurn) return false
     const view = this.seatView()
-    if (view.kind !== 'seat' || action['faction'] !== view.faction) return false
+    if (view.kind !== 'seat') return false
     const me = view.faction
     const was = seatAsk(prev.continue, me)
     if (was === 'none') return false
     const now = seatAsk(next.continue, me)
     const opensAgain = now === 'opener' && (was !== 'opener' || OPENERS.has(action.type))
-    const over = now === 'none' || next.state.chapter !== prev.state.chapter || opensAgain
-    return over && takeBackBlock(prev, next, action) === undefined
+    return now === 'none' || next.state.chapter !== prev.state.chapter || opensAgain
+  }
+
+  private hold(move: Move): void {
+    this.held = { ...move, sendAt: Date.now() + this.endTurnWaitMs, plan: null }
+    this.heldTimer = setTimeout(() => this.endTurn(), this.endTurnWaitMs)
+    this.pendingVersion += 1
+    /*
+     * Leaving the page sends it too. A phone switched to another app freezes this page's timers,
+     * and a closed tab loses the held move outright; either way the table would wait on a turn
+     * that only this page knows is finished.
+     */
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.onHide)
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', this.onHide)
+    this.emit()
+  }
+
+  private onHide = (e: Event): void => {
+    if (e.type === 'visibilitychange' && document.visibilityState === 'visible') return
+    this.endTurn()
+  }
+
+  /** Forget a held or risky move without sending it. The caller emits. */
+  private dropPending(): void {
+    if (this.heldTimer !== null) clearTimeout(this.heldTimer)
+    this.heldTimer = null
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onHide)
+    if (typeof window !== 'undefined') window.removeEventListener('pagehide', this.onHide)
+    if (this.held !== null || this.risky !== null) this.pendingVersion += 1
+    this.held = null
+    this.risky = null
   }
 
   /** Send the held move: the turn is over. */
   endTurn(): void {
     const held = this.held
-    if (held === null || this.result === null) return
-    const prev = this.result
-    this.held = null
+    if (held === null) return
+    this.dropPending()
     // The tap guard's clock (see `tapGuardMs`): a double tap on End turn must not land on what replaces it.
     this.lastApplyAt = this.now()
-    this.result = held.next
-    this.emit()
-    void this.session?.publish(held.action, held.expectedLength)
-    if (!this.detectInterlude(prev)) this.scheduleBot()
+    this.commit(held)
+  }
+
+  /** Go ahead with the move that cannot be taken back. It can still end the turn; that is sent too. */
+  confirmRisky(): void {
+    const risky = this.risky
+    if (risky === null) return
+    this.dropPending()
+    this.lastApplyAt = this.now()
+    this.commit(risky)
   }
 
   /**
@@ -1023,7 +1109,17 @@ class GameStore {
       }
       to--
     }
-    held.plan = { to, moves: journal.length - to, position: states[to - start]!, ...(blockedBy === undefined ? {} : { blockedBy }) }
+    const position = states[to - start]!
+    // The turn's log, split where Start over lands: the lines before it stay, the rest go.
+    const log = held.next.state.log
+    held.plan = {
+      to,
+      moves: journal.length - to,
+      position,
+      locked: log.slice(states[0]!.state.log.length, position.state.log.length),
+      undone: log.slice(position.state.log.length),
+      ...(blockedBy === undefined ? {} : { blockedBy }),
+    }
     return held.plan
   }
 
@@ -1037,7 +1133,7 @@ class GameStore {
     const session = this.session
     if (plan === null || this.result === null || session === null) return
     const from = this.result.state.journal.length
-    this.held = null
+    this.dropPending()
     this.result = plan.position
     this.turnEvents = []
     this.undoNote = null
@@ -1146,11 +1242,21 @@ class GameStore {
   }
 }
 
+/** A move of this seat's, made locally and not yet sent: what `commit` needs to send it. */
+interface Move {
+  readonly action: Action
+  readonly expectedLength: number
+  readonly next: RuleResult
+}
+
 /** Where Start over lands: the position, how many sent moves it takes back, and why it stops there. */
 export interface StartOver {
   readonly to: number
   readonly moves: number
   readonly position: RuleResult
+  /** This turn's log lines Start over keeps (made before the move that stops it), and those it takes back. */
+  readonly locked: readonly string[]
+  readonly undone: readonly string[]
   readonly blockedBy?: string
 }
 
@@ -1178,6 +1284,11 @@ export function useInterlude(): number {
  */
 export function useSeats(): number {
   return useSyncExternalStore(store.subscribe, store.getSeatsSnapshot, store.getSeatsSnapshot)
+}
+
+/** Subscribe to moves waiting on this player (End turn, Go ahead) — see `pendingVersion`. */
+export function usePending(): number {
+  return useSyncExternalStore(store.subscribe, store.getPendingSnapshot, store.getPendingSnapshot)
 }
 
 export function useGame(): RuleResult | null {

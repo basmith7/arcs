@@ -7068,6 +7068,23 @@ a.da-ghost {
   border-radius: 10px;
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.7);
 }
+.end-turn-clock {
+  margin-left: 4px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.end-turn-label {
+  margin: 4px 0 2px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+/* What Start over keeps: there, but not in play any more. */
+.end-turn-locked {
+  opacity: 0.55;
+}
 .end-turn-title {
   margin: 0;
   font-family: var(--font-display);
@@ -7078,10 +7095,26 @@ a.da-ghost {
 }
 .end-turn-moves {
   min-height: 0;
-  display: grid;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
 }
 .end-turn-moves .log {
   padding: 0;
+  overflow: visible;
+}
+.risky-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500; /* over every decision modal (300+) and the readers (400+) */
+  background: rgba(0, 0, 0, 0.45);
+}
+.end-turn.risky {
+  position: fixed;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  grid-template-rows: auto auto auto;
+  border-color: #ff9a8f;
 }
 .end-turn-note {
   margin: 0;
@@ -7102,4 +7135,14 @@ a.da-ghost {
   border: none;
   border-radius: 6px;
   cursor: pointer;
+}
+
+/* A dice button's standing warning: Undo cannot take a roll back (store `apply`'s `warned`). */
+.da-warn {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ff9a8f;
 }

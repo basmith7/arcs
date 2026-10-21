@@ -5,7 +5,7 @@
 Live at https://arcs.basmith.net; deploy, ports and paths are in Vault-13 Infrastructure.md (arcs row).
 Release: tag `vX.Y.Z` → `scripts/deploy-now.sh vX.Y.Z`.
 
-Current release: v0.17.0; see CHANGELOG.md.
+Current release: v0.18.0; see CHANGELOG.md.
 
 Still open (verified 2026-09-22 unless noted): `normal` still has the pip-menu tie that `hard`
 no longer has (needs its own gate); bot thinking is one worker per server, so two games' bots take

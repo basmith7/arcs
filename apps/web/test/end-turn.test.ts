@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { decodeAction } from '@arcs/engine'
+import { applyExternal, decodeAction, defaultRegistry, encodeAction, startGame, takeBackBlock } from '@arcs/engine'
 import type { Action, NewGameOptions } from '@arcs/engine'
 
 import { EngineGate } from '../../../packages/server-node/src/gate.js'
@@ -46,6 +46,44 @@ async function playRedTurn(): Promise<number> {
   return sent
 }
 
+/**
+ * A table played forward (every seat's first offered move) until red is offered a move that cannot
+ * be taken back; red then joins. Found rather than written out, so it holds whatever the seed deals.
+ */
+async function seatedAtReveal(): Promise<{ journal: () => string[]; risky: Action }> {
+  const registry = defaultRegistry()
+  const db = new SqliteStore(':memory:')
+  const gate = new EngineGate(db, { pace: 0 })
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const res = await route(new Request(input as string, init), { store: db, gate })
+    return res ?? new Response('not found', { status: 404 })
+  })
+  const game = await db.create(OPTIONS, OPTIONS.factions, { bots: [] })
+  const token = (f: string) => game.seats.find((s) => s.faction === f)!.seatToken
+  let r = startGame(OPTIONS, registry)
+  for (let i = 0; i < 500; i++) {
+    const c = r.continue
+    if (c.kind !== 'ask') break
+    if (c.faction === 'red') {
+      const risky = (c.actions as readonly Action[]).find((a) => {
+        try {
+          return takeBackBlock(r, applyExternal(r, a, registry), a) !== undefined
+        } catch {
+          return false
+        }
+      })
+      if (risky !== undefined) {
+        await store.joinSession(API, { gameId: game.gameId, seatToken: token('red') })
+        return { journal: () => db.journal(game.gameId).map((e) => decodeAction(e).type), risky }
+      }
+    }
+    const a = c.actions[0] as Action
+    expect((await gate.append(game.gameId, token(c.faction), i, encodeAction(a))).ok).toBe(true)
+    r = applyExternal(r, a, registry)
+  }
+  throw new Error('red was never offered a revealing move')
+}
+
 afterEach(() => {
   store.leaveSession()
   vi.unstubAllGlobals()
@@ -78,7 +116,8 @@ describe('end of turn', () => {
 
     await playRedTurn()
     const plan = store.startOverPlan()!
-    expect(plan).toMatchObject({ to: 0, moves: sent })
+    expect(plan).toMatchObject({ to: 0, moves: sent, locked: [] })
+    expect(plan.undone.length).toBeGreaterThan(0)
     store.startOver()
     expect(store.getSnapshot()!.state.journal).toHaveLength(0)
     await new Promise((r) => setTimeout(r, 100))
@@ -86,8 +125,54 @@ describe('end of turn', () => {
     expect(store.undoNote).toBeNull()
   })
 
+  it('sends the held move by itself when the wait runs out', async () => {
+    const { journal } = await seated()
+    store.endTurnWaitMs = 300
+    try {
+      const sent = await playRedTurn()
+      expect(store.endTurnAt()).not.toBeNull()
+      expect(journal()).toHaveLength(sent)
+      await new Promise((r) => setTimeout(r, 400))
+      expect(store.endTurnPending()).toBe(false)
+      expect(journal()).toHaveLength(sent + 1)
+    } finally {
+      store.endTurnWaitMs = 120_000
+    }
+  })
+
+  it('asks before a move that cannot be taken back, and Cancel forgets it', async () => {
+    const { journal, risky } = await seatedAtReveal()
+    const before = journal().length
+    const shown = store.getSnapshot()
+
+    store.apply(risky)
+    expect(store.riskyMove()).toEqual(expect.any(String))
+    // Neither sent nor shown: its result is what it would reveal.
+    expect(store.getSnapshot()).toBe(shown)
+    store.undo()
+    expect(store.riskyMove()).toBeNull()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(journal()).toHaveLength(before)
+
+    store.apply(risky)
+    store.confirmRisky()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(store.riskyMove()).toBeNull()
+    expect(store.endTurnPending()).toBe(false)
+    expect(journal()).toHaveLength(before + 1)
+  })
+
+  it('sends a move its surface already warned about without asking', async () => {
+    const { journal, risky } = await seatedAtReveal()
+    const before = journal().length
+    store.apply(risky, { warned: true })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(store.riskyMove()).toBeNull()
+    expect(journal()).toHaveLength(before + 1)
+  })
+
   it('sends at once with the setting off', async () => {
-    setSettings({ confirmEndTurn: false })
+    setSettings({ confirmMoves: false })
     try {
       const { journal } = await seated()
       const before = journal().length
@@ -98,7 +183,7 @@ describe('end of turn', () => {
       expect(store.endTurnPending()).toBe(false)
       expect(journal()).toHaveLength(before + 1)
     } finally {
-      setSettings({ confirmEndTurn: true })
+      setSettings({ confirmMoves: true })
     }
   })
 })

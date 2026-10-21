@@ -25,6 +25,7 @@ import { Hand } from './components/Hand.js'
 import { LogPanel } from './components/LogPanel.js'
 import { Notes } from './components/Notes.js'
 import { EndTurn } from './components/EndTurn.js'
+import { RiskyMove } from './components/RiskyMove.js'
 import { NewGame } from './components/NewGame.js'
 import { PlayedCards } from './components/PlayedCards.js'
 import { PlayerBoards } from './components/PlayerBoards.js'
@@ -47,13 +48,15 @@ import { canAct, hushed, viewFor, watchedActor } from './multiplayer/seat.js'
 import { useSettings } from './settings.js'
 import { setupLabel } from './setups.js'
 import { colorOf } from './theme.js'
-import { store, useGame, useSeats } from './store.js'
+import { store, useGame, usePending, useSeats } from './store.js'
 
 export function App(): JSX.Element {
   const result = useGame()
   // Seats (names) can change without the position moving — a claim while it is your turn, say —
   // so this needs its own subscription; see the comment on `seatsVersion` in store.ts.
   useSeats()
+  // A move waiting for End turn or Go ahead; see `pendingVersion` in store.ts.
+  usePending()
   const fileInput = useRef<HTMLInputElement>(null)
   /** Escape/cancel dismisses the name prompt for the rest of this session; it does not reappear. */
   const [nameDismissed, setNameDismissed] = useState(false)
@@ -227,6 +230,7 @@ export function App(): JSX.Element {
    */
   const boardCont = watched === null ? cont : hushed(cont)
   const endTurnPending = store.endTurnPending()
+  const riskyMove = store.riskyMove()
   /*
    * The turn catch-up: a seated player, on their own turn. Dismissed per turn (its start in the
    * journal), so a reload keeps it closed and the next turn brings it back by itself.
@@ -388,10 +392,11 @@ export function App(): JSX.Element {
               </Watching>
             )}
             {phone ? <PhonePlays state={state} onOpen={() => setSheet('court')} /> : null}
-            {/* The turn's last move waits here for End turn (store `held`); it covers the catch-up. */}
-            {endTurnPending ? <EndTurn log={state.log} /> : null}
+            {/* A move waiting on the player (store `held`, `risky`); it covers the catch-up. */}
+            {endTurnPending ? <EndTurn /> : null}
+            {riskyMove === null ? null : <RiskyMove why={riskyMove} />}
             {/* Over the map's foot, never the dock: the decision below does not move. */}
-            {catchupFaction !== null && !catchupClosed && !endTurnPending ? (
+            {catchupFaction !== null && !catchupClosed && !endTurnPending && riskyMove === null ? (
               <CatchUpSlot
                 faction={catchupFaction}
                 gameId={gameId!}
