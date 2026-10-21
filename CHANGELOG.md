@@ -2,6 +2,7 @@
 
 Moved from AGENTS.md on 2026-10-08. Newest first.
 
+- **v0.16.3** the runtime image makes Node trust the patched OS CA store (`apk upgrade ca-certificates-bundle`, `NODE_OPTIONS=--use-openssl-ca`) because Node's bundled roots still trust the eMudhra intermediates revoked as compromised on 2026-10-18/19 (#25, #26); drop it once the Node base image ships nodejs/node#66871
 - **v0.16.2** every catch-up draft and the checker's verdict is kept in a new `catchup_attempt` table (server-side only, not cleared at game end), so a seat's "bullets only" can be read back on Tower; `npm run catchup-try -- <game> <faction>` re-runs a seat's story and prints the drafts
 - **v0.16.1** the stall reminder also tracks games already waiting when the server starts (`Notifier.watchStalls`); before, only a game that moved after the deploy was tracked
 - **v0.16.0** a **daily stall reminder**: a game waiting on a human seat with no move for 24 h pings that seat on Discord at 16:30 America/Phoenix (sent within the hour after; `REMINDER_TIME`/`REMINDER_TZ`, `off` disables), once a day up to 7 per stall, skipping pings-off and bot seats. Held turn pings now live in SQLite (`pending_ping`, one 30 s sweep), so a deploy no longer drops them. Removed upstream leftovers: the Cloudflare/Pages `Deploy` workflow and the per-game webhook (`game.webhook_url` dropped by migration, lobby field gone). The toolbar fits the window down to 1200 px and wraps below
