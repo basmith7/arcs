@@ -6,7 +6,8 @@
  *
  * Spike (2026-10-04): a private report, to find out what an in-game scoreboard panel should show.
  * Reads a live game from Tower over ssh with `sqlite3 -readonly`, exactly as `advise` does — never a
- * write. It prints every hand unless `--public` is given; the panel could only show the public view.
+ * write. It prints every hand unless `--public` is given, or only that seat's with `--seat`; the panel
+ * could only show the public view.
  */
 
 import { execFileSync } from 'node:child_process'
@@ -21,7 +22,9 @@ const story = argv.includes('--story')
 const seatArg = argv.indexOf('--seat')
 const seat = seatArg >= 0 ? (argv[seatArg + 1] as FactionId | undefined) : undefined
 // The story is written from the public view only: what a table of players could all see.
-const showHands = !argv.includes('--public') && !story
+// `--seat` is that seat's view: its own hand and every other hand as a count.
+const showHand = (faction: FactionId): boolean =>
+  !argv.includes('--public') && !story && (seat === undefined || faction === seat)
 if (source === undefined) {
   console.error('usage: npm run recap -- <gameId | save.json> [--public] [--story] [--seat <faction>]')
   process.exit(2)
@@ -83,7 +86,7 @@ for (const f of facts.factions) {
   say(`${who(f.faction)} — power ${f.power}`)
   say(`  ${f.cities} cities, ${f.starports} starports, ${f.ships} ships; rules ${f.rules.join(', ') || 'nothing'}`)
   say(`  resources: ${f.resources.join(', ') || 'none'}; court: ${f.court.join(', ') || 'none'}`)
-  say(`  hand: ${showHands ? hand.join(', ') || 'empty' : `${f.handSize} cards`}`)
+  say(`  hand: ${showHand(f.faction) ? hand.join(', ') || 'empty' : `${f.handSize} cards`}`)
 }
 
 // --- ambition races ----------------------------------------------------------
