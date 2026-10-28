@@ -3,9 +3,9 @@
 ## Arcs online
 
 Live at https://arcs.basmith.net; deploy, ports and paths are in Vault-13 Infrastructure.md (arcs row).
-Release: tag `vX.Y.Z` → `scripts/deploy-now.sh vX.Y.Z`.
+Release: tag `vX.Y.Z` and push it → `deploy-now vX.Y.Z` (tower-deploy; config in `.tower-deploy`).
 
-Current release: v0.18.0; see CHANGELOG.md.
+Current release: v0.18.1; see CHANGELOG.md.
 
 Still open (verified 2026-09-22 unless noted): `normal` still has the pip-menu tie that `hard`
 no longer has (needs its own gate); bot thinking is one worker per server, so two games' bots take

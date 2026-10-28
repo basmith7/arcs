@@ -1,6 +1,6 @@
 # Unraid deployment - pulls the pre-built image from GHCR (built by
-# .github/workflows/docker-publish.yml on a version tag). Deploy
-# with scripts/deploy-now.sh <tag> (Tower's shared deploy-app).
+# .github/workflows/build.yml on a version tag). Deploy with
+# `deploy-now <tag>`, which also syncs this file to Tower.
 services:
   app:
     image: ghcr.io/basmith7/arcs:latest

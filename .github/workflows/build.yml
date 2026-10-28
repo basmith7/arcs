@@ -1,0 +1,15 @@
+name: Build
+
+# A v* tag builds ghcr.io/basmith7/<repo>:<tag> and :latest; nothing deploys on its own.
+# Deploy with `deploy-now <tag>` (tower-deploy). The build itself is shared:
+# https://github.com/basmith7/workflows/blob/main/.github/workflows/build-image.yml
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  image:
+    uses: basmith7/workflows/.github/workflows/build-image.yml@main
+    permissions:
+      contents: read
+      packages: write
