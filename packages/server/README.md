@@ -77,11 +77,3 @@ Workers-only API outside `src/cloudflare/` is a compile error rather than someth
 a migration. `src/cloudflare/types.ts` hand-writes the platform surface — four interfaces, six
 methods — so how much Cloudflare this depends on is visible in one file, and growing it is a
 deliberate act.
-
-## Deploying
-
-```bash
-npm run deploy --workspace @arcs/server
-```
-
-Needs a Cloudflare account and `wrangler login`. Not done yet.

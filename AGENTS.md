@@ -2,8 +2,10 @@
 
 ## Arcs online
 
-Live at https://arcs.basmith.net; deploy, ports and paths are in Vault-13 Infrastructure.md (arcs row).
-Release: tag `vX.Y.Z` and push it → `deploy-now vX.Y.Z` (tower-deploy).
+- **Project:** compose project `arcs` on Tower, live at https://arcs.basmith.net. Dev ports 3070
+  (server and built client) and 3071 (vite); the lab UI's boot service holds 4870.
+- **Health:** https://arcs.basmith.net/healthz.
+- **Ships per `~/Projects/AGENTS.md`.** SQLite: stop the container before editing prod's database.
 
 Release history: CHANGELOG.md (newest first); the latest tag is the current release.
 
