@@ -1,0 +1,21 @@
+name: CI
+
+# Pull-request checks, shared: https://github.com/basmith7/workflows
+# Inputs (packages-read, prisma, commands, ...) are documented at the top of node-ci.yml.
+on:
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "specs/**"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    uses: basmith7/workflows/.github/workflows/node-ci.yml@main
+    permissions:
+      contents: read
+      packages: read

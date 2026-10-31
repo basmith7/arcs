@@ -1,14 +1,21 @@
 name: Build
 
-# A v* tag builds ghcr.io/basmith7/<repo>:<tag> and :latest; nothing deploys on its own.
-# Deploy with `deploy-now <tag>` (tower-deploy). The build itself is shared:
-# https://github.com/basmith7/workflows/blob/main/.github/workflows/build-image.yml
+# A v* tag tests the commit, then builds ghcr.io/basmith7/<repo>:<tag> and :latest; nothing
+# deploys on its own. Deploy with `deploy-now <tag>` (tower-deploy). Both jobs are shared:
+# https://github.com/basmith7/workflows
+# `test` takes the same `with:` as ci.yml.
 on:
   push:
     tags: ["v*"]
 
 jobs:
+  test:
+    uses: basmith7/workflows/.github/workflows/node-ci.yml@main
+    permissions:
+      contents: read
+      packages: read
   image:
+    needs: test
     uses: basmith7/workflows/.github/workflows/build-image.yml@main
     permissions:
       contents: read
