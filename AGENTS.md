@@ -3,7 +3,7 @@
 ## Arcs online
 
 Live at https://arcs.basmith.net; deploy, ports and paths are in Vault-13 Infrastructure.md (arcs row).
-Release: tag `vX.Y.Z` and push it → `deploy-now vX.Y.Z` (tower-deploy; config in `.tower-deploy`).
+Release: tag `vX.Y.Z` and push it → `deploy-now vX.Y.Z` (tower-deploy).
 
 Release history: CHANGELOG.md (newest first); the latest tag is the current release.
 
