@@ -1,6 +1,7 @@
 name: CI
 
-# Pull-request checks, shared: https://github.com/basmith7/workflows
+# Checks for pull requests, and build.yml's test job through workflow_call: this file's `with:`
+# is the repo's one copy of its CI inputs. Shared: https://github.com/basmith7/workflows
 # Inputs (packages-read, prisma, commands, ...) are documented at the top of node-ci.yml.
 on:
   pull_request:
@@ -8,10 +9,12 @@ on:
       - "**.md"
       - "docs/**"
       - "specs/**"
+  workflow_call:
 
 concurrency:
+  # Only PR runs cancel; a call from build.yml has the tag's ref and event (workflows README).
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
