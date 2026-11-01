@@ -276,6 +276,8 @@ rule 2. That is the whole point of writing the rules down before the code exists
 
 ## 4c. One Worker, one origin
 
+*Historical; current deploy: `~/Projects/AGENTS.md`.*
+
 The client and the API are deployed together, as a single Worker: `wrangler.toml` declares
 `apps/web/dist` as its assets, and asset routing serves a file when the path matches one and falls
 through to the Worker when it does not. `run_worker_first = ["/games", "/games/*"]` pins the API
