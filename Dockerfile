@@ -1,5 +1,5 @@
 # Multi-stage: build the site and bundle the server, then ship only the runtime pieces.
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/engine/package.json packages/engine/
@@ -11,11 +11,8 @@ COPY . .
 # build:site sets VITE_MULTIPLAYER_URL to "" = same origin (apps/web/src/multiplayer/config.ts).
 RUN npm run build:site && npm run build --workspace @arcs/server-node
 
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
-# TEMP: revert when nodejs/node#66871 ships (eMudhra CA: use the patched OS store, not Node's roots)
-RUN apk upgrade --no-cache ca-certificates-bundle
-ENV NODE_OPTIONS=--use-openssl-ca
 ENV NODE_ENV=production \
     PORT=3070 \
     DATABASE_PATH=/data/arcs.db \
