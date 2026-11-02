@@ -61,7 +61,7 @@ if (facts.since.length === 0) {
 }
 
 const chat = deepseekChat(apiKey)
-const writerModel = process.env['CATCHUP_WRITER_MODEL'] || 'deepseek-v4-pro'
+const writerModel = process.env['CATCHUP_WRITER_MODEL'] || 'deepseek-flash'
 const checkerModel = process.env['CATCHUP_CHECKER_MODEL'] || 'deepseek-flash'
 const ask = (model: string, p: { system: string; user: string }, reason = false): Promise<string> =>
   chat(model, p.system, p.user, AbortSignal.timeout(60_000), { reason })

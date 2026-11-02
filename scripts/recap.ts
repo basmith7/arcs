@@ -185,7 +185,7 @@ hidden; do not guess what anyone holds. Plain markdown, under 350 words, no prea
 if (story) {
   const out = execFileSync(
     `${process.env.HOME}/.opencode/bin/opencode`,
-    ['run', '-m', process.env.RECAP_MODEL ?? 'deepseek/deepseek-v4-pro', PROMPT],
+    ['run', '-m', process.env.RECAP_MODEL ?? 'deepseek/deepseek-flash', PROMPT],
     { input: report.join('\n'), encoding: 'utf8', timeout: 300_000, stdio: ['pipe', 'pipe', 'ignore'] },
   )
   // opencode prints its own banner (`> build · model`) and colour codes before the answer.
