@@ -2,7 +2,7 @@
 
 Moved from AGENTS.md on 2026-10-08. Newest first.
 
-- **v0.18.3** catch-up stories are written by `deepseek-flash` (was `deepseek-v4-pro`, about 3–4× the price); `CATCHUP_WRITER_MODEL` still overrides it. `npm run recap` defaults to flash too.
+- **v0.18.3** catch-up stories are written by `deepseek-flash` (was `deepseek-v4-pro`, about 3–4× the price); `recap --story` defaults to flash too.
 - **v0.18.2** no app change: the image runs on Node 24 (`node:24-alpine`), and the v0.16.3 CA workaround is gone now that nodejs/node#66871 shipped; `engines`, `@types/node` and the esbuild targets follow
 - **v0.18.1** no app change: the image is built by the shared `basmith7/workflows` build (`.github/workflows/build.yml`), so it carries its commit and version labels (`deploy-app status arcs` shows them), and it deploys with tower-deploy's `deploy-now` (`.tower-deploy`), which also syncs `docker-compose.prod.yml` to Tower. `scripts/deploy-now.sh` is gone
 - **v0.18.0** **End turn** sends itself after two minutes (the countdown is on the button) or when you leave the page, and its panel shows which of your moves Start over takes back and which are locked in behind a roll, draw or peek. A move that can't be undone (a card draw, a look at a hand) now asks **Go ahead** first; the battle window's Roll and Reroll say "Can't be undone" on the button instead of asking. The setting is now Settings > Board > Confirm moves (`confirmMoves`; a stored `confirmEndTurn` is ignored, so it reads On again)
