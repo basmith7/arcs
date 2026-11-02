@@ -32,7 +32,7 @@ const REMINDER_TIME = process.env['REMINDER_TIME'] || '16:30'
 const REMINDER_TZ = process.env['REMINDER_TZ'] || 'America/Phoenix'
 const DEEPSEEK_API_KEY = process.env['DEEPSEEK_API_KEY'] || undefined
 // Ids as `GET https://api.deepseek.com/models` listed them on 2026-10-05.
-const CATCHUP_WRITER_MODEL = process.env['CATCHUP_WRITER_MODEL'] || 'deepseek-v4-pro'
+const CATCHUP_WRITER_MODEL = process.env['CATCHUP_WRITER_MODEL'] || 'deepseek-flash'
 const CATCHUP_CHECKER_MODEL = process.env['CATCHUP_CHECKER_MODEL'] || 'deepseek-flash'
 
 process.on('uncaughtException', (e) => console.error('[fatal]', e))
