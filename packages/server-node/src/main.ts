@@ -68,6 +68,7 @@ if (reminderTime !== undefined && !reminderOn) console.warn(`[notify] REMINDER_T
 const presence = new Presence({ activeMs: PRESENCE_ACTIVE_MS })
 const notifier = new Notifier(store, {
   publicOrigin: PUBLIC_ORIGIN,
+  current: (gameId) => gate.resultOf(gameId),
   presence,
   graceMs: PING_GRACE_MS,
   leaveGraceMs: LEAVE_GRACE_MS,
@@ -110,7 +111,7 @@ const server = createArcsServer({
 })
 
 void gate.resumeAll()
-notifier.watchStalls((gameId) => gate.resultOf(gameId))
+notifier.watchStalls()
 notifier.start()
 server.listen(PORT, '0.0.0.0', () => {
   console.log(

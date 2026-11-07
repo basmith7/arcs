@@ -2,6 +2,7 @@
 
 Moved from AGENTS.md on 2026-10-08. Newest first.
 
+- **v0.19.0** Discord pings are embed cards posted by **Jarvis** (was Pikachu; login stays on the Pikachu app): the turn ping says what you face (the face-up lead and any declaration, or the engine's prompt) with power, declared ambitions and initiative; a chapter end shows who scored each ambition; game over ranks everyone with medals; the stall reminder counts "Reminder n of 7". Each carries an **Open game** button. Needs Jarvis's token as `DISCORD_BOT_TOKEN` in Tower's arcs `.env`
 - **v0.18.3** catch-up stories are written by `deepseek-flash` (was `deepseek-v4-pro`, about 3–4× the price); `recap --story` defaults to flash too.
 - **v0.18.2** no app change: the image runs on Node 24 (`node:24-alpine`), and the v0.16.3 CA workaround is gone now that nodejs/node#66871 shipped; `engines`, `@types/node` and the esbuild targets follow
 - **v0.18.1** no app change: the image is built by the shared `basmith7/workflows` build (`.github/workflows/build.yml`), so it carries its commit and version labels (`deploy-app status arcs` shows them), and it deploys with tower-deploy's `deploy-now` (`.tower-deploy`), which also syncs `docker-compose.prod.yml` to Tower. `scripts/deploy-now.sh` is gone

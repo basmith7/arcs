@@ -1,13 +1,15 @@
 /**
- * Thin wrapper around the Discord REST API for the bot ("Pikachu") that already lives on the same
- * server. Used to resolve a claimed seat name to a guild member (so players do not have to paste
- * their Discord user ID) and to post turn pings to the configured channel.
+ * Thin wrapper around the Discord REST API for the channel bot (Jarvis, the server's admin bot).
+ * Used to resolve a claimed seat name to a guild member (so players do not have to paste their
+ * Discord user ID) and to post turn pings to the configured channel.
  *
  * Every call is best-effort: a failed lookup returns `undefined` and logs a warning rather than
  * throwing, since a broken Discord integration must never block naming a seat or playing the game.
  * `postMessage` is the one exception — the Notifier already treats a thrown poster as "log and
  * ignore" (notify.ts), so it throws on a non-2xx rather than swallowing it twice.
  */
+
+import type { Embed } from './discord-cards.js'
 
 const API = 'https://discord.com/api/v10'
 
@@ -25,6 +27,15 @@ interface DiscordUser {
 interface GuildMember {
   readonly nick?: string | null
   readonly user: DiscordUser
+}
+
+export interface ChannelMessage {
+  readonly content: string
+  /** User ids the post may ping; every other mention in `content` renders without pinging. */
+  readonly mentions: readonly string[]
+  readonly embeds?: readonly Embed[]
+  /** A button under the message that opens `url`. */
+  readonly link?: { readonly label: string; readonly url: string }
 }
 
 export interface DiscordBotOptions {
@@ -74,7 +85,7 @@ export class DiscordBot {
     return member === undefined ? undefined : toMember(member)
   }
 
-  async postMessage(channelId: string, message: { content: string; mentions: readonly string[] }): Promise<void> {
+  async postMessage(channelId: string, message: ChannelMessage): Promise<void> {
     let res: Response
     try {
       res = await this.fetch(`${API}/channels/${channelId}/messages`, {
@@ -83,6 +94,11 @@ export class DiscordBot {
         body: JSON.stringify({
           content: message.content,
           allowed_mentions: { parse: [], users: message.mentions },
+          ...(message.embeds === undefined ? {} : { embeds: message.embeds }),
+          // A link button (style 5): plain bots may post these; they need no interaction handler.
+          ...(message.link === undefined
+            ? {}
+            : { components: [{ type: 1, components: [{ type: 2, style: 5, label: message.link.label, url: message.link.url }] }] }),
         }),
         signal: AbortSignal.timeout(this.timeoutMs),
       })
