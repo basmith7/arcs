@@ -185,7 +185,7 @@ describe('Notifier', () => {
     const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
     await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
     expect(sent[0]!.text).toContain('<@111222333444555666>')
-    expect(sent[0]!.text).toContain('Your turn, Sam (Yellow)')
+    expect(sent[0]!.text).toContain('Your turn, Sam')
     expect(sent[0]!.mentions).toEqual(['111222333444555666'])
 
     // red (untagged, no discord link) mentions nothing on their own ping.
@@ -373,12 +373,24 @@ describe('Notifier', () => {
     await notifierWith.onSettled({ gameId: game.gameId, before: start, after: afterRed })
     const yellow = posts[0]!.embeds![0]!
     expect(yellow).toMatchObject({
-      title: 'Your turn, Sam (Yellow)',
+      title: 'Your turn, Sam',
       description: 'Red led **Aggression** and declared **Warlord**.',
       author: { name: 'Arcs · Chapter 1 · Round 1' },
     })
     expect(yellow.fields).toContainEqual({ name: 'Declared', value: 'Warlord (5/3)', inline: true })
     expect(posts[0]!.link).toEqual({ label: 'Open game', url: seatLink('https://arcs.test', game.gameId) })
+  })
+
+  it('the engine\'s prompt names players, not colours', async () => {
+    const { store, game, sent, notifier, start, afterRed } = await setup()
+    store.setName(game.gameId, game.seats[0]!.seatToken, 'Brian')
+    // Mid-turn asks carry the engine's own prompt, which names factions by colour id.
+    const asked: RuleResult = {
+      ...afterRed,
+      continue: { kind: 'ask', faction: 'yellow', actions: [{ type: 'probe/pick' }], prompt: 'Pick a system red or blue rules' },
+    }
+    await notifier.onSettled({ gameId: game.gameId, before: start, after: asked })
+    expect(sent[0]!.text).toContain('Pick a system Brian or Blue rules')
   })
 
   it('the player who leads is told so', async () => {

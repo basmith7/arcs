@@ -76,7 +76,7 @@ describe('daily stall reminder', () => {
     expect(t.sent[0]).toMatchObject({
       content: `<@${YELLOW_ID}> still your turn in Arcs — 1 day since the last move`,
       mentions: [YELLOW_ID],
-      embeds: [{ title: 'Waiting on Sam (Yellow) — 1 day', footer: { text: 'Reminder 1 of 7 · last move' } }],
+      embeds: [{ title: 'Waiting on Sam — 1 day', footer: { text: 'Reminder 1 of 7 · last move' } }],
       link: { url: link },
     })
     // Same slot, further sweeps: nothing more.

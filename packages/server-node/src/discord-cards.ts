@@ -54,21 +54,25 @@ const title = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
 const dot = (faction: string): string => DOT[faction] ?? '•'
 const seatOf = (seats: readonly Seat[], faction: string): Seat => seats.find((s) => s.faction === faction) ?? { faction }
 
-/** "Sam (Yellow)", or "Yellow" for an unnamed seat. */
-function seatLabel(seat: Seat): string {
-  return seat.name === undefined ? title(seat.faction) : `${seat.name} (${title(seat.faction)})`
+/** The player's name, or the colour for an unnamed seat (bots, hotseat). */
+const nameOf = (seat: Seat): string => seat.name ?? title(seat.faction)
+const nameIn = (seats: readonly Seat[], faction: string): string => nameOf(seatOf(seats, faction))
+
+/** Engine prompts name factions by colour id ("red — Prelude"); swap in the players' names. */
+function withNames(text: string, seats: readonly Seat[]): string {
+  return text.replace(/\b(red|yellow|blue|white)\b/g, (f) => nameIn(seats, f))
 }
 
 /** `<@id>` for a linked seat (pings them), else the bold name. */
 function tag(seat: Seat): { readonly text: string; readonly mention?: string } {
   if (seat.discordId !== undefined) return { text: `<@${seat.discordId}>`, mention: seat.discordId }
-  return { text: `**${seat.name ?? title(seat.faction)}**` }
+  return { text: `**${nameOf(seat)}**` }
 }
 
 /** "🔴 Brian 14" per line, best first. */
 function powerLines(state: GameState, seats: readonly Seat[]): string {
   return standings(state)
-    .map(({ faction, power }) => `${dot(faction)} ${seatOf(seats, faction).name ?? title(faction)} ${power}`)
+    .map(({ faction, power }) => `${dot(faction)} ${nameIn(seats, faction)} ${power}`)
     .join('\n')
 }
 
@@ -81,7 +85,7 @@ function tableFields(state: GameState, seats: readonly Seat[]): EmbedField[] {
   }
   const initiative = state.initiativeOrder[0]
   if (initiative !== undefined) {
-    fields.push({ name: 'Initiative', value: `${dot(initiative)} ${seatOf(seats, initiative).name ?? title(initiative)}`, inline: true })
+    fields.push({ name: 'Initiative', value: `${dot(initiative)} ${nameIn(seats, initiative)}`, inline: true })
   }
   return fields
 }
@@ -98,10 +102,10 @@ function askOf(result: RuleResult, faction: string): Ask | undefined {
 function situation(result: RuleResult, faction: FactionId, seats: readonly Seat[]): string | undefined {
   const ask = askOf(result, faction)
   if (ask === undefined) return undefined
-  if (!ask.actions.some((a) => OPENERS.has(a.type))) return ask.prompt
+  if (!ask.actions.some((a) => OPENERS.has(a.type))) return ask.prompt === undefined ? undefined : withNames(ask.prompt, seats)
   const lead = result.state.lead
   if (lead === undefined || lead.faction === faction) return 'You lead this round.'
-  const who = seatOf(seats, lead.faction).name ?? title(lead.faction)
+  const who = nameIn(seats, lead.faction)
   const declared = result.state.declared.find((d) => d.by === lead.faction && d.round === result.state.round)
   return declared === undefined
     ? `${who} led **${lead.suit} ${lead.strength}**.`
@@ -119,7 +123,7 @@ export function turnCard(seat: Seat, result: RuleResult, seats: readonly Seat[],
     mentions: who.mention === undefined ? [] : [who.mention],
     embed: {
       author: { name: `Arcs · ${where(result.state)}` },
-      title: `Your turn, ${seatLabel(seat)}`,
+      title: `Your turn, ${nameOf(seat)}`,
       color: COLOR[seat.faction] ?? NEUTRAL,
       ...(description === undefined ? {} : { description }),
       fields: tableFields(result.state, seats),
@@ -131,7 +135,7 @@ export function turnCard(seat: Seat, result: RuleResult, seats: readonly Seat[],
 /** A chapter just ended between `before` and `after`: who scored what, and power after it. */
 export function chapterCard(before: GameState, after: GameState, seats: readonly Seat[]): Card {
   const report = buildChapterReport(before, after)
-  const name = (f: string): string => `${dot(f)} ${seatOf(seats, f).name ?? title(f)}`
+  const name = (f: string): string => `${dot(f)} ${nameIn(seats, f)}`
   const fields: EmbedField[] = report.results.map((r) => ({
     name: r.ambition,
     value: r.awards.length === 0
@@ -153,14 +157,14 @@ export function gameOverCard(state: GameState, seats: readonly Seat[]): Card {
   const winners = state.winners.map((f) => seatOf(seats, f))
   const tags = winners.map(tag)
   const placings = standings(state)
-    .map(({ faction, power }, i) => `${MEDALS[i] ?? `${i + 1}.`} ${seatOf(seats, faction).name ?? title(faction)} ${power}`)
+    .map(({ faction, power }, i) => `${MEDALS[i] ?? `${i + 1}.`} ${nameIn(seats, faction)} ${power}`)
     .join('\n')
   return {
     content: `Game over in Arcs — ${tags.map((t) => t.text).join(' and ')} ${tags.length === 1 ? 'wins' : 'win'}!`,
     mentions: tags.flatMap((t) => (t.mention === undefined ? [] : [t.mention])),
     embed: {
       author: { name: 'Arcs · Game over' },
-      title: `🏆 ${winners.map(seatLabel).join(' and ')} ${winners.length === 1 ? 'wins' : 'win'}`,
+      title: `🏆 ${winners.map(nameOf).join(' and ')} ${winners.length === 1 ? 'wins' : 'win'}`,
       color: COLOR[state.winners[0] ?? ''] ?? NEUTRAL,
       description: placings,
       footer: { text: `${state.chapter} ${state.chapter === 1 ? 'chapter' : 'chapters'}` },
@@ -180,7 +184,7 @@ export function reminderCard(
     content: `${who.text} still your turn in Arcs — ${days} since the last move`,
     mentions: who.mention === undefined ? [] : [who.mention],
     embed: {
-      title: `Waiting on ${seatLabel(seat)} — ${days}`,
+      title: `Waiting on ${nameOf(seat)} — ${days}`,
       color: WAITING_COLOR,
       ...(state === undefined ? {} : { description: where(state) }),
       footer: { text: `Reminder ${opts.count} of ${opts.max} · last move` },
