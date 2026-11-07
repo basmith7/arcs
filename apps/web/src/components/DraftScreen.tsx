@@ -181,7 +181,7 @@ export function DraftScreen({
         <SetupBoard board={state.board.name} compact />
         <span className="draft-turn">
           <span className="draft-who" style={{ color: colorOf(faction) }}>
-            {faction}
+            {store.nameOf(faction)}
           </span>
           <span className="draft-what">
             {needsLeader ? 'takes a leader' : 'takes a lore card'}
@@ -305,7 +305,7 @@ function DraftCardView({
       }`}
       style={taken ? { ['--owner']: colorOf(card.owner!) } as React.CSSProperties : undefined}
       onClick={() => onRead(card.id)}
-      title={taken ? `${card.name} — taken by ${card.owner}` : `${card.name} — click to read`}
+      title={taken ? `${card.name} — taken by ${store.nameOf(card.owner!)}` : `${card.name} — click to read`}
       aria-label={faceUp ? card.name : 'Face-down card'}
     >
       <span className="dc-inner">

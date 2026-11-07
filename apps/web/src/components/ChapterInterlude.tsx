@@ -101,7 +101,7 @@ export function ChapterInterlude(): JSX.Element | null {
 export function FactionChip({ faction }: { faction: FactionId }): JSX.Element {
   return (
     <span className="il-chip" style={{ background: colorOf(faction), color: textOn(faction) }}>
-      {faction}
+      {store.nameOf(faction)}
     </span>
   )
 }
@@ -159,7 +159,7 @@ function Holdings({ r, prev }: { r: AmbitionResult; prev: GameState }): JSX.Elem
   return (
     <div className="il-holdings">
       {r.holdings.map((h) => (
-        <span key={h.faction} className="il-holding" title={`${h.faction}: ${h.value}`}>
+        <span key={h.faction} className="il-holding" title={`${store.nameOf(h.faction)}: ${h.value}`}>
           <i className="il-dot" style={{ background: colorOf(h.faction) }} />
           {resources === undefined ? (
             <span>{h.value} {r.ambition === 'Warlord' ? 'trophies' : 'captives'}</span>

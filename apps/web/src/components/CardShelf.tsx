@@ -104,8 +104,8 @@ export function CardShelf({ state, cont }: { state: GameState; cont: Continue })
         <div className="da-head" {...drag.handle}>
           <span className="da-title">{copy.title}</span>
           <span className="da-prompt">
-            <span style={{ color: colorOf(cont.faction) }}>{cont.faction}</span>
-            {detail(cont.faction, cont.prompt, copy.title)}
+            <span style={{ color: colorOf(cont.faction) }}>{store.nameOf(cont.faction)}</span>
+            {store.namesIn(detail(cont.faction, cont.prompt, copy.title))}
           </span>
         </div>
 
@@ -194,7 +194,7 @@ function Agents({ slot }: { slot: CourtSlot }): JSX.Element | null {
         <span
           key={a.faction}
           className={`shelf-agent${slot.leader === a.faction ? ' leads' : ''}`}
-          title={`${a.faction}: ${a.count} agent${a.count === 1 ? '' : 's'}${
+          title={`${store.nameOf(a.faction)}: ${a.count} agent${a.count === 1 ? '' : 's'}${
             slot.leader === a.faction ? ' (leads)' : ''
           }`}
         >

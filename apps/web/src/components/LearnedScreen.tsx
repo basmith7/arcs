@@ -73,7 +73,7 @@ export function LearnedScreen({ cont }: { cont: Continue }): JSX.Element | null 
         <span className="draft-title">Learned</span>
         <span className="draft-turn">
           <span className="draft-who" style={{ color: colorOf(faction) }}>
-            {faction}
+            {store.nameOf(faction)}
           </span>
           <span className="draft-what">
             keeps {keepCount} of {drawn.length} — the rest are scrapped

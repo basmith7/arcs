@@ -94,7 +94,10 @@ export function Battle({ state, cont }: Props): JSX.Element | null {
         faction={String(first['faction'])}
         enemy={String(first['enemy'])}
       >
-        <RerollTray options={rerollOpts} prompt={cont.kind === 'ask' ? cont.prompt : undefined} />
+        <RerollTray
+          options={rerollOpts}
+          prompt={cont.kind === 'ask' && cont.prompt !== undefined ? store.namesIn(cont.prompt) : undefined}
+        />
       </Shell>
     )
   }
@@ -137,7 +140,7 @@ export function Battle({ state, cont }: Props): JSX.Element | null {
    */
   return (
     <Shell system={undefined} faction={cont.kind === 'ask' ? cont.faction : undefined} enemy={undefined}>
-      <div className="da-prompt">{cont.kind === 'ask' ? cont.prompt : 'Battle'}</div>
+      <div className="da-prompt">{cont.kind !== 'ask' ? 'Battle' : cont.prompt !== undefined ? store.namesIn(cont.prompt) : null}</div>
       <div className="da-fallback">
         {actions.map((a, i) => (
           <button key={`${a.type}-${i}`} className="da-ghost" onClick={() => store.apply(a)}>
@@ -188,7 +191,7 @@ function Shell({
 function Swatch({ color }: { color: string }): JSX.Element {
   return (
     <span className="da-swatch" style={{ background: colorOf(color), color: textOn(color) }}>
-      {color}
+      {store.nameOf(color)}
     </span>
   )
 }
@@ -426,7 +429,7 @@ function TargetChooser({ targets, cancel }: { targets: readonly Action[]; cancel
               style={{ background: colorOf(enemy), color: textOn(enemy) }}
               onClick={() => store.apply(a)}
             >
-              {enemy}
+              {store.nameOf(enemy)}
             </button>
           )
         })}

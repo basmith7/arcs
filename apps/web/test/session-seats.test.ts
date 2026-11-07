@@ -208,3 +208,27 @@ describe('Session seats', () => {
     }
   })
 })
+
+describe('player names in place of colours', () => {
+  it('names a seated player, and keeps the colour for an unnamed seat or a hotseat game', () => {
+    try {
+      store.seats = [
+        { faction: 'red', name: 'Brian', isBot: false },
+        { faction: 'blue', isBot: true },
+      ]
+      expect(store.nameOf('red')).toBe('Brian')
+      expect(store.nameOf('blue')).toBe('blue')
+      expect(store.namesIn('Battle red in Arrow 2 — Red strikes blue')).toBe('Battle Brian in Arrow 2 — Brian strikes blue')
+      // An unnamed seat's text comes back byte for byte, capitals included.
+      expect(store.namesIn('Blue — action 1 of 3')).toBe('Blue — action 1 of 3')
+      // Only whole words: a colour inside another word stays put.
+      expect(store.namesIn('Bored redshift')).toBe('Bored redshift')
+
+      store.seats = []
+      expect(store.nameOf('red')).toBe('red')
+      expect(store.namesIn('red — Prelude')).toBe('red — Prelude')
+    } finally {
+      store.leaveSession()
+    }
+  })
+})

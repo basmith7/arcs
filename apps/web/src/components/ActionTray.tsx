@@ -274,7 +274,7 @@ export function ActionTray({
       <div className="at-inner">
         <div className="at-head">
           <span className="at-who" style={{ color: colorOf(faction) }}>
-            {faction}
+            {store.nameOf(faction)}
           </span>
           {pips === undefined ? (
             /*
@@ -403,7 +403,7 @@ function SourceModal({
         <div className="da-head" {...drag.handle}>
           <span className="da-title">{sourceName(row)}</span>
           <span className="da-prompt">
-            <span style={{ color: colorOf(faction) }}>{faction}</span> — {row.rail.toLowerCase()}{' '}
+            <span style={{ color: colorOf(faction) }}>{store.nameOf(faction)}</span> — {row.rail.toLowerCase()}{' '}
             action
           </span>
         </div>

@@ -103,9 +103,9 @@ export function AskStrip({
       <div className="at-inner">
         <div className="at-head">
           <span className="at-who" style={{ color: colorOf(cont.faction) }}>
-            {cont.faction}
+            {store.nameOf(cont.faction)}
           </span>
-          <span className="at-sub">{cont.prompt ?? 'Choose an action'}</span>
+          <span className="at-sub">{cont.prompt !== undefined ? store.namesIn(cont.prompt) : 'Choose an action'}</span>
         </div>
         <div className="strip-actions">
           {options.map((a, i) => {

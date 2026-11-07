@@ -110,8 +110,8 @@ export function RaidModal({ cont }: { cont: Continue }): JSX.Element | null {
         <div className="da-head" {...drag.handle}>
           <span className="da-title">Raid</span>
           <span className="da-prompt">
-            <span style={{ color: colorOf(ctx.faction as never) }}>{ctx.faction}</span> is raiding{' '}
-            <span style={{ color: colorOf(ctx.enemy as never) }}>{ctx.enemy}</span>
+            <span style={{ color: colorOf(ctx.faction as never) }}>{store.nameOf(ctx.faction)}</span> is raiding{' '}
+            <span style={{ color: colorOf(ctx.enemy as never) }}>{store.nameOf(ctx.enemy)}</span>
           </span>
           <span className="raid-purse">
             <Purse dice={ctx.dice ?? []} keys={ctx.keys} />

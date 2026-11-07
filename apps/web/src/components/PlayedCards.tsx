@@ -63,7 +63,7 @@ function Slot({
               }
               className={`slot-card${flash?.value === p.cardId ? ' evt-flash' : ''}`}
               style={{ borderColor: colorOf(p.faction) }}
-              title={`${p.faction} — ${p.kind}`}
+              title={`${store.nameOf(p.faction)} — ${p.kind}`}
             >
               {/* Card and token share one rotated frame, so the token sits on the card in
                   its own coordinates — the 0 lands over the printed number. */}

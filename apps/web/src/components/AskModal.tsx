@@ -68,8 +68,11 @@ export function AskModal({ cont }: { cont: Continue }): JSX.Element | null {
         <div className="da-head" {...drag.handle}>
           <span className="da-title">{title}</span>
           <span className="da-prompt">
-            <span style={{ color: colorOf(cont.faction) }}>{cont.faction}</span>
-            {cont.prompt !== undefined ? ` — ${cont.prompt}` : null}
+            <span style={{ color: colorOf(cont.faction) }}>{store.nameOf(cont.faction)}</span>
+            {/* The engine opens most of these prompts with the faction ("red — Farseers…"), which the chip just said. */}
+            {cont.prompt !== undefined
+              ? ` — ${store.namesIn(cont.prompt.replace(new RegExp(`^${cont.faction}\\s*—\\s*`), ''))}`
+              : null}
           </span>
         </div>
 
@@ -112,7 +115,7 @@ export function AskModal({ cont }: { cont: Continue }): JSX.Element | null {
                       className="am-who"
                       style={{ background: colorOf(to), color: textOn(to) }}
                     >
-                      {to}
+                      {store.nameOf(to)}
                     </span>
                   </button>
                 </div>

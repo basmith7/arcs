@@ -36,6 +36,7 @@ import { asset, smallArt } from '../assets.js'
 import { clearHover, hoverSystems } from '../log-hover.js'
 import { lastTurn, parseLog, systemsIn } from '../log-format.js'
 import type { CardRef, LogItem, LogPart } from '../log-format.js'
+import { store } from '../store.js'
 import { colorOf } from '../theme.js'
 import { CardZoom } from './CardZoom.js'
 import { LeaderCardReader } from './LeaderCardReader.js'
@@ -141,7 +142,7 @@ function Row({ item, onPreview, onOpen }: RowProps): JSX.Element {
     return (
       <div className="log-head" style={{ borderColor: colorOf(item.faction) }} {...point}>
         <span className="log-who" style={{ color: colorOf(item.faction) }}>
-          {item.faction}
+          {store.nameOf(item.faction)}
         </span>
         {item.text === '' ? null : <span className="log-lead">{body}</span>}
       </div>

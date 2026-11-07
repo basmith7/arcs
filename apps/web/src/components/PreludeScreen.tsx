@@ -144,7 +144,7 @@ export function PreludeScreen({
         <div className="pr-head" title="Spend resources before acting">
           <span className="da-title">Prelude</span>
           <span className="pr-who" style={{ color: colorOf(faction as FactionId) }}>
-            {faction}
+            {store.nameOf(faction)}
           </span>
         </div>
 

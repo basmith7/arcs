@@ -292,7 +292,7 @@ export function App(): JSX.Element {
           <span className="turn-badge">
             <span className="turn-badge-label">Turn</span>
             <span className="turn-badge-who" style={{ color: colorOf(current) }}>
-              {store.seatName(current) ?? current}
+              {store.nameOf(current)}
             </span>
           </span>
         ) : null}
