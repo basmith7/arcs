@@ -18,7 +18,9 @@ in `api.ts` (fine behind Traefik).
 SQLite (`pending_ping`, `reminder`) and one 30 s sweep sends what is due, so a deploy drops nothing.
 A game waiting on the same human for 24 h or more gets a Discord ping at the next 16:30
 America/Phoenix, then daily, up to 7 per stall; env `REMINDER_TIME` (default `16:30`, `off`
-disables) and `REMINDER_TZ`. Pings go through the channel bot only; the per-game webhook is gone.
+disables) and `REMINDER_TZ`. Pings are embed cards (`discord-cards.ts`; public table info
+only, never a hand) posted by the channel bot **Jarvis** (the token mtg-night uses); login stays on
+the Pikachu app.
 
 **Optional Discord login** (spec `docs/superpowers/specs/2026-10-04-optional-login-design.md`):
 on in production since v0.14.1 (Pikachu app); on only when `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are set (redirect

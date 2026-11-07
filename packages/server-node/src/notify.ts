@@ -12,6 +12,8 @@
  */
 import type { RuleResult } from '@arcs/engine'
 
+import { chapterCard, gameOverCard, reminderCard, turnCard } from './discord-cards.js'
+import type { Card } from './discord-cards.js'
 import type { DiscordBot } from './discord.js'
 import { askedOf } from './gate.js'
 import type { Settled } from './gate.js'
@@ -27,11 +29,6 @@ const SLOT_WINDOW_MS = 3_600_000
 /** Reminders per stall; after this, silence until someone moves. */
 export const MAX_REMINDERS = 7
 
-export interface Message {
-  readonly content: string
-  readonly mentions: readonly string[]
-}
-
 /** Where pings go. Without one the notifier stays quiet. */
 export interface FallbackChannel {
   readonly channelId: string
@@ -44,6 +41,8 @@ export interface Schedule {
 
 export interface NotifierOptions {
   readonly publicOrigin: string
+  /** The game as it stands, for what a held ping or a reminder shows when it finally goes out. */
+  readonly current: (gameId: string) => RuleResult | undefined
   readonly now?: () => number
   readonly windowMs?: number
   readonly fallbackChannel?: FallbackChannel
@@ -65,20 +64,6 @@ export function seatLink(origin: string, gameId: string, seatToken?: string): st
   return `${origin.replace(/\/+$/, '')}/#/g/${encodeURIComponent(gameId)}${seat}`
 }
 
-interface Line {
-  readonly text: string
-  readonly mentions: readonly string[]
-}
-
-/** `<@id>` when the seat has linked Discord, else today's bold name. */
-function mentionOf(seat: { readonly name?: string; readonly faction: string; readonly discordId?: string }): {
-  readonly text: string
-  readonly mention?: string
-} {
-  if (seat.discordId !== undefined) return { text: `<@${seat.discordId}>`, mention: seat.discordId }
-  return { text: `**${seat.name ?? seat.faction}**` }
-}
-
 function defaultEvery(fn: () => void, ms: number): Schedule {
   const handle = setInterval(fn, ms)
   handle.unref?.()
@@ -89,6 +74,7 @@ export class Notifier {
   private readonly now: () => number
   private readonly windowMs: number
   private readonly origin: string
+  private readonly current: NotifierOptions['current']
   private readonly fallbackChannel: FallbackChannel | undefined
   private readonly presence: Presence | undefined
   private readonly graceMs: number
@@ -106,6 +92,7 @@ export class Notifier {
     this.now = opts.now ?? Date.now
     this.windowMs = opts.windowMs ?? 60_000
     this.origin = opts.publicOrigin
+    this.current = opts.current
     this.fallbackChannel = opts.fallbackChannel
     this.presence = opts.presence
     this.graceMs = opts.graceMs ?? 600_000
@@ -137,12 +124,21 @@ export class Notifier {
     if (this.sweeping) return
     this.sweeping = true
     try {
+      // One game that no longer replays must not hold up the others' pings.
+      const each = async (gameId: string, send: () => Promise<void>): Promise<void> => {
+        try {
+          await send()
+        } catch (e) {
+          console.warn(`[notify] sweep failed for ${gameId}:`, (e as Error).message)
+        }
+      }
       for (const pending of this.store.duePendingPings(this.now())) {
         this.store.clearPendingPing(pending.gameId)
-        await this.sendPending(pending)
+        await each(pending.gameId, () => this.sendPending(pending))
       }
-      if (this.reminder !== undefined) {
-        for (const r of this.store.allReminders()) await this.remind(r, this.reminder)
+      const reminder = this.reminder
+      if (reminder !== undefined) {
+        for (const r of this.store.allReminders()) await each(r.gameId, () => this.remind(r, reminder))
       }
     } catch (e) {
       console.warn('[notify] sweep failed:', (e as Error).message)
@@ -157,10 +153,12 @@ export class Notifier {
     const meta = this.store.meta(gameId)
     if (meta !== undefined && this.now() - meta.lastNotifiedAt < this.windowMs) return
     const seat = this.store.seats(gameId).find((s) => s.seatToken === pending.seatToken)
-    if (seat === undefined) return
-    const line = this.turnLine(gameId, seat, pending.chapter)
-    if (line === undefined) return
-    await this.postLines(gameId, [line], pending.journalLength)
+    // A game that no longer replays has no turn to show.
+    const result = this.current(gameId)
+    if (seat === undefined || result === undefined) return
+    const card = this.turnCard(gameId, seat, result)
+    if (card === undefined) return
+    await this.postCards(gameId, [card], pending.journalLength)
   }
 
   /** Sends the stall reminder for one game if the seat is still the one being waited on and its slot is due. */
@@ -182,12 +180,13 @@ export class Notifier {
     // Counted before the post: like every ping here, a failed one is forgotten, not retried every sweep.
     this.store.noteReminded(gameId, now)
     const days = Math.max(1, Math.floor((now - lastMove) / DAY_MS))
-    const who = mentionOf(seat)
-    const line: Line = {
-      text: `${who.text} still your turn in Arcs — ${days} ${days === 1 ? 'day' : 'days'} since the last move: ${seatLink(this.origin, gameId)}`,
-      mentions: who.mention === undefined ? [] : [who.mention],
-    }
-    await this.post(line)
+    const card = reminderCard(seat, this.current(gameId)?.state, {
+      days,
+      count: r.count + 1,
+      max: MAX_REMINDERS,
+      lastMove,
+    })
+    await this.post(gameId, card)
   }
 
   /** Who the game now waits on, for the stall reminder. A new mover or a longer journal restarts the count. */
@@ -201,10 +200,10 @@ export class Notifier {
    * Startup: track games already waiting on a human. A stall is otherwise noticed only when a move
    * settles, so a game idle since before this server started would never be reminded.
    */
-  watchStalls(resultOf: (gameId: string) => RuleResult | undefined): void {
+  watchStalls(): void {
     for (const gameId of this.store.gameIds()) {
       try {
-        const result = resultOf(gameId)
+        const result = this.current(gameId)
         if (result !== undefined) this.trackStall(gameId, result)
       } catch {
         // A game that no longer replays is not one anybody is waiting on.
@@ -226,19 +225,12 @@ export class Notifier {
 
     if (length <= meta.lastNotifiedLength) return
 
-    const lines: Line[] = []
-
+    const cards: Card[] = []
     if (after.state.isOver) {
-      const tagged = after.state.winners.map((f) => mentionOf(seats.find((s) => s.faction === f) ?? { faction: f }))
-      const winners = tagged.map((t) => t.text).join(' and ')
-      const mentions = tagged.flatMap((t) => (t.mention === undefined ? [] : [t.mention]))
-      lines.push({ text: `Game over in Arcs — ${winners} wins! ${seatLink(this.origin, gameId)}`, mentions })
+      cards.push(gameOverCard(after.state, seats))
     } else {
       if (before !== null && after.state.chapter !== before.state.chapter) {
-        lines.push({
-          text: `Chapter ${before.state.chapter} is over in Arcs. Chapter ${after.state.chapter} begins.`,
-          mentions: [],
-        })
+        cards.push(chapterCard(before.state, after.state, seats))
       }
       const asked = askedOf(after)
       const seat = asked === undefined ? undefined : seats.find((s) => s.faction === asked)
@@ -258,50 +250,39 @@ export class Notifier {
           })
         } else {
           const inWindow = this.now() - meta.lastNotifiedAt < this.windowMs
-          if (!inWindow || lines.length > 0) {
-            const line = this.turnLine(gameId, seat, after.state.chapter)
-            if (line !== undefined) lines.push(line)
+          if (!inWindow || cards.length > 0) {
+            const card = this.turnCard(gameId, seat, after)
+            if (card !== undefined) cards.push(card)
           }
         }
       }
     }
 
-    await this.postLines(gameId, lines, length)
+    await this.postCards(gameId, cards, length)
   }
 
-  /** Builds the turn-ping line for a seat, or `undefined` when pings are off for it. */
-  private turnLine(gameId: string, seat: SeatRow, chapter: number): Line | undefined {
+  /** The turn-ping card for a seat, or `undefined` when pings are off for it. */
+  private turnCard(gameId: string, seat: SeatRow, result: RuleResult): Card | undefined {
     if (!seat.pings) return undefined
-    const seats = this.store.seats(gameId)
-    const nameOf = (faction: string): string => seats.find((s) => s.faction === faction)?.name ?? faction
-    /*
-     * The game link, not the seat's. The channel is shared, so a seat link there lets anyone who
-     * clicks it play that seat, and their browser then remembers it in place of their own. A bare
-     * game link opens whichever seat this browser last played in the game (`recall` in the web
-     * client), so the player whose turn it is still lands in their seat.
-     */
-    const link = seatLink(this.origin, gameId)
-    if (seat.discordId !== undefined) {
-      return {
-        text: `<@${seat.discordId}> (**${nameOf(seat.faction)}**), it's your turn in Arcs (chapter ${chapter}) — ${link}`,
-        mentions: [seat.discordId],
-      }
-    }
-    return {
-      text: `**${nameOf(seat.faction)}**, it's your turn in Arcs (chapter ${chapter}) — ${link}`,
-      mentions: [],
-    }
+    return turnCard(seat, result, this.store.seats(gameId), this.now())
   }
 
-  /** Posts to the channel; false when it failed or there is no channel. */
-  private async post(...lines: Line[]): Promise<boolean> {
+  /** Posts the cards as one message to the channel; false when it failed or there is no channel. */
+  private async post(gameId: string, ...cards: Card[]): Promise<boolean> {
     if (this.fallbackChannel === undefined) return false
-    const message: Message = {
-      content: lines.map((l) => l.text).join('\n'),
-      mentions: [...new Set(lines.flatMap((l) => l.mentions))],
-    }
     try {
-      await this.fallbackChannel.bot.postMessage(this.fallbackChannel.channelId, message)
+      await this.fallbackChannel.bot.postMessage(this.fallbackChannel.channelId, {
+        content: cards.map((c) => c.content).filter((c) => c !== '').join('\n'),
+        mentions: [...new Set(cards.flatMap((c) => c.mentions))],
+        embeds: cards.map((c) => c.embed),
+        /*
+         * The game link, not the seat's. The channel is shared, so a seat link there lets anyone who
+         * clicks it play that seat, and their browser then remembers it in place of their own. A bare
+         * game link opens whichever seat this browser last played in the game (`recall` in the web
+         * client), so the player whose turn it is still lands in their seat.
+         */
+        link: { label: 'Open game', url: seatLink(this.origin, gameId) },
+      })
       return true
     } catch (e) {
       console.warn('[notify] post failed:', (e as Error).message)
@@ -309,8 +290,8 @@ export class Notifier {
     }
   }
 
-  private async postLines(gameId: string, lines: readonly Line[], length: number): Promise<void> {
-    if (lines.length === 0) return
-    if (await this.post(...lines)) this.store.markNotified(gameId, length, this.now())
+  private async postCards(gameId: string, cards: readonly Card[], length: number): Promise<void> {
+    if (cards.length === 0) return
+    if (await this.post(gameId, ...cards)) this.store.markNotified(gameId, length, this.now())
   }
 }

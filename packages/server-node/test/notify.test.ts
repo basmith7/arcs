@@ -12,16 +12,20 @@ const CHANNEL = 'chan-1'
 
 interface Sent {
   url: string
-  content: string
+  /** Everything a reader sees: the content line, the embeds and the button's link. */
+  text: string
   mentions: readonly string[]
 }
+
+type Posted = import('../src/discord.js').ChannelMessage
+const textOf = (m: Posted): string => [m.content, JSON.stringify(m.embeds ?? []), m.link?.url ?? ''].join('\n')
 
 /** A channel whose bot records posts into `sent`, or throws when `fail` says so. */
 function channel(sent: Sent[], fail = false): NonNullable<NotifierOptions['fallbackChannel']> {
   const bot = {
-    postMessage: async (channelId: string, message: { content: string; mentions: readonly string[] }) => {
+    postMessage: async (channelId: string, message: Posted) => {
       if (fail) throw new Error('boom')
-      sent.push({ url: channelId, content: message.content, mentions: message.mentions })
+      sent.push({ url: channelId, text: textOf(message), mentions: message.mentions })
     },
   } as unknown as import('../src/discord.js').DiscordBot
   return { channelId: CHANNEL, bot }
@@ -34,8 +38,11 @@ async function setup(withChannel = true) {
   const sent: Sent[] = []
   let clock = 1_000_000
   const presence = new Presence({ now: () => clock, activeMs: 120_000 })
+  const start = startGame(THREE_PLAYER) // red is asked
+  const afterRed = replayGame(THREE_PLAYER, RED_OPENING) // red's whole turn done; yellow is asked
   const notifier = new Notifier(store, {
     publicOrigin: 'https://arcs.test',
+    current: () => afterRed,
     ...(withChannel ? { fallbackChannel: channel(sent) } : {}),
     now: () => clock,
     windowMs: 60_000,
@@ -43,8 +50,6 @@ async function setup(withChannel = true) {
     graceMs: 600_000,
     leaveGraceMs: 60_000,
   })
-  const start = startGame(THREE_PLAYER) // red is asked
-  const afterRed = replayGame(THREE_PLAYER, RED_OPENING) // red's whole turn done; yellow is asked
   // Advances the clock to the held ping's due time and sweeps.
   const fireLatest = async (): Promise<void> => {
     const due = store.pendingPing(game.gameId)?.dueAt
@@ -96,18 +101,18 @@ describe('Notifier', () => {
     await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
     expect(sent).toHaveLength(1)
     expect(sent[0]!.url).toBe(CHANNEL)
-    expect(sent[0]!.content).toContain('**Sam**')
+    expect(sent[0]!.text).toContain('**Sam**')
     // The channel is shared: anyone who clicks a seat link becomes that player, and the browser
     // remembers it over their own seat. Each browser recalls its own seat from the bare link.
-    expect(sent[0]!.content).toContain(seatLink('https://arcs.test', game.gameId))
-    for (const s of game.seats) expect(sent[0]!.content).not.toContain(s.seatToken)
+    expect(sent[0]!.text).toContain(seatLink('https://arcs.test', game.gameId))
+    for (const s of game.seats) expect(sent[0]!.text).not.toContain(s.seatToken)
   })
 
   it('falls back to the faction when no name is set and says nothing without a channel', async () => {
     const a = await setup()
     // Only yellow is named. Going "backwards" from afterRed to start makes red the asked faction.
     await a.notifier.onSettled({ gameId: a.game.gameId, before: a.afterRed, after: a.start })
-    expect(a.sent[0]!.content).toContain('**red**')
+    expect(a.sent[0]!.text).toContain('**Red**')
     const b = await setup(false)
     await b.notifier.onSettled({ gameId: b.game.gameId, before: b.start, after: b.afterRed })
     expect(b.sent).toHaveLength(0)
@@ -154,15 +159,15 @@ describe('Notifier', () => {
     }
     await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: nextChapter })
     expect(sent).toHaveLength(2)
-    expect(sent[1]!.content).toMatch(/Chapter 2/)
+    expect(sent[1]!.text).toMatch(/Chapter 2/)
     const over: RuleResult = {
       state: { ...nextChapter.state, isOver: true, winners: ['yellow'], journal: [...RED_OPENING, 'x', 'y'] },
       continue: { kind: 'gameOver', winners: ['yellow'], reason: 'test' },
     }
     await notifier.onSettled({ gameId: game.gameId, before: nextChapter, after: over })
     expect(sent).toHaveLength(3)
-    expect(sent[2]!.content).toContain('Sam')
-    expect(sent[2]!.content).toMatch(/wins/i)
+    expect(sent[2]!.text).toContain('Sam')
+    expect(sent[2]!.text).toMatch(/wins/i)
   })
 
   it('tags a linked player with <@id> and lists their id in mentions; untagged pings mention nothing', async () => {
@@ -172,14 +177,15 @@ describe('Notifier', () => {
     const sent: Sent[] = []
     const notifier = new Notifier(store, {
       publicOrigin: 'https://arcs.test',
+      current: () => undefined,
       fallbackChannel: channel(sent),
       windowMs: 60_000,
     })
     const start = startGame(THREE_PLAYER)
     const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
     await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
-    expect(sent[0]!.content).toContain('<@111222333444555666>')
-    expect(sent[0]!.content).toContain('**Sam**')
+    expect(sent[0]!.text).toContain('<@111222333444555666>')
+    expect(sent[0]!.text).toContain('Your turn, Sam (Yellow)')
     expect(sent[0]!.mentions).toEqual(['111222333444555666'])
 
     // red (untagged, no discord link) mentions nothing on their own ping.
@@ -188,6 +194,7 @@ describe('Notifier', () => {
     const sent2: Sent[] = []
     const notifier2 = new Notifier(store2, {
       publicOrigin: 'https://arcs.test',
+      current: () => undefined,
       fallbackChannel: channel(sent2),
     })
     await notifier2.onSettled({ gameId: game2.gameId, before: afterRed, after: start })
@@ -203,13 +210,14 @@ describe('Notifier', () => {
     const sent: Sent[] = []
     const notifier = new Notifier(store, {
       publicOrigin: 'https://arcs.test',
+      current: () => undefined,
       fallbackChannel: channel(sent),
       windowMs: 60_000,
     })
     const start = startGame(THREE_PLAYER)
     const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
     await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
-    expect(sent[0]!.content).toContain('<@111222333444555666>')
+    expect(sent[0]!.text).toContain('<@111222333444555666>')
     expect(sent[0]!.mentions).toEqual(['111222333444555666'])
   })
 
@@ -220,6 +228,7 @@ describe('Notifier', () => {
     const sent: Sent[] = []
     const notifier = new Notifier(store, {
       publicOrigin: 'https://arcs.test',
+      current: () => undefined,
       fallbackChannel: channel(sent),
     })
     const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
@@ -228,7 +237,7 @@ describe('Notifier', () => {
       continue: { kind: 'gameOver', winners: ['yellow'], reason: 'test' },
     }
     await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: over })
-    expect(sent[0]!.content).toContain('<@111222333444555666>')
+    expect(sent[0]!.text).toContain('<@111222333444555666>')
     expect(sent[0]!.mentions).toEqual(['111222333444555666'])
   })
 
@@ -243,6 +252,7 @@ describe('Notifier', () => {
     } as unknown as import('../src/discord.js').DiscordBot
     const notifier = new Notifier(store, {
       publicOrigin: 'https://arcs.test',
+      current: () => undefined,
       fallbackChannel: { channelId: 'chan-1', bot: fakeBot },
     })
     const start = startGame(THREE_PLAYER)
@@ -253,7 +263,7 @@ describe('Notifier', () => {
 
     const store2 = new SqliteStore(':memory:')
     const game2 = await store2.create(THREE_PLAYER, THREE_PLAYER.factions)
-    const notifier2 = new Notifier(store2, { publicOrigin: 'https://arcs.test' })
+    const notifier2 = new Notifier(store2, { publicOrigin: 'https://arcs.test', current: () => undefined })
     const sentNone: unknown[] = []
     await notifier2.onSettled({ gameId: game2.gameId, before: start, after: afterRed })
     expect(sentNone).toHaveLength(0)
@@ -264,6 +274,7 @@ describe('Notifier', () => {
     const game = await store.create(THREE_PLAYER, THREE_PLAYER.factions)
     const notifier = new Notifier(store, {
       publicOrigin: 'https://arcs.test',
+      current: () => undefined,
       fallbackChannel: channel([], true),
     })
     await expect(
@@ -283,7 +294,7 @@ describe('Notifier', () => {
     expect(socket.sent[0]).toMatchObject({ turn: { faction: 'yellow', length: RED_OPENING.length } })
     await fireLatest()
     expect(sent).toHaveLength(1)
-    expect(sent[0]!.content).toContain('**Sam**')
+    expect(sent[0]!.text).toContain('**Sam**')
   })
 
   it('drops the held ping when the active player acts before it fires', async () => {
@@ -331,7 +342,7 @@ describe('Notifier', () => {
     expect(store.pendingPing(game.gameId)!.dueAt).toBe(1_000_000 + 60_000)
     await fireLatest()
     expect(sent).toHaveLength(1)
-    expect(sent[0]!.content).toContain('**Sam**')
+    expect(sent[0]!.text).toContain('**Sam**')
   })
 
   it('suppresses a deferred turn ping when a chapter message already posted inside the rate window', async () => {
@@ -343,11 +354,116 @@ describe('Notifier', () => {
     const chapterEnd = { ...afterRed, state: { ...afterRed.state, chapter: start.state.chapter + 1 } }
     await notifier.onSettled({ gameId: game.gameId, before: start, after: chapterEnd })
     expect(sent).toHaveLength(1)
-    expect(sent[0]!.content).toContain('Chapter')
+    expect(sent[0]!.text).toContain('Chapter')
     tick(10_000) // well inside the 60s window; pretend the grace is up
     store.setPendingPing({ ...store.pendingPing(game.gameId)!, dueAt: 0 })
     await notifier.sweep()
     expect(sent).toHaveLength(1)
+  })
+
+  it('the turn card says what the player faces and shows the public table', async () => {
+    const { store, game, start, afterRed } = await setup()
+    const posts: Posted[] = []
+    const notifierWith = new Notifier(store, {
+      publicOrigin: 'https://arcs.test',
+      current: () => undefined,
+      fallbackChannel: { channelId: CHANNEL, bot: { postMessage: async (_c: string, m: Posted) => void posts.push(m) } as never },
+    })
+    // Yellow answers red's face-up lead; red's declaration is public, so the card names it.
+    await notifierWith.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    const yellow = posts[0]!.embeds![0]!
+    expect(yellow).toMatchObject({
+      title: 'Your turn, Sam (Yellow)',
+      description: 'Red led **Aggression** and declared **Warlord**.',
+      author: { name: 'Arcs · Chapter 1 · Round 1' },
+    })
+    expect(yellow.fields).toContainEqual({ name: 'Declared', value: 'Warlord (5/3)', inline: true })
+    expect(posts[0]!.link).toEqual({ label: 'Open game', url: seatLink('https://arcs.test', game.gameId) })
+  })
+
+  it('the player who leads is told so', async () => {
+    const a = await setup()
+    // Going "backwards" from afterRed to start makes red, who opens the round, the asked faction.
+    await a.notifier.onSettled({ gameId: a.game.gameId, before: a.afterRed, after: a.start })
+    expect(a.sent[0]!.text).toContain('You lead this round.')
+  })
+
+  it('the chapter card lists who scored each declared ambition and the power after', async () => {
+    const { game, sent, notifier, afterRed } = await setup()
+    const before: RuleResult = {
+      ...afterRed,
+      state: { ...afterRed.state, declared: [{ ambition: 'Tycoon', marker: { high: 5, low: 3 }, round: 1, by: 'red' }] },
+    }
+    const after: RuleResult = {
+      ...afterRed,
+      state: {
+        ...afterRed.state,
+        chapter: 2,
+        declared: [],
+        power: { red: 5, yellow: 3, blue: 0 },
+        journal: [...RED_OPENING, 'x'],
+        log: [...afterRed.state.log, 'red won Tycoon for 5 power', 'yellow placed second in Tycoon for 3 power'],
+      },
+    }
+    await notifier.onSettled({ gameId: game.gameId, before, after })
+    expect(sent[0]!.text).toContain('Chapter 1 scored — Chapter 2 begins')
+    expect(sent[0]!.text).toContain(JSON.stringify({ name: 'Tycoon', value: '🔴 Red +5\n🟡 Sam +3', inline: true }))
+    expect(sent[0]!.text).toContain(JSON.stringify({ name: 'Power', value: '🔴 Red 5\n🟡 Sam 3\n🔵 Blue 0', inline: false }))
+  })
+
+  it('an ambition nobody placed in still gets a non-empty field (Discord rejects empty ones)', async () => {
+    const { game, sent, notifier, afterRed } = await setup()
+    const before: RuleResult = {
+      ...afterRed,
+      state: { ...afterRed.state, declared: [{ ambition: 'Tycoon', marker: { high: 5, low: 3 }, round: 1, by: 'red' }] },
+    }
+    // Two-player games: the out-of-play resources can take first with no one second, and no "No one scored" line.
+    const after: RuleResult = {
+      ...afterRed,
+      state: {
+        ...afterRed.state,
+        chapter: 2,
+        declared: [],
+        journal: [...RED_OPENING, 'x'],
+        log: [...afterRed.state.log, 'the out-of-play resources lead Tycoon; no one takes first'],
+      },
+    }
+    await notifier.onSettled({ gameId: game.gameId, before, after })
+    expect(sent[0]!.text).toContain(JSON.stringify({ name: 'Tycoon', value: 'No one scored', inline: true }))
+  })
+
+  it('a game that no longer replays does not hold up another game\'s held ping', async () => {
+    const store = new SqliteStore(':memory:')
+    const broken = await store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const fine = await store.create(THREE_PLAYER, THREE_PLAYER.factions)
+    const afterRed = replayGame(THREE_PLAYER, RED_OPENING)
+    for (const g of [broken, fine]) {
+      for (let i = 0; i < RED_OPENING.length; i += 1) await store.append(g.gameId, g.seats[0]!.seatToken, i, `f${i}`)
+      store.setPendingPing({ gameId: g.gameId, seatToken: g.seats[1]!.seatToken, journalLength: RED_OPENING.length, chapter: 1, dueAt: 0 })
+    }
+    const sent: Sent[] = []
+    const notifier = new Notifier(store, {
+      publicOrigin: 'https://arcs.test',
+      current: (id) => {
+        if (id === broken.gameId) throw new Error('journal does not replay')
+        return afterRed
+      },
+      fallbackChannel: channel(sent),
+      now: () => 1_000_000,
+    })
+    await notifier.sweep()
+    expect(sent.map((m) => m.text.includes(fine.gameId))).toEqual([true])
+  })
+
+  it('the game-over card ranks every faction by power', async () => {
+    const { game, sent, notifier, afterRed } = await setup()
+    const over: RuleResult = {
+      state: { ...afterRed.state, isOver: true, winners: ['blue'], power: { red: 20, yellow: 18, blue: 31 }, journal: [...RED_OPENING, 'x'] },
+      continue: { kind: 'gameOver', winners: ['blue'], reason: 'test' },
+    }
+    await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: over })
+    expect(sent[0]!.text).toContain('🏆 Blue wins')
+    expect(sent[0]!.text).toContain(JSON.stringify('🥇 Blue 31\n🥈 Red 20\n🥉 Sam 18'))
   })
 
   it('posts immediately for an active winner on game over, ignoring presence', async () => {
@@ -361,6 +477,6 @@ describe('Notifier', () => {
     }
     await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: over })
     expect(sent).toHaveLength(1)
-    expect(sent[0]!.content).toMatch(/wins/i)
+    expect(sent[0]!.text).toMatch(/wins/i)
   })
 })

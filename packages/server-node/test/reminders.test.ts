@@ -18,10 +18,7 @@ const HOUR = 3_600_000
 const MOVED = Date.parse('2026-10-10T20:00:00Z')
 const YELLOW_ID = '111222333444555666'
 
-interface Sent {
-  content: string
-  mentions: readonly string[]
-}
+type Sent = import('../src/discord.js').ChannelMessage
 
 function channel(sent: Sent[]) {
   const bot = {
@@ -38,8 +35,11 @@ async function setup({ reminder = true, discord = true }: { reminder?: boolean; 
   store.setName(game.gameId, yellow.seatToken, 'Sam', discord ? { id: YELLOW_ID } : undefined)
   const sent: Sent[] = []
   let clock = MOVED
+  const start = startGame(THREE_PLAYER)
+  const afterRed = replayGame(THREE_PLAYER, RED_OPENING) // yellow is asked
   const notifier = new Notifier(store, {
     publicOrigin: 'https://arcs.test',
+    current: () => afterRed,
     fallbackChannel: channel(sent),
     now: () => clock,
     ...(reminder ? { reminder: { time: TIME, tz: TZ } } : {}),
@@ -54,8 +54,6 @@ async function setup({ reminder = true, discord = true }: { reminder?: boolean; 
     raw.close()
   }
   pin(MOVED)
-  const start = startGame(THREE_PLAYER)
-  const afterRed = replayGame(THREE_PLAYER, RED_OPENING) // yellow is asked
   await notifier.onSettled({ gameId: game.gameId, before: start, after: afterRed })
   sent.length = 0 // forget the turn ping itself
   return { path, store, game, sent, notifier, afterRed, pin, at: (iso: string) => (clock = Date.parse(iso)), set: (ms: number) => (clock = ms) }
@@ -74,10 +72,13 @@ describe('daily stall reminder', () => {
     t.at('2026-10-11T23:30:00Z')
     await t.notifier.sweep()
     expect(t.sent).toHaveLength(1)
-    expect(t.sent[0]!.content).toBe(
-      `<@${YELLOW_ID}> still your turn in Arcs — 1 day since the last move: https://arcs.test/#/g/${t.game.gameId}`,
-    )
-    expect(t.sent[0]!.mentions).toEqual([YELLOW_ID])
+    const link = `https://arcs.test/#/g/${t.game.gameId}`
+    expect(t.sent[0]).toMatchObject({
+      content: `<@${YELLOW_ID}> still your turn in Arcs — 1 day since the last move`,
+      mentions: [YELLOW_ID],
+      embeds: [{ title: 'Waiting on Sam (Yellow) — 1 day', footer: { text: 'Reminder 1 of 7 · last move' } }],
+      link: { url: link },
+    })
     // Same slot, further sweeps: nothing more.
     t.at('2026-10-11T23:31:00Z')
     await t.notifier.sweep()
@@ -117,7 +118,7 @@ describe('daily stall reminder', () => {
     t.at('2026-10-14T23:30:00Z')
     await t.notifier.sweep()
     expect(t.sent).toHaveLength(0)
-    t.notifier.watchStalls(() => t.afterRed)
+    t.notifier.watchStalls()
     await t.notifier.sweep()
     expect(t.sent).toHaveLength(1)
     expect(t.sent[0]!.content).toContain('4 days since the last move')
@@ -195,6 +196,7 @@ describe('durable pending pings', () => {
     const make = (s: SqliteStore, p?: Presence) =>
       new Notifier(s, {
         publicOrigin: 'https://arcs.test',
+        current: () => replayGame(THREE_PLAYER, RED_OPENING),
         fallbackChannel: channel(sent),
         now: () => clock,
         graceMs: 600_000,
@@ -238,7 +240,7 @@ describe('durable pending pings', () => {
     })
     store.markNotified(game.gameId, RED_OPENING.length - 1, 0)
     const sent: Sent[] = []
-    const n = new Notifier(store, { publicOrigin: 'https://arcs.test', fallbackChannel: channel(sent), now: () => 1_000_000 })
+    const n = new Notifier(store, { publicOrigin: 'https://arcs.test', current: () => undefined, fallbackChannel: channel(sent), now: () => 1_000_000 })
     await n.onSettled({ gameId: game.gameId, before: null, after: replayGame(THREE_PLAYER, RED_OPENING) })
     expect(store.pendingPing(game.gameId)).toBeDefined()
   })

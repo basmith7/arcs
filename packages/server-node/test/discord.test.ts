@@ -103,6 +103,25 @@ describe('DiscordBot.postMessage', () => {
     expect(body.allowed_mentions).toEqual({ parse: [], users: ['1'] })
   })
 
+  it('sends embeds and the link as a link button', async () => {
+    let body: unknown
+    const fetchFn = fakeFetch((_url, init) => {
+      body = JSON.parse(init!.body as string)
+      return new Response(null, { status: 200 })
+    })
+    const bot = new DiscordBot({ token: TOKEN, guildId: GUILD, fetch: fetchFn })
+    await bot.postMessage('chan-1', {
+      content: '',
+      mentions: [],
+      embeds: [{ title: 'Your turn' }],
+      link: { label: 'Open game', url: 'https://arcs.test/#/g/1' },
+    })
+    expect(body).toMatchObject({
+      embeds: [{ title: 'Your turn' }],
+      components: [{ type: 1, components: [{ type: 2, style: 5, label: 'Open game', url: 'https://arcs.test/#/g/1' }] }],
+    })
+  })
+
   it('throws on a non-2xx response', async () => {
     const fetchFn = fakeFetch(() => new Response(null, { status: 500 }))
     const bot = new DiscordBot({ token: TOKEN, guildId: GUILD, fetch: fetchFn })
