@@ -390,7 +390,7 @@ describe('Notifier', () => {
       continue: { kind: 'ask', faction: 'yellow', actions: [{ type: 'probe/pick' }], prompt: 'Pick a system red or blue rules' },
     }
     await notifier.onSettled({ gameId: game.gameId, before: start, after: asked })
-    expect(sent[0]!.text).toContain('Pick a system Brian or Blue rules')
+    expect(sent[0]!.text).toContain('Pick a system Brian or blue rules')
   })
 
   it('the player who leads is told so', async () => {

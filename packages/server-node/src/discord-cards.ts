@@ -11,7 +11,7 @@
  * The `content` line carries the @mention (Discord pings only from `content`, never from an embed)
  * and is what a phone notification shows, so it says on its own whose turn it is.
  */
-import { buildChapterReport, OPENERS, standings } from '@arcs/engine'
+import { buildChapterReport, OPENERS, standings, withNames } from '@arcs/engine'
 import type { Ask, FactionId, GameState, RuleResult } from '@arcs/engine'
 
 import type { SeatRow } from './sqlite-store.js'
@@ -58,9 +58,10 @@ const seatOf = (seats: readonly Seat[], faction: string): Seat => seats.find((s)
 const nameOf = (seat: Seat): string => seat.name ?? title(seat.faction)
 const nameIn = (seats: readonly Seat[], faction: string): string => nameOf(seatOf(seats, faction))
 
-/** Engine prompts name factions by colour id ("red — Prelude"); swap in the players' names. */
-function withNames(text: string, seats: readonly Seat[]): string {
-  return text.replace(/\b(red|yellow|blue|white)\b/g, (f) => nameIn(seats, f))
+/** Engine prompts name factions by colour id ("red — Prelude"); swap in the named seats' names. */
+function namesIn(text: string, seats: readonly Seat[]): string {
+  const named = seats.filter((s) => s.name !== undefined).map((s) => s.faction as FactionId)
+  return withNames(text, named, (f) => nameIn(seats, f))
 }
 
 /** `<@id>` for a linked seat (pings them), else the bold name. */
@@ -102,7 +103,7 @@ function askOf(result: RuleResult, faction: string): Ask | undefined {
 function situation(result: RuleResult, faction: FactionId, seats: readonly Seat[]): string | undefined {
   const ask = askOf(result, faction)
   if (ask === undefined) return undefined
-  if (!ask.actions.some((a) => OPENERS.has(a.type))) return ask.prompt === undefined ? undefined : withNames(ask.prompt, seats)
+  if (!ask.actions.some((a) => OPENERS.has(a.type))) return ask.prompt === undefined ? undefined : namesIn(ask.prompt, seats)
   const lead = result.state.lead
   if (lead === undefined || lead.faction === faction) return 'You lead this round.'
   const who = nameIn(seats, lead.faction)

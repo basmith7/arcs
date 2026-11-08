@@ -181,7 +181,7 @@ function Parts({
   return (
     <>
       {parts.map((part, i) => {
-        if (part.kind === 'text') return <span key={i}>{part.text}</span>
+        if (part.kind === 'text') return <span key={i}>{store.namesIn(part.text)}</span>
         if (part.kind === 'system') {
           /*
            * Not a button. The row already carries the pointing, so this is a mark on the text

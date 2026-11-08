@@ -2,6 +2,7 @@
 
 Moved from AGENTS.md on 2026-10-08. Newest first.
 
+- **v0.20.0** player names in place of colours: the player boards, log headings and log text ("swapped a card with Neal"; a colour naming a piece, "a red Ship", stays), prompts, battle, raid, court, draft, interlude and game-over screens, and the Discord cards (no more "(Yellow)"). Unnamed seats (hotseat, bots) still show the colour. Action button labels and the map's event caption still use colours
 - **v0.19.0** Discord pings are embed cards posted by **Jarvis** (was Pikachu; login stays on the Pikachu app): the turn ping says what you face (the face-up lead and any declaration, or the engine's prompt) with power, declared ambitions and initiative; a chapter end shows who scored each ambition; game over ranks everyone with medals; the stall reminder counts "Reminder n of 7". Each carries an **Open game** button. Needs Jarvis's token as `DISCORD_BOT_TOKEN` in Tower's arcs `.env`
 - **v0.18.3** catch-up stories are written by `deepseek-flash` (was `deepseek-v4-pro`, about 3–4× the price); `recap --story` defaults to flash too.
 - **v0.18.2** no app change: the image runs on Node 24 (`node:24-alpine`), and the v0.16.3 CA workaround is gone now that nodejs/node#66871 shipped; `engines`, `@types/node` and the esbuild targets follow
