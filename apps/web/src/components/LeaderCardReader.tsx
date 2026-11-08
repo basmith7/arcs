@@ -102,7 +102,7 @@ export function CardPill({
          * appears in places where whose card it is carries the meaning — a battle interrupt is
          * only comprehensible if you know which side owns the card that fired.
          */
-        title={`${cardName(id, kind)} — ${owner === undefined ? kind : `${owner}'s ${kind}`}, click to read`}
+        title={`${cardName(id, kind)} — ${owner === undefined ? kind : `${store.nameOf(owner)}'s ${kind}`}, click to read`}
         onClick={() => setOpen(true)}
       >
         <span className="pb-guild-name">{cardName(id, kind)}</span>
@@ -153,7 +153,7 @@ export function LeaderCardReader({
 
           {owner !== undefined ? (
             <div className="draft-held" style={{ color: colorOf(owner) }}>
-              held by {owner}
+              held by {store.nameOf(owner)}
             </div>
           ) : null}
 

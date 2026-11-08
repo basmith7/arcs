@@ -115,7 +115,7 @@ export function ScoreboardPanel({ state }: { state: GameState }): JSX.Element {
     }
   }, [state])
   if (facts === null) return <p className="sb-quiet">The scoreboard could not be worked out for this position.</p>
-  return <Scoreboard facts={facts} name={(f) => store.seatName(f) ?? f} />
+  return <Scoreboard facts={facts} name={(f) => store.nameOf(f)} />
 }
 
 /** The desktop dialog, in the Settings shell: ✕, Esc and a backdrop click close it. */

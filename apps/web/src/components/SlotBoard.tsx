@@ -181,7 +181,7 @@ export function SlotBoard({ state, cont }: { state: GameState; cont: Continue })
         <div className="da-head" {...drag.handle}>
           <span className="da-title">Resource slots</span>
           <span className="da-prompt" style={{ color: colorOf(faction as FactionId) }}>
-            {cont.prompt ?? faction}
+            {cont.prompt !== undefined ? store.namesIn(cont.prompt) : store.nameOf(faction)}
           </span>
         </div>
 

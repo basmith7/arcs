@@ -158,9 +158,9 @@ export function DamageAssign({
     phase === 'self'
       ? `Assign ${ctx.self} self-hit${ctx.self === 1 ? '' : 's'} — pick your own ships`
       : phase === 'ships'
-        ? `Assign ${ctx.ships} hit${ctx.ships === 1 ? '' : 's'} to ${ctx.enemy} ships`
+        ? `Assign ${ctx.ships} hit${ctx.ships === 1 ? '' : 's'} to ${store.nameOf(ctx.enemy)} ships`
         : phase === 'buildings'
-          ? `Assign ${ctx.buildings} hit${ctx.buildings === 1 ? '' : 's'} to ${ctx.enemy} buildings`
+          ? `Assign ${ctx.buildings} hit${ctx.buildings === 1 ? '' : 's'} to ${store.nameOf(ctx.enemy)} buildings`
           : assigned > 0
             ? 'Damage assigned — confirm, or start over'
             : 'No effect — the dice came up empty'
@@ -185,12 +185,12 @@ export function DamageAssign({
              */
             <div className="da-note da-note-card">
               <CardPill id={RAILGUN_ARRAYS} kind="lore" owner={ctx.enemy as FactionId} />
-              <span>{ctx.enemy} strikes first, before you collect any dice.</span>
+              <span>{store.nameOf(ctx.enemy)} strikes first, before you collect any dice.</span>
             </div>
           ) : null}
           {(ctx.intercepted ?? 0) > 0 ? (
             <div className="da-note">
-              Intercepted — {ctx.intercepted} of those self-hits are {ctx.enemy} striking back.
+              Intercepted — {ctx.intercepted} of those self-hits are {store.nameOf(ctx.enemy)} striking back.
             </div>
           ) : null}
 
@@ -206,7 +206,7 @@ export function DamageAssign({
             active={phase === 'self'}
           />
           <Force
-            label={`${ctx.enemy} force`}
+            label={`${store.nameOf(ctx.enemy)} force`}
             color={ctx.enemy}
             pieces={theirs}
             onBoard={onBoard}
@@ -268,7 +268,7 @@ export function Forces({
         active
       />
       <Force
-        label={`${enemy} force`}
+        label={`${store.nameOf(enemy)} force`}
         color={enemy}
         pieces={rosterFor(state, system, enemy, [])}
         onBoard={onBoard}

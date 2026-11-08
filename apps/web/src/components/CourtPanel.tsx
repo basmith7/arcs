@@ -91,7 +91,7 @@ export function CourtPanel({ state }: { state: GameState }): JSX.Element {
                 key={a.faction}
                 className={`court-pip${a.faction === s.leader ? ' leads' : ''}`}
                 style={{ borderColor: colorOf(a.faction) }}
-                title={`${a.faction}: ${a.count} agent${a.count === 1 ? '' : 's'}`}
+                title={`${store.nameOf(a.faction)}: ${a.count} agent${a.count === 1 ? '' : 's'}`}
               >
                 <img
                   className="court-pip-agent"
@@ -121,14 +121,14 @@ export function CourtPanel({ state }: { state: GameState }): JSX.Element {
               <div
                 key={a.faction}
                 className="cm-row"
-                title={`${a.faction}: ${a.count} agent${a.count === 1 ? '' : 's'}`}
+                title={`${store.nameOf(a.faction)}: ${a.count} agent${a.count === 1 ? '' : 's'}`}
               >
                 {Array.from({ length: a.count }, (_, i) => (
                   <img
                     key={i}
                     className="cm-agent"
                     src={figureArt(a.faction, 'agent') ?? undefined}
-                    alt={i === 0 ? `${a.faction}: ${a.count} agents` : ''}
+                    alt={i === 0 ? `${store.nameOf(a.faction)}: ${a.count} agents` : ''}
                   />
                 ))}
               </div>
@@ -137,7 +137,7 @@ export function CourtPanel({ state }: { state: GameState }): JSX.Element {
           <div className="cm-note">
             {zoomed.leader === undefined
               ? 'Tied — nobody may secure this card.'
-              : `${zoomed.leader} leads and may secure it.`}
+              : `${store.nameOf(zoomed.leader)} leads and may secure it.`}
           </div>
         </CardZoom>
       ) : null}

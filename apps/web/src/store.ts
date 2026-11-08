@@ -28,6 +28,7 @@ import {
   seatTurn,
   seatAsk,
   OPENERS,
+  withNames,
 } from '@arcs/engine'
 import type {
   Action,
@@ -567,6 +568,28 @@ class GameStore {
 
   seatName(faction: string): string | undefined {
     return this.seats.find((s) => s.faction === faction)?.name
+  }
+
+  /** The seat's player name, or the faction's colour id when the seat has no name (hotseat, bots). */
+  nameOf(faction: string): string {
+    return this.seatName(faction) ?? faction
+  }
+
+  /**
+   * `text` (an engine prompt) with each named seat's colour id swapped for its player name. Only
+   * named seats are swapped, so a game without names keeps its text exactly, capitals included.
+   */
+  namesIn(text: string): string {
+    const named = this.seats.filter((s) => s.name !== undefined).map((s) => s.faction as FactionId)
+    return withNames(text, named, (f) => this.nameOf(f))
+  }
+
+  /**
+   * An ask's prompt for display beside the asked seat's name: the engine opens many prompts with that
+   * faction ("red leads", "red — Farseers…"), which the name beside it already says.
+   */
+  promptOf(faction: string, prompt: string): string {
+    return this.namesIn(prompt.replace(new RegExp(`^${faction}(\\s*—\\s*|\\s+)`), ''))
   }
 
   /** `null` when this client holds no seat (hotseat or spectator); otherwise the name or undefined. */

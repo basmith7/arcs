@@ -132,7 +132,7 @@ function LeaderPortrait({
     <div className={`gos-plaque${hero ? ' hero' : ''}`} style={frame}>
       <img src={figureArt(faction, 'flagship') ?? figureArt(faction, 'city') ?? undefined} alt="" />
       <span style={{ color: colorOf(faction) === '#e8e8ea' ? textOn(faction) : colorOf(faction) }}>
-        {faction}
+        {store.nameOf(faction)}
       </span>
     </div>
   )

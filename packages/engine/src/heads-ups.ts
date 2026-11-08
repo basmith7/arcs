@@ -11,7 +11,7 @@ import type { RuleRegistry } from './dispatch.js'
 import { gameFacts, piecesIn } from './facts.js'
 import type { FactionFacts, GameFacts } from './facts.js'
 import { CourtPile, courtCard } from './court.js'
-import { Location, parseFigureId } from './ids.js'
+import { Location, parseFigureId, PIECES } from './ids.js'
 import type { FactionId, SystemId } from './ids.js'
 import { observe } from './observe.js'
 import type { Resource } from './resources.js'
@@ -243,9 +243,14 @@ export function seatFacts(before: GameState, now: GameState, faction: FactionId,
   }
 }
 
-/** A heads-up (or any fact text) with the table's faction ids replaced by player names. */
+/**
+ * A heads-up (or any fact text) with the table's faction ids replaced by player names. A colour
+ * naming a piece stays: the log's "lost a red Ship" is about the piece, not the player.
+ */
 export function withNames(text: string, factions: readonly FactionId[], name: (f: FactionId) => string): string {
   if (factions.length === 0) return text
   // Case-blind: a story may open a sentence with a colour ("Yellow seized…").
-  return text.replace(new RegExp(`\\b(${factions.join('|')})\\b`, 'gi'), (f) => name(f.toLowerCase() as FactionId))
+  const pieces = PIECES.map((p) => (p === 'City' ? 'Cit(?:y|ies)' : `${p}s?`)).join('|')
+  const ids = new RegExp(`\\b(${factions.join('|')})\\b(?!\\s+(?:${pieces})\\b)`, 'gi')
+  return text.replace(ids, (f) => name(f.toLowerCase() as FactionId))
 }

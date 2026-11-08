@@ -31,6 +31,7 @@ import type { SlotGroupInfo, SlotInfo } from '../slots.js'
 import type { FactionId, GameState, Resource } from '@arcs/engine'
 import { useState } from 'react'
 
+import { store } from '../store.js'
 import { colorOf, figureArt } from '../theme.js'
 import { CardZoom } from './CardZoom.js'
 import { CardPill, LeaderCardReader, cardArt, cardName } from './LeaderCardReader.js'
@@ -340,8 +341,8 @@ function InitiativeMark({
       className={`pb-init${seized ? ' seized' : ''}`}
       title={
         seized
-          ? `${board.faction} seized — takes the initiative next round`
-          : `${board.faction} holds the initiative and leads this round`
+          ? `${store.nameOf(board.faction)} seized — takes the initiative next round`
+          : `${store.nameOf(board.faction)} holds the initiative and leads this round`
       }
     >
       <img src={asset('game-assets/icon/initiative.webp')} alt="Initiative marker" />
@@ -664,7 +665,7 @@ function NamePlate({ faction, mini = false }: { faction: FactionId; mini?: boole
       style={{ ['--faction']: colorOf(faction) } as React.CSSProperties}
     >
       {ship !== null ? <img className="pb-name-mark" src={ship} alt="" /> : null}
-      <span className="pb-name-text">{faction}</span>
+      <span className="pb-name-text">{store.nameOf(faction)}</span>
     </span>
   )
 }

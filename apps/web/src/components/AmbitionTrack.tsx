@@ -309,7 +309,7 @@ export function AmbitionTrack({
               onPointerEnter={hoverTip}
               onPointerLeave={unhoverTip}
               onClick={tapTip}
-              data-tip={`${holder}'s ${courtCard(card).name}: the ${n} ${resource} in the supply count toward ${holder}'s Tycoon — held on the card, and ${holder} can't spend them`}
+              data-tip={`${store.nameOf(holder)}'s ${courtCard(card).name}: the ${n} ${resource} in the supply count toward ${store.nameOf(holder)}'s Tycoon — held on the card, and ${store.nameOf(holder)} can't spend them`}
             >
               {n}
             </span>

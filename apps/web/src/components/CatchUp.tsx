@@ -120,7 +120,7 @@ export function CatchUpSlot({
       story={story}
       pending={story === null && store.catchupEnabled() && settled === null}
       factions={factions}
-      name={(f) => store.seatName(f) ?? f}
+      name={(f) => store.nameOf(f)}
       collapsed={phone}
       compact={compact}
       onToggle={played ? () => setExpanded(compact ? turn : null) : undefined}
