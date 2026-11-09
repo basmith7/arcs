@@ -114,14 +114,15 @@ function situation(result: RuleResult, faction: FactionId, seats: readonly Seat[
     : `${who} led **${lead.suit}** and declared **${declared.ambition}**.`
 }
 
-/** Discord's cap on a field's value. */
-const FIELD_MAX = 1024
+/** Discord's cap on an embed's description. */
+const DESCRIPTION_MAX = 4096
+const RECAP_HEAD = '**Since your last turn**'
 
 /**
- * Log lines as one line per turn: "🟡 **Neal** surpassed with Mobilization-2 · moved 2 ships …".
- * Every line of a turn opens with its actor's faction id, so a change of prefix is a new turn; a
- * line with no actor (a round ending) stands alone. A copied card is played face down, so its id
- * stays out of the channel though the engine's log has it.
+ * Log lines folded to one line per run of the same actor: "🟡 **Neal** surpassed with
+ * Mobilization-2 · moved 2 ships …". The engine opens a line with its actor's faction id; a line
+ * with none (a round ending, the initiative passing) stands alone. A copied card is played face
+ * down, so its id stays out of the channel though the engine's log has it.
  */
 function turnLines(log: readonly string[], state: GameState, seats: readonly Seat[]): string[] {
   const turns: { faction: FactionId | undefined; did: string[] }[] = []
@@ -138,12 +139,12 @@ function turnLines(log: readonly string[], state: GameState, seats: readonly Sea
   )
 }
 
-/** The lines as one field value: when they overflow it, the latest that fit, the cut marked. */
-function fitField(lines: readonly string[]): string {
+/** The lines in at most `max` characters: when they overflow it, the latest that fit, the cut marked. */
+function fit(lines: readonly string[], max: number): string {
   let kept = lines
   const text = (): string => (kept.length < lines.length ? ['…', ...kept] : kept).join('\n')
-  while (kept.length > 1 && text().length > FIELD_MAX) kept = kept.slice(1)
-  return text().length > FIELD_MAX ? `${text().slice(0, FIELD_MAX - 1)}…` : text()
+  while (kept.length > 1 && text().length > max) kept = kept.slice(1)
+  return text().length > max ? `${text().slice(0, max - 1)}…` : text()
 }
 
 const where = (state: GameState): string => `Chapter ${state.chapter} · Round ${state.round}`
@@ -160,11 +161,11 @@ export function turnCard(
   since: readonly string[],
 ): Card {
   const who = tag(seat)
-  const description = situation(result, seat.faction as FactionId, seats)
-  const fields = tableFields(result.state, seats)
+  const facing = situation(result, seat.faction as FactionId, seats)
+  const parts = facing === undefined ? [] : [facing]
   if (since.length > 0) {
-    const value = fitField(turnLines(since, result.state, seats))
-    fields.push({ name: 'Since your last turn', value, inline: false })
+    const room = DESCRIPTION_MAX - RECAP_HEAD.length - 1 - (facing === undefined ? 0 : facing.length + 2)
+    parts.push(`${RECAP_HEAD}\n${fit(turnLines(since, result.state, seats), room)}`)
   }
   return {
     content: `${who.text}, your turn in Arcs (${where(result.state).toLowerCase()})`,
@@ -173,8 +174,8 @@ export function turnCard(
       author: { name: `Arcs · ${where(result.state)}` },
       title: `Your turn, ${nameOf(seat)}`,
       color: COLOR[seat.faction] ?? NEUTRAL,
-      ...(description === undefined ? {} : { description }),
-      fields,
+      ...(parts.length === 0 ? {} : { description: parts.join('\n\n') }),
+      fields: tableFields(result.state, seats),
       timestamp: new Date(now).toISOString(),
     },
   }

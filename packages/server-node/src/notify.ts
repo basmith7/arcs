@@ -274,16 +274,15 @@ export class Notifier {
   private since(gameId: string, faction: FactionId, result: RuleResult): readonly string[] {
     const options = this.store.options(gameId) as NewGameOptions | undefined
     if (options === undefined || seatAsk(result.continue, faction) !== 'opener') return []
-    const journal = result.state.journal
-    try {
-      const { since } = seatTurn(options, journal, faction, this.registry)
-      const before = replayGame(options, journal.slice(0, since), this.registry).state
-      return result.state.log.slice(before.log.length)
-    } catch (e) {
-      // The ping matters more than its recap: a journal that will not replay still gets its card.
-      console.warn(`[notify] no recap for ${gameId}:`, (e as Error).message)
-      return []
-    }
+    const { journal, log } = result.state
+    const { since } = seatTurn(options, journal, faction, this.registry)
+    // Before its first turn a seat has no "last turn": the recap starts where play does, past the
+    // draft and setup the whole table sat through.
+    const from =
+      since === 0
+        ? log.findIndex((l) => l.startsWith('Chapter 1:')) + 1
+        : replayGame(options, journal.slice(0, since), this.registry).state.log.length
+    return log.slice(from)
   }
 
   /** Posts the cards as one message to the channel; false when it failed or there is no channel. */
