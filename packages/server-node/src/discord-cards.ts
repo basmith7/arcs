@@ -3,7 +3,8 @@
  * stall reminder). Pure functions of the game state and the seats; notify.ts decides when to post.
  *
  * Only public information goes in a card: the channel is shared by every player, so a card shows
- * what the table can see (power, declared ambitions, the face-up lead) and never a hand.
+ * what the table can see (power, declared ambitions, the face-up lead, the log since the player's
+ * last turn) and never a hand.
  *
  * The game link rides on the message's button (notify.ts), not on each card: Discord may fold
  * embeds sharing a url into one.
@@ -113,12 +114,59 @@ function situation(result: RuleResult, faction: FactionId, seats: readonly Seat[
     : `${who} led **${lead.suit}** and declared **${declared.ambition}**.`
 }
 
+/** Discord's cap on an embed's description. */
+const DESCRIPTION_MAX = 4096
+const RECAP_HEAD = '**Since your last turn**'
+
+/**
+ * Log lines folded to one line per run of the same actor: "🟡 **Neal** surpassed with
+ * Mobilization-2 · moved 2 ships …". The engine opens a line with its actor's faction id; a line
+ * with none (a round ending, the initiative passing) stands alone. A copied card is played face
+ * down, so its id stays out of the channel though the engine's log has it.
+ */
+function turnLines(log: readonly string[], state: GameState, seats: readonly Seat[]): string[] {
+  const turns: { faction: FactionId | undefined; did: string[] }[] = []
+  for (const line of log) {
+    const faction = state.factions.find((f) => line.startsWith(`${f} `))
+    const rest = faction === undefined ? line : line.slice(faction.length + 1)
+    const did = namesIn(rest.replace(/^copied with \S+/, 'copied (card face down)'), seats)
+    const last = turns.at(-1)
+    if (faction !== undefined && last?.faction === faction) last.did.push(did)
+    else turns.push({ faction, did: [did] })
+  }
+  return turns.map(({ faction, did }) =>
+    faction === undefined ? `*${did.join(' · ')}*` : `${dot(faction)} **${nameIn(seats, faction)}** ${did.join(' · ')}`,
+  )
+}
+
+/** The lines in at most `max` characters: when they overflow it, the latest that fit, the cut marked. */
+function fit(lines: readonly string[], max: number): string {
+  let kept = lines
+  const text = (): string => (kept.length < lines.length ? ['…', ...kept] : kept).join('\n')
+  while (kept.length > 1 && text().length > max) kept = kept.slice(1)
+  return text()
+}
+
 const where = (state: GameState): string => `Chapter ${state.chapter} · Round ${state.round}`
 
-/** It is this seat's turn; `result` is the game now. */
-export function turnCard(seat: Seat, result: RuleResult, seats: readonly Seat[], now: number): Card {
+/**
+ * It is this seat's turn; `result` is the game now, `since` the log lines to recap (the notifier
+ * picks them: none when the seat is answering something other than a new turn).
+ */
+export function turnCard(
+  seat: Seat,
+  result: RuleResult,
+  seats: readonly Seat[],
+  now: number,
+  since: readonly string[],
+): Card {
   const who = tag(seat)
-  const description = situation(result, seat.faction as FactionId, seats)
+  const facing = situation(result, seat.faction as FactionId, seats)
+  const parts = facing === undefined ? [] : [facing]
+  if (since.length > 0) {
+    const room = DESCRIPTION_MAX - RECAP_HEAD.length - 1 - (facing === undefined ? 0 : facing.length + 2)
+    parts.push(`${RECAP_HEAD}\n${fit(turnLines(since, result.state, seats), room)}`)
+  }
   return {
     content: `${who.text}, your turn in Arcs (${where(result.state).toLowerCase()})`,
     mentions: who.mention === undefined ? [] : [who.mention],
@@ -126,7 +174,7 @@ export function turnCard(seat: Seat, result: RuleResult, seats: readonly Seat[],
       author: { name: `Arcs · ${where(result.state)}` },
       title: `Your turn, ${nameOf(seat)}`,
       color: COLOR[seat.faction] ?? NEUTRAL,
-      ...(description === undefined ? {} : { description }),
+      ...(parts.length === 0 ? {} : { description: parts.join('\n\n') }),
       fields: tableFields(result.state, seats),
       timestamp: new Date(now).toISOString(),
     },
