@@ -10,7 +10,8 @@
  *  - a turn ping held for the idle grace (player has the page open) or leave grace (they just left);
  *  - a daily reminder for a game that has waited on the same human for 24 h or more.
  */
-import type { RuleResult } from '@arcs/engine'
+import { defaultRegistry, replayGame, seatAsk, seatTurn } from '@arcs/engine'
+import type { FactionId, NewGameOptions, RuleResult } from '@arcs/engine'
 
 import { chapterCard, gameOverCard, reminderCard, turnCard } from './discord-cards.js'
 import type { Card } from './discord-cards.js'
@@ -84,6 +85,7 @@ export class Notifier {
   private readonly every: (fn: () => void, ms: number) => Schedule
   private ticker: Schedule | undefined
   private sweeping = false
+  private readonly registry = defaultRegistry()
 
   constructor(
     private readonly store: SqliteStore,
@@ -264,7 +266,24 @@ export class Notifier {
   /** The turn-ping card for a seat, or `undefined` when pings are off for it. */
   private turnCard(gameId: string, seat: SeatRow, result: RuleResult): Card | undefined {
     if (!seat.pings) return undefined
-    return turnCard(seat, result, this.store.seats(gameId), this.now())
+    const since = this.since(gameId, seat.faction as FactionId, result)
+    return turnCard(seat, result, this.store.seats(gameId), this.now(), since)
+  }
+
+  /** The log lines since this seat's previous turn, when it is being asked to open a new one. */
+  private since(gameId: string, faction: FactionId, result: RuleResult): readonly string[] {
+    const options = this.store.options(gameId) as NewGameOptions | undefined
+    if (options === undefined || seatAsk(result.continue, faction) !== 'opener') return []
+    const journal = result.state.journal
+    try {
+      const { since } = seatTurn(options, journal, faction, this.registry)
+      const before = replayGame(options, journal.slice(0, since), this.registry).state
+      return result.state.log.slice(before.log.length)
+    } catch (e) {
+      // The ping matters more than its recap: a journal that will not replay still gets its card.
+      console.warn(`[notify] no recap for ${gameId}:`, (e as Error).message)
+      return []
+    }
   }
 
   /** Posts the cards as one message to the channel; false when it failed or there is no channel. */

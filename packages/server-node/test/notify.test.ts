@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { replayGame, startGame } from '@arcs/engine'
+import { applyExternal, defaultRegistry, replayGame, startGame } from '@arcs/engine'
 import type { RuleResult } from '@arcs/engine'
+import { turnCard } from '../src/discord-cards.js'
 import { Notifier, seatLink } from '../src/notify.js'
 import type { NotifierOptions } from '../src/notify.js'
 import { Presence } from '../src/presence.js'
@@ -381,6 +382,57 @@ describe('Notifier', () => {
     expect(posts[0]!.link).toEqual({ label: 'Open game', url: seatLink('https://arcs.test', game.gameId) })
   })
 
+  it('the turn card lists what each player did since the pinged player\'s last turn', async () => {
+    const { store, game, start, afterRed } = await setup()
+    const posts: Posted[] = []
+    const notifierWith = new Notifier(store, {
+      publicOrigin: 'https://arcs.test',
+      current: () => undefined,
+      fallbackChannel: { channelId: CHANNEL, bot: { postMessage: async (_c: string, m: Posted) => void posts.push(m) } as never },
+    })
+    await notifierWith.onSettled({ gameId: game.gameId, before: start, after: afterRed })
+    // Red's whole turn on one line, the setup before it left out; the attacked seat reads by name.
+    expect(posts[0]!.embeds![0]!.fields).toContainEqual({
+      name: 'Since your last turn',
+      value:
+        '🔴 **Red** led with Aggression-4 (2 pips) · declared Warlord (5/3) · discarded Weapon · discarded Relic · ' +
+        'moved 2 ships 2-Gate → 2-Arrow · attacks Sam in 2-Arrow: rolled 2S/0A/0R → 0 hits, 0 bldg, 0 self, no intercept, 0 keys',
+      inline: false,
+    })
+  })
+
+  it('a card copied face down stays face down in the channel', async () => {
+    const { store, game, afterRed } = await setup()
+    const posts: Posted[] = []
+    const notifierWith = new Notifier(store, {
+      publicOrigin: 'https://arcs.test',
+      current: () => undefined,
+      fallbackChannel: { channelId: CHANNEL, bot: { postMessage: async (_c: string, m: Posted) => void posts.push(m) } as never },
+    })
+    // Yellow copies, then takes the first legal action at every ask until the turn reaches blue.
+    const registry = defaultRegistry()
+    let afterYellow = afterRed
+    let copied: unknown
+    for (;;) {
+      const c = afterYellow.continue
+      if (c.kind !== 'ask' || c.faction !== 'yellow') break
+      const copy = c.actions.find((a) => a.type === 'turn/copy')
+      copied ??= copy?.card
+      afterYellow = applyExternal(afterYellow, copy ?? c.actions[0]!, registry)
+    }
+    expect(afterYellow.state.log).toContain(`yellow copied with ${String(copied)}`)
+
+    await notifierWith.onSettled({ gameId: game.gameId, before: afterRed, after: afterYellow })
+    const blue = posts[0]!.embeds![0]!
+    expect(blue.title).toBe('Your turn, Blue')
+    const recap = blue.fields!.find((f) => f.name === 'Since your last turn')!.value.split('\n')
+    // Blue has not played yet: red's turn, then yellow's, each on its own line.
+    expect(recap).toHaveLength(2)
+    expect(recap[0]).toMatch(/^🔴 \*\*Red\*\* led with Aggression-4 /)
+    expect(recap[1]).toMatch(/^🟡 \*\*Sam\*\* copied \(card face down\) · seized the initiative · /)
+    expect(JSON.stringify(posts[0])).not.toContain(String(copied))
+  })
+
   it('the engine\'s prompt names players, not colours', async () => {
     const { store, game, sent, notifier, start, afterRed } = await setup()
     store.setName(game.gameId, game.seats[0]!.seatToken, 'Brian')
@@ -391,6 +443,28 @@ describe('Notifier', () => {
     }
     await notifier.onSettled({ gameId: game.gameId, before: start, after: asked })
     expect(sent[0]!.text).toContain('Pick a system Brian or blue rules')
+    // Answering a question inside someone's turn is not a new turn: no recap.
+    expect(sent[0]!.text).not.toContain('Since your last turn')
+  })
+
+  it('a recap too long for a Discord field keeps the latest turns whole and marks the cut', () => {
+    // 30 turns of 100 characters each: three times Discord's 1024-character field limit.
+    const since = Array.from({ length: 30 }, (_, i) => `${i % 2 === 0 ? 'red' : 'yellow'} did thing ${String(i).padStart(2, '0')} ${'x'.repeat(80)}`)
+    const seats = [{ faction: 'red' }, { faction: 'yellow' }, { faction: 'blue' }]
+    const card = turnCard(seats[2]!, startGame(THREE_PLAYER), seats, 0, since)
+    const lines = card.embed.fields!.find((f) => f.name === 'Since your last turn')!.value.split('\n')
+    expect(lines.join('\n').length).toBeLessThanOrEqual(1024)
+    expect(lines[0]).toBe('…')
+    expect(lines.at(-1)).toBe(`🟡 **Yellow** did thing 29 ${'x'.repeat(80)}`)
+    // Whole turns only, the newest ones, in order: 9 fit under the limit beside the cut mark.
+    expect(lines.slice(1).map((l) => /did thing (\d+)/.exec(l)![1])).toEqual(['21', '22', '23', '24', '25', '26', '27', '28', '29'])
+
+    // One turn that alone overflows the field is cut short rather than sent for Discord to reject.
+    const one = turnCard(seats[2]!, startGame(THREE_PLAYER), seats, 0, [`red did ${'y'.repeat(2000)}`])
+    const value = one.embed.fields!.find((f) => f.name === 'Since your last turn')!.value
+    expect(value).toHaveLength(1024)
+    expect(value.startsWith('🔴 **Red** did yyy')).toBe(true)
+    expect(value.endsWith('y…')).toBe(true)
   })
 
   it('the player who leads is told so', async () => {
@@ -398,6 +472,8 @@ describe('Notifier', () => {
     // Going "backwards" from afterRed to start makes red, who opens the round, the asked faction.
     await a.notifier.onSettled({ gameId: a.game.gameId, before: a.afterRed, after: a.start })
     expect(a.sent[0]!.text).toContain('You lead this round.')
+    // The game's first turn has nothing before it: no recap field (Discord rejects an empty one).
+    expect(a.sent[0]!.text).not.toContain('Since your last turn')
   })
 
   it('the chapter card lists who scored each declared ambition and the power after', async () => {

@@ -3,7 +3,8 @@
  * stall reminder). Pure functions of the game state and the seats; notify.ts decides when to post.
  *
  * Only public information goes in a card: the channel is shared by every player, so a card shows
- * what the table can see (power, declared ambitions, the face-up lead) and never a hand.
+ * what the table can see (power, declared ambitions, the face-up lead, the log since the player's
+ * last turn) and never a hand.
  *
  * The game link rides on the message's button (notify.ts), not on each card: Discord may fold
  * embeds sharing a url into one.
@@ -113,12 +114,58 @@ function situation(result: RuleResult, faction: FactionId, seats: readonly Seat[
     : `${who} led **${lead.suit}** and declared **${declared.ambition}**.`
 }
 
+/** Discord's cap on a field's value. */
+const FIELD_MAX = 1024
+
+/**
+ * Log lines as one line per turn: "🟡 **Neal** surpassed with Mobilization-2 · moved 2 ships …".
+ * Every line of a turn opens with its actor's faction id, so a change of prefix is a new turn; a
+ * line with no actor (a round ending) stands alone. A copied card is played face down, so its id
+ * stays out of the channel though the engine's log has it.
+ */
+function turnLines(log: readonly string[], state: GameState, seats: readonly Seat[]): string[] {
+  const turns: { faction: FactionId | undefined; did: string[] }[] = []
+  for (const line of log) {
+    const faction = state.factions.find((f) => line.startsWith(`${f} `))
+    const rest = faction === undefined ? line : line.slice(faction.length + 1)
+    const did = namesIn(rest.replace(/^copied with \S+/, 'copied (card face down)'), seats)
+    const last = turns.at(-1)
+    if (faction !== undefined && last?.faction === faction) last.did.push(did)
+    else turns.push({ faction, did: [did] })
+  }
+  return turns.map(({ faction, did }) =>
+    faction === undefined ? `*${did.join(' · ')}*` : `${dot(faction)} **${nameIn(seats, faction)}** ${did.join(' · ')}`,
+  )
+}
+
+/** The lines as one field value: when they overflow it, the latest that fit, the cut marked. */
+function fitField(lines: readonly string[]): string {
+  let kept = lines
+  const text = (): string => (kept.length < lines.length ? ['…', ...kept] : kept).join('\n')
+  while (kept.length > 1 && text().length > FIELD_MAX) kept = kept.slice(1)
+  return text().length > FIELD_MAX ? `${text().slice(0, FIELD_MAX - 1)}…` : text()
+}
+
 const where = (state: GameState): string => `Chapter ${state.chapter} · Round ${state.round}`
 
-/** It is this seat's turn; `result` is the game now. */
-export function turnCard(seat: Seat, result: RuleResult, seats: readonly Seat[], now: number): Card {
+/**
+ * It is this seat's turn; `result` is the game now, `since` the log lines since its previous turn
+ * (none when it has not had one, or is answering something other than a turn).
+ */
+export function turnCard(
+  seat: Seat,
+  result: RuleResult,
+  seats: readonly Seat[],
+  now: number,
+  since: readonly string[],
+): Card {
   const who = tag(seat)
   const description = situation(result, seat.faction as FactionId, seats)
+  const fields = tableFields(result.state, seats)
+  if (since.length > 0) {
+    const value = fitField(turnLines(since, result.state, seats))
+    fields.push({ name: 'Since your last turn', value, inline: false })
+  }
   return {
     content: `${who.text}, your turn in Arcs (${where(result.state).toLowerCase()})`,
     mentions: who.mention === undefined ? [] : [who.mention],
@@ -127,7 +174,7 @@ export function turnCard(seat: Seat, result: RuleResult, seats: readonly Seat[],
       title: `Your turn, ${nameOf(seat)}`,
       color: COLOR[seat.faction] ?? NEUTRAL,
       ...(description === undefined ? {} : { description }),
-      fields: tableFields(result.state, seats),
+      fields,
       timestamp: new Date(now).toISOString(),
     },
   }
