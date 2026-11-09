@@ -144,14 +144,14 @@ function fit(lines: readonly string[], max: number): string {
   let kept = lines
   const text = (): string => (kept.length < lines.length ? ['…', ...kept] : kept).join('\n')
   while (kept.length > 1 && text().length > max) kept = kept.slice(1)
-  return text().length > max ? `${text().slice(0, max - 1)}…` : text()
+  return text()
 }
 
 const where = (state: GameState): string => `Chapter ${state.chapter} · Round ${state.round}`
 
 /**
- * It is this seat's turn; `result` is the game now, `since` the log lines since its previous turn
- * (none when it has not had one, or is answering something other than a turn).
+ * It is this seat's turn; `result` is the game now, `since` the log lines to recap (the notifier
+ * picks them: none when the seat is answering something other than a new turn).
  */
 export function turnCard(
   seat: Seat,

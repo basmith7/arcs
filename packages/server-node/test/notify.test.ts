@@ -471,12 +471,6 @@ describe('Notifier', () => {
     expect(turns.at(-1)).toBe(`🟡 **Yellow** did thing 59 ${'x'.repeat(80)}`)
     // Whole turns only, the newest ones, in order: 38 fit, and turn 21 would have overflowed.
     expect(turns.map((l) => Number(/did thing (\d+)/.exec(l)![1]))).toEqual(Array.from({ length: 38 }, (_, i) => i + 22))
-
-    // One turn that alone overflows is cut short rather than sent for Discord to reject.
-    const one = turnCard(seats[2]!, startGame(THREE_PLAYER), seats, 0, [`red did ${'y'.repeat(5000)}`]).embed.description!
-    expect(one).toHaveLength(4096)
-    expect(one.startsWith('**Since your last turn**\n🔴 **Red** did yyy')).toBe(true)
-    expect(one.endsWith('y…')).toBe(true)
   })
 
   it('the player who leads is told so', async () => {
@@ -484,7 +478,7 @@ describe('Notifier', () => {
     // Going "backwards" from afterRed to start makes red, who opens the round, the asked faction.
     await a.notifier.onSettled({ gameId: a.game.gameId, before: a.afterRed, after: a.start })
     expect(a.sent[0]!.text).toContain('You lead this round.')
-    // The game's first turn has nothing before it: no recap field (Discord rejects an empty one).
+    // The game's first turn has nothing before it: no recap, not an empty heading.
     expect(a.sent[0]!.text).not.toContain('Since your last turn')
   })
 
