@@ -3,7 +3,7 @@
 ## Arcs online
 
 - **Project:** compose project `arcs` on Tower, live at https://arcs.basmith.net. Dev ports 3070
-  (server and built client) and 3071 (vite); the lab UI's boot service holds 4870.
+  (server and built client) and 3071 (vite).
 - **Health:** https://arcs.basmith.net/healthz.
 - **Ships per `~/Projects/AGENTS.md`.** SQLite: stop the container before editing prod's database.
 
