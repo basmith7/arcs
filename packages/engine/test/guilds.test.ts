@@ -964,6 +964,37 @@ describe('Guild Prelude abilities — the card is the cost', () => {
     ).toBe(false)
   })
 
+  /*
+   * A guild Prelude costs the card, not a resource, so an empty board must still reach the
+   * menu — Mining Interest's whole point is filling empty slots.
+   */
+  it.each([
+    ['Silver Tongues', 'bc20'],
+    ['Mining Interest', 'bc02'],
+  ])('%s is offered in the Prelude when you hold no resources', (name, card) => {
+    const state = stripSlots(withCard2(fresh(), 'red', card), 'red')
+    expect(preludeOffers(state, 'red', 'Administration', 'Administration')).toEqual([])
+    const step = advance(
+      stoppable(state),
+      { type: 'turn/prelude', faction: 'red', suit: 'Administration', pips: 2 },
+      terminal,
+    )
+    expect(labels(step.continue).some((l) => l.includes(name))).toBe(true)
+    expect(labels(step.continue)).not.toContain('Arrange your resource slots')
+  })
+
+  it('an empty board with no Prelude card goes straight to the pips', () => {
+    const state = stripSlots(fresh(), 'red')
+    const step = advance(
+      stoppable(state),
+      { type: 'turn/prelude', faction: 'red', suit: 'Administration', pips: 2 },
+      terminal,
+    )
+    const types = step.continue.kind === 'ask' ? step.continue.actions.map((a) => a.type) : []
+    expect(types).toContain('action/take')
+    expect(types.some((t) => t.startsWith('turn/prelude'))).toBe(false)
+  })
+
   it('Farseers opens a picker: any number of discards, drawn +1 from the discard bottom', () => {
     /*
      * "Discard this and any number of cards from your hand. Draw the same number (including
