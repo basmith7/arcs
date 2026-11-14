@@ -687,10 +687,6 @@ function performPrelude(
   const offers = preludeOffers(state, faction, suit, leadSuit).filter((o) =>
     o.kind === 'action' ? canTake(state, faction, o.action, Prelude(faction, suit, pips)) : true,
   )
-  if (offers.length === 0) {
-    return { state, continue: C.then(Turn(faction, suit, 0, pips)) }
-  }
-
   const options: Action[] = offers.map((o) => {
     switch (o.kind) {
       case 'action':
@@ -738,18 +734,6 @@ function performPrelude(
     label: guildPreludeLabel(g),
   }))
 
-  /*
-   * "You may rearrange any resources in your resource slots." The forced half of that rule runs
-   * itself, off any gain that leaves the board illegal. The *optional* half needs a door, and the
-   * Prelude is the right one: it is the moment you are already looking at your resources, and its
-   * `then` is the Prelude itself, so arranging returns you to the same menu having spent nothing.
-   *
-   * Not offered after every gain instead, which was tried: it puts a modal between every tax and
-   * everything downstream of it, and reorders every trait that hangs off taxing.
-   *
-   * Unconditional, because reaching this menu at all means `preludeOffers` found something, which
-   * means you are holding a resource. A guard for "nothing to arrange" could never be false here.
-   */
   /*
    * Lore Prelude abilities. Like the guild ones these **discard the card** as their cost, so none
    * needs a once-per-turn marker. The five outrage-clearing cards are deliberately *not* gated on
@@ -857,19 +841,38 @@ function performPrelude(
     }
   }
 
-  const arrange: Action = {
-    type: 'turn/prelude-arrange',
-    faction,
-    suit,
-    pips,
-    label: 'Arrange your resource slots',
+  /*
+   * "You may rearrange any resources in your resource slots." The forced half of that rule runs
+   * itself, off any gain that leaves the board illegal. The *optional* half needs a door, and the
+   * Prelude is the right one: it is the moment you are already looking at your resources, and its
+   * `then` is the Prelude itself, so arranging returns you to the same menu having spent nothing.
+   *
+   * Not offered after every gain instead, which was tried: it puts a modal between every tax and
+   * everything downstream of it, and reorders every trait that hangs off taxing.
+   *
+   * Offered only while a usable slot holds a token (each brings a discard offer, so `offers` is
+   * non-empty): a guild card can open this menu on an empty board, where Arrange has nothing to
+   * move.
+   */
+  const arrange: Action[] =
+    offers.length > 0
+      ? [{ type: 'turn/prelude-arrange', faction, suit, pips, label: 'Arrange your resource slots' }]
+      : []
+
+  /*
+   * A guild ability costs the card, not a resource, so it opens the menu on an empty board too.
+   * Lore, spoils and Tycoon choices do not: the web Prelude screen cannot draw them yet, so on
+   * their own they would open a menu whose only usable button is "Begin actions" (issue #46).
+   */
+  if (options.length === 0 && guild.length === 0) {
+    return { state, continue: C.then(Turn(faction, suit, 0, pips)) }
   }
 
   return {
     state,
     continue: C.ask(
       faction,
-      [...options, ...guild, ...lore, ...spoils, ...charm, ...tycoon, arrange, EndPrelude(faction, suit, pips)],
+      [...options, ...guild, ...lore, ...spoils, ...charm, ...tycoon, ...arrange, EndPrelude(faction, suit, pips)],
       `${faction} — Prelude`,
     ),
   }
