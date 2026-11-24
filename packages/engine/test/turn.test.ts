@@ -15,6 +15,7 @@ import {
   deckFor,
   move,
   moveAll,
+  observe,
   defaultRegistry,
   isWaiting,
   parseCardId,
@@ -813,7 +814,23 @@ describe('following: Copy is offered on every card', () => {
     const played = copy!['card'] as string
     const after = advance(step.state, copy!, registry)
     expect(contentsOf(after.state.cards, CardLocation.played(step.continue.faction))).toContain(played)
-    expect(after.state.log.some((l) => l.includes(`copied with ${played}`))).toBe(true)
+    expect(after.state.log).toContain(`${step.continue.faction} copied`)
+  })
+
+  // #43: a copy is played face down, and every seat's log panel reads `state.log`.
+  it('a copy names no card in the log any seat sees', () => {
+    const step = firstFollow()
+    if (step.continue.kind !== 'ask') throw new Error('expected a follow ask')
+    const copier = step.continue.faction
+    const copy = step.continue.actions.find((a) => a.type === 'turn/copy')!
+    const played = copy['card'] as string
+    const after = advance(step.state, copy, registry)
+
+    for (const seat of after.state.factions.filter((f) => f !== copier)) {
+      const log = observe(after.state, seat).log
+      expect(log).toContain(`${copier} copied`)
+      expect(log.filter((l) => l.includes(played))).toEqual([])
+    }
   })
 })
 
