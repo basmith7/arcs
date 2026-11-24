@@ -507,7 +507,8 @@ function performCopy(state: GameState, faction: FactionId, cardIdStr: string): R
     cards,
     passed: 0,
     roundPlays: [...state.roundPlays, { faction, cardId: cardIdStr, kind: 'copy' as const }],
-    log: [...state.log, `${faction} copied with ${cardIdStr}`],
+    // Copy is played face down: the log is on every seat's screen, so it names no card (#43).
+    log: [...state.log, `${faction} copied`],
   }
   // Copy grants a single pip, in the lead suit.
   return { state: next, continue: C.then(CheckSeize(faction, 1, lead.suit)) }

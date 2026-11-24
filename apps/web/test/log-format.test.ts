@@ -36,6 +36,18 @@ describe('parseLog', () => {
     expect(items.filter((i) => i.kind === 'entry')).toHaveLength(1)
   })
 
+  // #43: a copy is face down, so its line has no card, but it still opens the turn.
+  it('folds a face-down copy into the turn head', () => {
+    const items = parseLog(['red led with Aggression-2 (3 pips)', 'yellow copied', 'yellow seized the initiative'])
+    expect(items.filter((i) => i.kind === 'head').map((i) => (i.kind === 'head' ? i.text : ''))).toEqual([
+      'led with Aggression-2 (3 pips)',
+      'copied',
+    ])
+    expect(items.filter((i) => i.kind === 'entry').map((i) => (i.kind === 'entry' ? i.text : ''))).toEqual([
+      'seized the initiative',
+    ])
+  })
+
   it('opens one head per actor, not one per line', () => {
     const items = parseLog([
       'red moved 2 ships 1-Gate → 1-Arrow',

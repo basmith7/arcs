@@ -121,15 +121,14 @@ const RECAP_HEAD = '**Since your last turn**'
 /**
  * Log lines folded to one line per run of the same actor: "🟡 **Neal** surpassed with
  * Mobilization-2 · moved 2 ships …". The engine opens a line with its actor's faction id; a line
- * with none (a round ending, the initiative passing) stands alone. A copied card is played face
- * down, so its id stays out of the channel though the engine's log has it.
+ * with none (a round ending, the initiative passing) stands alone.
  */
 function turnLines(log: readonly string[], state: GameState, seats: readonly Seat[]): string[] {
   const turns: { faction: FactionId | undefined; did: string[] }[] = []
   for (const line of log) {
     const faction = state.factions.find((f) => line.startsWith(`${f} `))
     const rest = faction === undefined ? line : line.slice(faction.length + 1)
-    const did = namesIn(rest.replace(/^copied with \S+/, 'copied (card face down)'), seats)
+    const did = namesIn(rest, seats)
     const last = turns.at(-1)
     if (faction !== undefined && last?.faction === faction) last.did.push(did)
     else turns.push({ faction, did: [did] })

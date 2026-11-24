@@ -82,7 +82,7 @@ export type LogItem =
 const DIVIDER = /^(Chapter\b|round over\b|Leaders and Lore\b)/
 
 /** The four ways a turn opens with a card, folded into the head instead of listed under it. */
-const CARD_PLAY = /^(led with|surpassed with|pivoted with|copied with|leads as)\b/
+const CARD_PLAY = /^(led with|surpassed with|pivoted with|copied|leads as)\b/
 
 /**
  * Verb families, first match wins.

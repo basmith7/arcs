@@ -409,7 +409,7 @@ describe('Notifier', () => {
     const { notifier, posts } = posting(store)
     // Yellow copies, then takes the first legal action at every ask until the turn reaches blue.
     const afterYellow = playUntil(afterRed, (ask) => ask.faction === 'blue', 'turn/copy')
-    const copied = /^yellow copied with (\S+)$/.exec(afterYellow.state.log.find((l) => l.startsWith('yellow copied'))!)![1]!
+    const copied = afterYellow.state.roundPlays.find((p) => p.faction === 'yellow' && p.kind === 'copy')!.cardId
 
     await notifier.onSettled({ gameId: game.gameId, before: afterRed, after: afterYellow })
     const blue = posts[0]!.embeds![0]!
@@ -419,7 +419,7 @@ describe('Notifier', () => {
     expect([facing, head]).toEqual(['Red led **Aggression** and declared **Warlord**.', '**Since your last turn**'])
     expect(recap).toHaveLength(2)
     expect(recap[0]).toMatch(/^🔴 \*\*Red\*\* led with Aggression-4 /)
-    expect(recap[1]).toMatch(/^🟡 \*\*Sam\*\* copied \(card face down\) · seized the initiative · /)
+    expect(recap[1]).toMatch(/^🟡 \*\*Sam\*\* copied · seized the initiative · /)
     expect(JSON.stringify(posts[0])).not.toContain(copied)
   })
 
